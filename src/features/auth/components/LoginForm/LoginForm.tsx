@@ -16,7 +16,7 @@ import {
 import {
   SignInSchema,
   type SignIn,
-} from "../../schemas/signin.schema";
+} from "../../schemas/login.schema";
 
 import { LoginHeader } from "./LoginHeader";
 

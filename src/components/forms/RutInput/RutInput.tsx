@@ -1,65 +1,40 @@
-import type { ChangeEvent } from "react";
-
-import { Field } from "@/components/ui/Field";
-import { FieldError } from "@/components/ui/Field";
-import { FieldLabel } from "@/components/ui/Field";
+import { forwardRef } from "react";
 import { Input } from "@/components/ui/Input";
+import { addHyphen, cleanRut, formatRut } from "@/utils/rut";
 
-import {
-  cleanRut,
-  formatRut,
-  normalizeForDatabase,
-} from "@/utils/rut";
+interface RutInputProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
+  value?: string;
 
-interface RutInputProps {
-  label: string;
-  placeholder?: string;
-
-  value: string;
-
-  onChange: (value: string) => void;
-
-  onBlur?: () => void;
-
-  error?: string;
+  onChange?: (value: string) => void;
 }
 
-export function RutInput({
-  label,
-  placeholder,
-  value,
-  onChange,
-  onBlur,
-  error,
-}: RutInputProps) {
-  function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    const rawValue = event.target.value;
+const RutInput = forwardRef<HTMLInputElement, RutInputProps>(
+  ({ value = "", onChange, ...props }, ref) => {
+    function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+      const rawValue = event.target.value;
 
-    const clean = cleanRut(rawValue);
+      const clean = cleanRut(rawValue);
 
-    const formatted = formatRut(clean);
+      const normalized = addHyphen(clean);
 
-    onChange(normalizeForDatabase(formatted));
-  }
+      onChange?.(normalized);
+    }
 
-  return (
-    <Field data-invalid={!!error}>
-      <FieldLabel>{label}</FieldLabel>
-
+    return (
       <Input
+        ref={ref}
         value={formatRut(value)}
         onChange={handleChange}
-        onBlur={onBlur}
-        placeholder={placeholder}
         autoComplete="off"
-        aria-invalid={!!error}
+        inputMode="numeric"
+        placeholder="12.345.678-5"
+        {...props}
       />
+    );
+  },
+);
 
-      {error && (
-        <FieldError>
-          {error}
-        </FieldError>
-      )}
-    </Field>
-  );
-}
+RutInput.displayName = "RutInput";
+
+export { RutInput };

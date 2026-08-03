@@ -1,13 +1,19 @@
 import type { ComponentProps } from "react";
 
-import { Input } from "../Input";
+import { cn } from "@/lib/utils";
 
-type InputGroupInputProps = ComponentProps<typeof Input>;
+type Props = ComponentProps<"input">;
 
-export function InputGroupInput(props: InputGroupInputProps) {
+export function InputGroupInput({
+  className,
+  ...props
+}: Props) {
   return (
-    <Input
-      className="border-0 bg-transparent shadow-none focus:border-transparent focus:ring-0"
+    <input
+      className={cn(
+        "h-full flex-1 bg-transparent px-4 text-white outline-none placeholder:text-zinc-500",
+        className,
+      )}
       {...props}
     />
   );

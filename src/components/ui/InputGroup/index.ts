@@ -1,3 +1,3 @@
-export { InputGroup } from "./InputGroup";
-export { InputGroupAddon } from "./InputGroupAddon";
-export { InputGroupInput } from "./InputGroupInput";
+export * from "./InputGroup";
+export * from "./InputGroupInput";
+export * from "./InputGroupAddon";
