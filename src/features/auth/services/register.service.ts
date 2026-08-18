@@ -19,9 +19,10 @@ export async function registerService(
 
   const student = await studentRepository.findByRut(rut);
 
-  if (!student) {
+    if (!student) {
     return fail(
-      "Este RUT no figura en la nomina de la universidad.",
+      "Este RUT no corresponde a un estudiante habilitado para registro. " +
+        "Si eres docente o administrador, tu cuenta la crea la universidad.",
     );
   }
 

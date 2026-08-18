@@ -35,6 +35,9 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
 2. **Nunca** se inicia sesión con correo electrónico.
 3. **Nunca** se eliminan usuarios. Solo se marca `enabled: false`.
 4. Solo pueden registrarse estudiantes **previamente cargados** por la universidad.
+   Docentes y administradores **no se autorregistran**: sus cuentas las crea la
+   universidad directamente en `authUsers`. Por eso `registerService` consulta
+   únicamente `studentRepository`.
 5. No se guarda el nombre completo en un solo campo:
    `firstName` + `paternalLastName` + `maternalLastName`.
 6. No se guardan cohortes como entidad; se derivan de `entryYear` + `entrySemester`.
@@ -82,6 +85,11 @@ Un servicio **nunca** importa React.
       services/          session.service, profile.service  (transversales)
       types/             dominio compartido
       utils/             rut.ts
+
+**Los datasources son arrays mutables en memoria.** `authRepository.create()` hace
+`push` sobre `authUsers`, y `studentRepository.markAsRegistered()` muta el objeto
+`Student`. El estado **persiste entre llamadas** dentro de una misma sesión del
+navegador y se reinicia al recargar. Cualquier test debe aislar o restaurar ese estado.
 
 **Por qué `repositories/` es raíz y no vive dentro de `features/auth/`:**
 el registro necesita `AuthRepository` y `StudentRepository` a la vez, y el dashboard
@@ -172,17 +180,26 @@ Cuando exista JWT, el token se guarda aquí y el resto de la app no se entera.
 ❌ NO login por email · NO borrar usuarios · NO `User` genérico ·
    NO acceso directo al datasource · NO nombre completo en un campo · NO cohortes como entidad.
 
-⚠️ **Pendiente de decidir antes del backend:** dónde vive el JWT.
-   `localStorage` es simple pero vulnerable a XSS; cookie `httpOnly` es más segura
-   pero condiciona dominio, CORS y despliegue. Decidir ahora, no en la migración.
+⚠️ **Pendientes de decidir antes del backend:**
+
+1. **Dónde vive el JWT.** `localStorage` es simple pero vulnerable a XSS; cookie
+   `httpOnly` es más segura pero condiciona dominio, CORS y despliegue.
+2. **Unicidad de RUT entre nóminas.** Hoy nada impide que un mismo RUT esté en
+   `students` y en `teachers` o `admins` a la vez; `registerService` solo consulta
+   `students` y crearía una cuenta de estudiante para alguien que ya es docente.
+   Se ataja con una restricción de unicidad en la base de datos, no en el servicio.
+   Riesgo real cuando el administrador cargue nóminas por Excel (Fase D).
 
 ---
 
 ## 9. Hoja de ruta
 
-**Fase A — Autenticación** ✅ completa
+**Fase A — Autenticación** ✅ completa y validada manualmente
 tipos, datasources tipados, 4 repositorios, session.service, profile.service,
 AuthContext con rehidratación, login, registro, logout, rutas por rol, AuthLayout.
+Probados los 10 casos: los 3 logins por rol, registro exitoso, RUT fuera de nómina,
+matrícula inactiva, DV inválido, persistencia tras recarga, redirección con sesión
+abierta y rebote de rol incorrecto.
 
 **Fase B — Base**
 1. Vitest + tests de `utils/rut.ts` y de `registerService` (4 ramas de negocio)

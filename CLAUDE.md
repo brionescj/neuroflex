@@ -29,6 +29,28 @@ Lee `ARCHITECTURE.md` antes de escribir código. Es la fuente de verdad.
 12. Servicios devuelven `ApiResponse<T>` construido con `ok()` / `fail()`.
 13. Los mensajes de error de login son genéricos ("RUT o contrasena incorrectos").
     No reveles si el RUT existe.
+14. El registro es **solo para estudiantes**. Docentes y administradores reciben su
+    cuenta de la universidad. No agregues rutas ni formularios de autorregistro para ellos.
+15. **No crees convenciones de carpetas paralelas.** Las rutas viven en
+    `src/config/routes.ts` (no en `src/router/`), las páginas en `features/<x>/pages/`
+    (no en `src/pages/`), los estilos en `src/index.css` (no en `src/styles/`),
+    el acceso a datos en `src/repositories/` (no en `features/<x>/api/`).
+    Si una carpeta te parece necesaria y no está en ARCHITECTURE.md, propónla antes de crearla.
+
+## Estado de los datos
+
+Los datasources de `src/data/` son **arrays mutables en memoria**.
+`authRepository.create()` hace `push` sobre `authUsers` y
+`studentRepository.markAsRegistered()` muta el objeto `Student`.
+El estado persiste entre llamadas y se reinicia al recargar la página.
+Cualquier test debe aislar o restaurar ese estado entre casos, o los resultados
+dependerán del orden de ejecución.
+
+## Herramientas disponibles
+
+- `npm run build` — `tsc -b` + `vite build`
+- `npx oxlint` — linter
+- **No hay runner de tests instalado todavía.** Vitest es la primera tarea de la Fase B.
 
 ## Higiene
 
