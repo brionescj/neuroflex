@@ -1,50 +1,46 @@
-import AuthRepository from "../repositories/auth.repository";
-import type { ApiResponse } from "@/types/api";
-import type { User } from "@/types/user";
+import { authRepository } from "@/repositories";
+import { buildDisplayName, findProfile } from "@/services/profile.service";
+import { fail, ok, type ApiResponse, type SessionUser } from "@/types";
+import { normalizeForDatabase } from "@/utils/rut";
 
-interface LoginPayload {
+export type LoginPayload = {
   rut: string;
+
   password: string;
-}
+};
 
 export async function loginService(
   payload: LoginPayload,
-): Promise<ApiResponse<User | null>> {
-  const user = await AuthRepository.getUserByRut(payload.rut);
+): Promise<ApiResponse<SessionUser>> {
+  const rut = normalizeForDatabase(payload.rut);
 
-  if (!user) {
-    return {
-      success: false,
-      message: "Usuario no encontrado.",
-      data: null,
-    };
-  }
-
-  if (!user.active) {
-    return {
-      success: false,
-      message: "Usuario inactivo.",
-      data: null,
-    };
-  }
+  const account = await authRepository.findByRut(rut);
 
   /**
-   * Temporal.
+   * Mensaje generico a proposito.
    *
-   * Más adelante utilizaremos bcrypt
-   * y la contraseña vendrá hasheada desde MongoDB.
+   * Decir "el RUT no existe" permite enumerar usuarios.
    */
-  if (user.password !== payload.password) {
-    return {
-      success: false,
-      message: "Contraseña incorrecta.",
-      data: null,
-    };
+  if (!account || account.password !== payload.password) {
+    return fail("RUT o contrasena incorrectos.");
   }
 
-  return {
-    success: true,
-    message: "Inicio de sesión correcto.",
-    data: user,
+  if (!account.enabled) {
+    return fail("Su cuenta se encuentra deshabilitada.");
+  }
+
+  const profile = await findProfile(rut, account.role);
+
+  if (!profile || !profile.enabled) {
+    return fail("Su ficha institucional no se encuentra activa.");
+  }
+
+  const session: SessionUser = {
+    id: account.id,
+    rut: account.rut,
+    role: account.role,
+    displayName: buildDisplayName(profile),
   };
+
+  return ok(session, "Inicio de sesion correcto.");
 }

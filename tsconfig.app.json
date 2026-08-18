@@ -22,8 +22,14 @@
     "noEmit": true,
 
     "skipLibCheck": true,
+    
 
     "ignoreDeprecations": "6.0",
+
+    "strict": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
 
     "noUnusedLocals": true,
     "noUnusedParameters": true,

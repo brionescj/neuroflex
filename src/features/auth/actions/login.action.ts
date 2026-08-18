@@ -1,12 +1,5 @@
-import { loginService } from "../services/login.service";
+import { loginService, type LoginPayload } from "../services/login.service";
 
-interface LoginPayload {
-  rut: string;
-  password: string;
-}
-
-export async function loginAction(
-  payload: LoginPayload,
-) {
+export async function loginAction(payload: LoginPayload) {
   return loginService(payload);
 }

@@ -10,29 +10,33 @@ import {
   FieldError,
   FieldLabel,
 } from "@/components/ui/Field";
-import { DASHBOARD_BY_ROLE, ROUTES } from "@/config/routes";
-import { useAuth } from "@/context";
+import { ROUTES } from "@/config/routes";
 
-import { loginAction } from "../actions/login.action";
+import { registerAction } from "../actions/register.action";
 import { PasswordField } from "../components";
-import { LoginSchema, type LoginInput } from "../schemas/login.schema";
+import {
+  RegisterSchema,
+  type RegisterInput,
+} from "../schemas/register.schema";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const navigate = useNavigate();
 
-  const { login } = useAuth();
-
-  const form = useForm<LoginInput>({
-    resolver: zodResolver(LoginSchema),
+  const form = useForm<RegisterInput>({
+    resolver: zodResolver(RegisterSchema),
 
     defaultValues: {
       rut: "",
       password: "",
+      confirmPassword: "",
     },
   });
 
-  async function onSubmit(data: LoginInput) {
-    const result = await loginAction(data);
+  async function onSubmit(data: RegisterInput) {
+    const result = await registerAction({
+      rut: data.rut,
+      password: data.password,
+    });
 
     if (!result.success) {
       toast.error(result.message);
@@ -40,27 +44,26 @@ export default function LoginPage() {
       return;
     }
 
-    login(result.data);
+    toast.success("Cuenta creada. Ya puedes iniciar sesion.");
 
-    toast.success(`Bienvenido ${result.data.displayName}`);
-
-    navigate(DASHBOARD_BY_ROLE[result.data.role], { replace: true });
+    navigate(ROUTES.LOGIN, { replace: true });
   }
 
   return (
     <>
       <div className="flex flex-col gap-1">
         <h1 className="text-[28px] font-bold text-white">
-          Bienvenido de nuevo
+          Crear cuenta
         </h1>
 
         <p className="text-[16px] text-zinc-400">
-          Ingresa tu RUT y contrasena para continuar.
+          Solo pueden registrarse estudiantes cargados por la
+          universidad.
         </p>
       </div>
 
       <form
-        id="login-form"
+        id="register-form"
         className="space-y-4"
         onSubmit={form.handleSubmit(onSubmit)}
       >
@@ -69,12 +72,12 @@ export default function LoginPage() {
           name="rut"
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor="rut" className="text-white">
+              <FieldLabel htmlFor="register-rut" className="text-white">
                 RUT
               </FieldLabel>
 
               <RutInput
-                id="rut"
+                id="register-rut"
                 value={field.value}
                 onChange={field.onChange}
                 onBlur={field.onBlur}
@@ -92,8 +95,24 @@ export default function LoginPage() {
           name="password"
           render={({ field, fieldState }) => (
             <PasswordField
-              id="password"
+              id="register-password"
               label="Contrasena"
+              name={field.name}
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              message={fieldState.error?.message}
+            />
+          )}
+        />
+
+        <Controller
+          control={form.control}
+          name="confirmPassword"
+          render={({ field, fieldState }) => (
+            <PasswordField
+              id="register-confirm-password"
+              label="Repetir contrasena"
               name={field.name}
               value={field.value}
               onChange={field.onChange}
@@ -109,18 +128,18 @@ export default function LoginPage() {
           className="mt-4 h-15 w-full bg-white text-[16px] font-semibold text-black hover:bg-zinc-200"
         >
           {form.formState.isSubmitting
-            ? "Ingresando..."
-            : "Iniciar sesion"}
+            ? "Creando cuenta..."
+            : "Crear cuenta"}
         </Button>
       </form>
 
       <p className="text-center text-sm text-zinc-400">
-        No tienes cuenta?{" "}
+        Ya tienes cuenta?{" "}
         <Link
-          to={ROUTES.REGISTER}
+          to={ROUTES.LOGIN}
           className="font-semibold text-white underline"
         >
-          Crear cuenta
+          Iniciar sesion
         </Link>
       </p>
     </>
