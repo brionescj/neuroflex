@@ -174,6 +174,9 @@ Unión discriminada por `success`. Se construyen con los helpers `ok()` y `fail(
 `localStorage`. Guarda un `SessionUser` — nunca la contraseña.
 Cuando exista JWT, el token se guarda aquí y el resto de la app no se entera.
 
+`SESSION_KEY` se exporta solo para `session.service.test.ts`; ningún otro
+archivo debe usarla para acceder a `localStorage` directamente.
+
 `AuthProvider` expone `isLoading` durante la rehidratación para que
 `ProtectedRoute` no redirija al login antes de saber si hay sesión.
 

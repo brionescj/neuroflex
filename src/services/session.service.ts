@@ -1,6 +1,12 @@
 import type { SessionUser } from "@/types";
+import { SessionUserSchema } from "./session.schema";
 
-const SESSION_KEY = "neuroflex.session";
+/**
+ * Se exporta SOLO para session.service.test.ts (evita duplicar el
+ * string). Ningun otro archivo debe importarla para tocar
+ * localStorage directamente: pasa siempre por sessionService.
+ */
+export const SESSION_KEY = "neuroflex.session";
 
 /**
  * Unico lugar del proyecto que toca localStorage.
@@ -20,13 +26,25 @@ export const sessionService = {
       return null;
     }
 
+    let parsed: unknown;
+
     try {
-      return JSON.parse(raw) as SessionUser;
+      parsed = JSON.parse(raw);
     } catch {
       localStorage.removeItem(SESSION_KEY);
 
       return null;
     }
+
+    const result = SessionUserSchema.safeParse(parsed);
+
+    if (!result.success) {
+      localStorage.removeItem(SESSION_KEY);
+
+      return null;
+    }
+
+    return result.data;
   },
 
   clear(): void {
