@@ -3,6 +3,7 @@ import {
   studentRepository,
   teacherRepository,
 } from "@/repositories";
+import type { AvatarId } from "@/config/avatars";
 import type { UserRole } from "@/types";
 
 type Profile = {
@@ -11,6 +12,8 @@ type Profile = {
   paternalLastName: string;
 
   enabled: boolean;
+
+  avatarId: AvatarId;
 };
 
 /**

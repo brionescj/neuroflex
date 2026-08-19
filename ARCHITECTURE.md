@@ -119,14 +119,24 @@ importaciones cruzadas entre features.
 
     AuthUser   id, rut, password, role, enabled          → puede iniciar sesión
     Student    rut, firstName, paternalLastName, maternalLastName, birthDate,
-               entryYear, entrySemester, studyShift, works, enabled, registered
-    Teacher    rut, firstName, paternalLastName, maternalLastName, enabled
-    Admin      rut, firstName, paternalLastName, maternalLastName, enabled
-    SessionUser  id, rut, role, displayName            → lo único que va al navegador
+               entryYear, entrySemester, studyShift, works, enabled, registered,
+               email, avatarId
+    Teacher    rut, firstName, paternalLastName, maternalLastName, enabled,
+               email, avatarId, title
+    Admin      rut, firstName, paternalLastName, maternalLastName, enabled,
+               email, avatarId
+    SessionUser  id, rut, role, displayName, avatarId   → lo único que va al navegador
 
 `AuthUser` y la ficha (`Student`/`Teacher`/`Admin`) se unen por **`rut`**.
 Un estudiante existe en la nómina desde que la universidad lo carga,
 pero solo aparece en `authUsers` **después de registrarse**.
+
+`email` es dato de contacto de la ficha, nunca credencial: `AuthUser` no lo
+tiene y el login sigue siendo solo por RUT. `avatarId` referencia el mapa de
+iconos+color en `src/config/avatars.ts` (`AVATARS`); todavía no hay carga de
+imágenes propias. `title` es el título profesional del docente. El nombre de
+la carrera (`"Educación Diferencial"`) vive como constante suelta en
+`src/config/career.ts` (`CAREER_NAME`) — no es campo de ninguna entidad.
 
 ### Respuestas de servicio
 

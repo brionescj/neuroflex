@@ -19,6 +19,8 @@ export const students: Student[] = [
     works: false,
     enabled: true,
     registered: true,
+    email: "juan.perez@alumnos.uvm.cl",
+    avatarId: "cat",
   },
   {
     rut: "19876543-0",
@@ -32,6 +34,8 @@ export const students: Student[] = [
     works: true,
     enabled: true,
     registered: false,
+    email: "maria.gonzalez@alumnos.uvm.cl",
+    avatarId: "rabbit",
   },
   {
     rut: "20345678-6",
@@ -45,5 +49,7 @@ export const students: Student[] = [
     works: false,
     enabled: false,
     registered: false,
+    email: "camila.munoz@alumnos.uvm.cl",
+    avatarId: "turtle",
   },
 ];

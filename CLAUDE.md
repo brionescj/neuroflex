@@ -12,7 +12,9 @@ Lee `ARCHITECTURE.md` antes de escribir código. Es la fuente de verdad.
 
 ## Reglas duras
 
-1. Login **solo por RUT**. Nunca por email. No agregues un campo `email` a ninguna entidad.
+1. Login **solo por RUT**. Nunca por email. `AuthUser` nunca tiene campo `email`.
+   Las fichas (`Student`/`Teacher`/`Admin`) pueden tener `email` como dato de
+   contacto — nunca se usa para autenticar.
 2. Un solo modelo de usuario: `AuthUser` + ficha (`Student`/`Teacher`/`Admin`),
    unidos por `rut`. No crees un `User` genérico.
 3. Flujo obligatorio: `Página → Action → Service → Repository → DataSource`.
@@ -21,17 +23,22 @@ Lee `ARCHITECTURE.md` antes de escribir código. Es la fuente de verdad.
 5. Nunca guardes `password` en el navegador ni en `SessionUser`.
 6. No hashees contraseñas en el frontend. Es del backend.
 7. No borres usuarios. Marca `enabled: false`.
-8. No desactives `strict` ni ninguna opción de `tsconfig.app.json` para hacer pasar el build.
-9. `import type` para todos los tipos (`verbatimModuleSyntax` está activo).
-10. Imports internos siempre con alias `@/`.
-11. Rutas siempre desde `ROUTES` / `DASHBOARD_BY_ROLE` en `src/config/routes.ts`.
+8. El correo es dato de contacto, nunca credencial: no se usa para
+   autenticar, recuperar contraseña ni buscar usuarios. Acepta cualquier
+   dominio (institucional o personal), por lo que su validación es solo
+   de formato. No hay verificación de propiedad del correo: cada usuario
+   puede corregir el suyo desde su perfil.
+9. No desactives `strict` ni ninguna opción de `tsconfig.app.json` para hacer pasar el build.
+10. `import type` para todos los tipos (`verbatimModuleSyntax` está activo).
+11. Imports internos siempre con alias `@/`.
+12. Rutas siempre desde `ROUTES` / `DASHBOARD_BY_ROLE` en `src/config/routes.ts`.
     Nunca strings literales como `"/admin"`.
-12. Servicios devuelven `ApiResponse<T>` construido con `ok()` / `fail()`.
-13. Los mensajes de error de login son genéricos ("RUT o contrasena incorrectos").
+13. Servicios devuelven `ApiResponse<T>` construido con `ok()` / `fail()`.
+14. Los mensajes de error de login son genéricos ("RUT o contrasena incorrectos").
     No reveles si el RUT existe.
-14. El registro es **solo para estudiantes**. Docentes y administradores reciben su
+15. El registro es **solo para estudiantes**. Docentes y administradores reciben su
     cuenta de la universidad. No agregues rutas ni formularios de autorregistro para ellos.
-15. **No crees convenciones de carpetas paralelas.** Las rutas viven en
+16. **No crees convenciones de carpetas paralelas.** Las rutas viven en
     `src/config/routes.ts` (no en `src/router/`), las páginas en `features/<x>/pages/`
     (no en `src/pages/`), los estilos en `src/index.css` (no en `src/styles/`),
     el acceso a datos en `src/repositories/` (no en `features/<x>/api/`).

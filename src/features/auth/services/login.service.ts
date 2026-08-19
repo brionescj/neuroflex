@@ -40,6 +40,7 @@ export async function loginService(
     rut: account.rut,
     role: account.role,
     displayName: buildDisplayName(profile),
+    avatarId: profile.avatarId,
   };
 
   return ok(session, "Inicio de sesion correcto.");

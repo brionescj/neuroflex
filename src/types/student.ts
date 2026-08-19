@@ -1,3 +1,4 @@
+import type { AvatarId } from "@/config/avatars";
 import type {
   EntrySemester,
   StudyShift,
@@ -25,4 +26,8 @@ export type Student = {
   enabled: boolean;
 
   registered: boolean;
+
+  email: string;
+
+  avatarId: AvatarId;
 };

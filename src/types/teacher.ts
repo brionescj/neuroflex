@@ -1,3 +1,5 @@
+import type { AvatarId } from "@/config/avatars";
+
 export type Teacher = {
   rut: string;
 
@@ -8,4 +10,10 @@ export type Teacher = {
   maternalLastName: string;
 
   enabled: boolean;
+
+  email: string;
+
+  avatarId: AvatarId;
+
+  title: string;
 };

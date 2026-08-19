@@ -7,5 +7,7 @@ export const admins: Admin[] = [
     paternalLastName: "Briones",
     maternalLastName: "Castillo",
     enabled: true,
+    email: "cristian.briones@uvm.cl",
+    avatarId: "panda",
   },
 ];

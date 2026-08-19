@@ -7,5 +7,8 @@ export const teachers: Teacher[] = [
     paternalLastName: "Vera",
     maternalLastName: "Silva",
     enabled: true,
+    email: "patricia.vera@uvm.cl",
+    avatarId: "dog",
+    title: "Profesora de Educación Diferencial",
   },
 ];

@@ -1,3 +1,4 @@
+import type { AvatarId } from "@/config/avatars";
 import type { UserRole } from "./common";
 
 /**
@@ -13,4 +14,6 @@ export type SessionUser = {
   role: UserRole;
 
   displayName: string;
+
+  avatarId: AvatarId;
 };

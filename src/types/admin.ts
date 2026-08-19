@@ -1,3 +1,5 @@
+import type { AvatarId } from "@/config/avatars";
+
 export type Admin = {
   rut: string;
 
@@ -8,4 +10,8 @@ export type Admin = {
   maternalLastName: string;
 
   enabled: boolean;
+
+  email: string;
+
+  avatarId: AvatarId;
 };
