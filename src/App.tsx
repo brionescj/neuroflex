@@ -1,9 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth";
+import { ComingSoon } from "@/components/ComingSoon";
 import { ROUTES } from "@/config/routes";
 import { LoginPage, RegisterPage } from "@/features/auth";
+import ProfilePage from "@/features/profile/pages/ProfilePage";
 import AuthLayout from "@/layouts/AuthLayout";
+import DashboardLayout from "@/layouts/DashboardLayout";
 
 import AdminDashboard from "@/features/admin/pages/AdminDashboard";
 import StudentDashboard from "@/features/student/pages/StudentDashboard";
@@ -20,36 +23,46 @@ export default function App() {
         }
       >
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
-
         <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
       </Route>
 
       <Route
-        path={ROUTES.STUDENT}
         element={
           <ProtectedRoute roles={["student"]}>
-            <StudentDashboard />
+            <DashboardLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route path={ROUTES.STUDENT} element={<StudentDashboard />} />
+        <Route path={ROUTES.STUDENT_SCORES} element={<ComingSoon />} />
+        <Route path={ROUTES.STUDENT_PROFILE} element={<ProfilePage />} />
+      </Route>
 
       <Route
-        path={ROUTES.TEACHER}
         element={
           <ProtectedRoute roles={["teacher"]}>
-            <TeacherDashboard />
+            <DashboardLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route path={ROUTES.TEACHER} element={<TeacherDashboard />} />
+        <Route path={ROUTES.TEACHER_STUDENTS} element={<ComingSoon />} />
+        <Route path={ROUTES.TEACHER_REPORTS} element={<ComingSoon />} />
+        <Route path={ROUTES.TEACHER_PROFILE} element={<ProfilePage />} />
+      </Route>
 
       <Route
-        path={ROUTES.ADMIN}
         element={
           <ProtectedRoute roles={["admin"]}>
-            <AdminDashboard />
+            <DashboardLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
+        <Route path={ROUTES.ADMIN_TEACHERS} element={<ComingSoon />} />
+        <Route path={ROUTES.ADMIN_STUDENTS} element={<ComingSoon />} />
+        <Route path={ROUTES.ADMIN_PROFILE} element={<ProfilePage />} />
+      </Route>
 
       <Route path="*" element={<Navigate to={ROUTES.LOGIN} replace />} />
     </Routes>

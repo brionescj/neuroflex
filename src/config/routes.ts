@@ -7,9 +7,25 @@ export const ROUTES = {
 
   STUDENT: "/estudiante",
 
+  STUDENT_SCORES: "/estudiante/puntuaciones",
+
+  STUDENT_PROFILE: "/estudiante/perfil",
+
   TEACHER: "/docente",
 
+  TEACHER_STUDENTS: "/docente/estudiantes",
+
+  TEACHER_REPORTS: "/docente/reportes",
+
+  TEACHER_PROFILE: "/docente/perfil",
+
   ADMIN: "/administracion",
+
+  ADMIN_TEACHERS: "/administracion/docentes",
+
+  ADMIN_STUDENTS: "/administracion/estudiantes",
+
+  ADMIN_PROFILE: "/administracion/perfil",
 } as const;
 
 export const DASHBOARD_BY_ROLE: Record<UserRole, string> = {
