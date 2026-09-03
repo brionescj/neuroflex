@@ -13,6 +13,11 @@ type CreateAuthUserInput = {
  * Unico punto de acceso a las credenciales.
  *
  * Cuando exista MongoDB Atlas solo cambia el cuerpo de estos metodos.
+ *
+ * IMPORTANTE: ese mismo cambio debe incluir hashear el password (bcrypt/argon2)
+ * antes de guardarlo, y mover la validacion de sesion a un endpoint server-side.
+ * Hoy el password se guarda en texto plano y la sesion es 100% falsificable
+ * desde localStorage — aceptable solo porque no hay backend real todavia.
  */
 class AuthRepository {
   async findByRut(rut: string): Promise<AuthUser | null> {
