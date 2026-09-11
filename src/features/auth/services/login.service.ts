@@ -1,7 +1,7 @@
-import { authRepository } from "@/repositories";
-import { buildDisplayName, findProfile } from "@/services/profile.service";
-import { fail, ok, type ApiResponse, type SessionUser } from "@/types";
-import { normalizeForDatabase } from "@/utils/rut";
+import { isAxiosError } from "axios";
+
+import { api } from "@/lib/axios";
+import { fail, type ApiResponse, type SessionUser } from "@/types";
 
 export type LoginPayload = {
   rut: string;
@@ -12,36 +12,18 @@ export type LoginPayload = {
 export async function loginService(
   payload: LoginPayload,
 ): Promise<ApiResponse<SessionUser>> {
-  const rut = normalizeForDatabase(payload.rut);
+  try {
+    const response = await api.post<ApiResponse<SessionUser>>(
+      "/auth/login",
+      payload,
+    );
 
-  const account = await authRepository.findByRut(rut);
+    return response.data;
+  } catch (error) {
+    if (isAxiosError(error) && error.response) {
+      return error.response.data as ApiResponse<SessionUser>;
+    }
 
-  /**
-   * Mensaje generico a proposito.
-   *
-   * Decir "el RUT no existe" permite enumerar usuarios.
-   */
-  if (!account || account.password !== payload.password) {
-    return fail("RUT o contrasena incorrectos.");
+    return fail("No se pudo conectar con el servidor.");
   }
-
-  if (!account.enabled) {
-    return fail("Su cuenta se encuentra deshabilitada.");
-  }
-
-  const profile = await findProfile(rut, account.role);
-
-  if (!profile || !profile.enabled) {
-    return fail("Su ficha institucional no se encuentra activa.");
-  }
-
-  const session: SessionUser = {
-    id: account.id,
-    rut: account.rut,
-    role: account.role,
-    displayName: buildDisplayName(profile),
-    avatarId: profile.avatarId,
-  };
-
-  return ok(session, "Inicio de sesion correcto.");
 }

@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { sessionService } from "@/services/session.service";
+import { api } from "@/lib/axios";
 import type { SessionUser } from "@/types";
 
 import { AuthContext, type AuthContextValue } from "./auth.context";
@@ -23,23 +23,36 @@ export function AuthProvider({ children }: Props) {
   /**
    * Rehidratacion de la sesion.
    *
-   * isLoading evita que ProtectedRoute redirija al login
-   * antes de saber si existe sesion guardada.
+   * Ya no se lee localStorage: el navegador manda la cookie httpOnly
+   * solo, y el servidor confirma la identidad via /auth/me. isLoading
+   * evita que ProtectedRoute redirija al login antes de tener respuesta.
    */
   useEffect(() => {
-    setUser(sessionService.read());
+    let active = true;
 
-    setIsLoading(false);
+    api
+      .get("/auth/me")
+      .then((response) => {
+        if (active) setUser(response.data.data);
+      })
+      .catch(() => {
+        if (active) setUser(null);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const login = useCallback((sessionUser: SessionUser) => {
-    sessionService.save(sessionUser);
-
     setUser(sessionUser);
   }, []);
 
-  const logout = useCallback(() => {
-    sessionService.clear();
+  const logout = useCallback(async () => {
+    await api.post("/auth/logout").catch(() => {});
 
     setUser(null);
   }, []);
@@ -56,8 +69,6 @@ export function AuthProvider({ children }: Props) {
   );
 
   return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
   );
 }

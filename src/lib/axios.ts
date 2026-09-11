@@ -11,8 +11,6 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  // Aquí agregaremos el JWT cuando exista.
-
   return config;
 });
 

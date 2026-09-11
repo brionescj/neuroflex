@@ -10,9 +10,8 @@ export function LogoutButton() {
 
   const navigate = useNavigate();
 
-  function handleLogout() {
-    logout();
-
+  async function handleLogout() {
+    await logout();
     navigate(ROUTES.LOGIN, { replace: true });
   }
 

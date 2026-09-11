@@ -11,7 +11,20 @@ export const RegisterSchema = z
 
     password: z
       .string()
-      .min(8, "La contrasena debe contener al menos 8 caracteres."),
+      .min(8, "La contrasena debe tener al menos 8 caracteres.")
+      .refine(
+        (v) => /[a-zA-Z]/.test(v) && /[0-9]/.test(v),
+        "Debe ser alfanumerica (letras y numeros).",
+      )
+      .refine((v) => /[A-Z]/.test(v), "Debe incluir al menos una mayuscula.")
+      .refine(
+        (v) => /[^a-zA-Z0-9]/.test(v),
+        "Debe incluir al menos un caracter especial.",
+      )
+      .refine(
+        (v) => !/(\d)\1/.test(v),
+        "No puede repetir un mismo digito de forma consecutiva.",
+      ),
 
     confirmPassword: z.string().min(1, "Repita la contrasena."),
   })
