@@ -30,7 +30,6 @@ function readOnlyFields(details: ProfileDetails) {
       ...base,
       { label: "Carrera", value: "Educación Diferencial" },
       { label: "Año de ingreso", value: String(details.entryYear) },
-      { label: "Semestre de ingreso", value: details.entrySemester },
     ];
   }
 

@@ -1,7 +1,7 @@
 import {
+  BarChart3,
   CircleUser,
   ClipboardList,
-  GraduationCap,
   House,
   Trophy,
   Users,
@@ -41,9 +41,7 @@ export const ROLE_MENUS: Record<UserRole, MenuItem[]> = {
   admin: [
     { label: "Inicio", path: ROUTES.ADMIN, icon: House },
 
-    { label: "Docentes", path: ROUTES.ADMIN_TEACHERS, icon: GraduationCap },
-
-    { label: "Estudiantes", path: ROUTES.ADMIN_STUDENTS, icon: Users },
+    { label: "Estadísticas", path: ROUTES.ADMIN_STUDENTS, icon: BarChart3 },
 
     { label: "Mi perfil", path: ROUTES.ADMIN_PROFILE, icon: CircleUser },
   ],

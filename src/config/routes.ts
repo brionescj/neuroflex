@@ -21,8 +21,6 @@ export const ROUTES = {
 
   ADMIN: "/administracion",
 
-  ADMIN_TEACHERS: "/administracion/docentes",
-
   ADMIN_STUDENTS: "/administracion/estudiantes",
 
   ADMIN_PROFILE: "/administracion/perfil",

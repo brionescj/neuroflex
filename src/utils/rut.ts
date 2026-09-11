@@ -101,3 +101,18 @@ export function isValidRut(rut: string): boolean {
 export function normalizeForDatabase(rut: string): string {
   return addHyphen(normalizeRut(rut));
 }
+
+/**
+ * Sanea el valor mientras el usuario escribe: solo digitos, y la K
+ * solo es valida como digito verificador — una sola vez, al final.
+ * Sin esto, una K en medio del cuerpo (o repetida) termina generando
+ * un RUT sin sentido como "NaN-K" al formatear.
+ */
+export function sanitizeRutTyping(raw: string): string {
+  const stripped = raw.replace(/[^0-9kK]/g, "").toUpperCase();
+  const hasTrailingK = stripped.endsWith("K");
+  const digitsOnly = stripped.replace(/K/g, "");
+  const body = digitsOnly.slice(0, hasTrailingK ? 8 : 9);
+
+  return hasTrailingK ? `${body}K` : body;
+}

@@ -1,7 +1,6 @@
 import { forwardRef } from "react";
 import { Input } from "@/components/ui/Input";
-import { addHyphen, cleanRut, formatRut } from "@/utils/rut";
-
+import { addHyphen, formatRut, sanitizeRutTyping } from "@/utils/rut";
 interface RutInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
   value?: string;
@@ -12,14 +11,13 @@ interface RutInputProps
 const RutInput = forwardRef<HTMLInputElement, RutInputProps>(
   ({ value = "", onChange, ...props }, ref) => {
     function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
-      const rawValue = event.target.value;
+  const rawValue = event.target.value;
 
-      const clean = cleanRut(rawValue);
+  const sanitized = sanitizeRutTyping(rawValue);
+  const normalized = addHyphen(sanitized);
 
-      const normalized = addHyphen(clean);
-
-      onChange?.(normalized);
-    }
+  onChange?.(normalized);
+}
 
     return (
       <Input

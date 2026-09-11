@@ -59,7 +59,6 @@ export default function App() {
         }
       >
         <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
-        <Route path={ROUTES.ADMIN_TEACHERS} element={<ComingSoon />} />
         <Route path={ROUTES.ADMIN_STUDENTS} element={<ComingSoon />} />
         <Route path={ROUTES.ADMIN_PROFILE} element={<ProfilePage />} />
       </Route>

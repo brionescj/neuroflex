@@ -1,8 +1,7 @@
 import type { AvatarId } from "@/config/avatars";
-import type {
-  EntrySemester,
-  StudyShift,
-} from "./common";
+import type { StudyShift } from "./common";
+
+export type Paralelo = 1 | 2 | 3 | 4;
 
 export type Student = {
   rut: string;
@@ -13,21 +12,33 @@ export type Student = {
 
   maternalLastName: string;
 
-  birthDate: string;
+  paralelo: Paralelo;
 
   entryYear: number;
 
-  entrySemester: EntrySemester;
+  birthDate?: string;
 
-  studyShift: StudyShift;
-
-  works: boolean;
+  studyShift?: StudyShift;
 
   enabled: boolean;
 
   registered: boolean;
 
-  email: string;
+  email?: string;
+
+  celular?: string;
+
+  ciudad?: string;
+
+  region?: string;
 
   avatarId: AvatarId;
+
+  isDeleted: boolean;
+
+  deletedAt?: string;
+
+  deletedBy?: string;
+
+  deletionReason?: string;
 };
