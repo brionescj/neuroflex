@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -28,8 +29,14 @@ function readOnlyFields(details: ProfileDetails) {
   if (details.role === "student") {
     return [
       ...base,
-      { label: "Carrera", value: "Educación Diferencial" },
+      { label: "Paralelo", value: String(details.paralelo) },
       { label: "Año de ingreso", value: String(details.entryYear) },
+      { label: "Ciudad", value: details.ciudad || "Sin registrar" },
+      { label: "Región", value: details.region || "Sin registrar" },
+      {
+        label: "Celular",
+        value: details.celular ? `+569 ${details.celular}` : "Sin registrar",
+      },
     ];
   }
 
@@ -45,6 +52,7 @@ export default function ProfilePage() {
 
   const [details, setDetails] = useState<ProfileDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
 
   const form = useForm<ProfileFormInput>({
     resolver: zodResolver(ProfileFormSchema),
@@ -95,6 +103,7 @@ export default function ProfilePage() {
     // disponible. Deuda tecnica: agregar updateUser() en AuthProvider.
     login({ ...user, avatarId: data.avatarId });
 
+    setIsEditingEmail(false);
     toast.success(result.message);
   }
 
@@ -133,15 +142,37 @@ export default function ProfilePage() {
           name="email"
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor="email">Correo</FieldLabel>
-              <Input
-                id="email"
-                type="email"
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                aria-invalid={fieldState.invalid}
-              />
+              <div className="flex items-center justify-between">
+                <FieldLabel htmlFor="email">Correo</FieldLabel>
+
+                {!isEditingEmail && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingEmail(true)}
+                    title="Editar correo"
+                    className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                )}
+              </div>
+
+              {isEditingEmail ? (
+                <Input
+                  id="email"
+                  type="email"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  aria-invalid={fieldState.invalid}
+                  autoFocus
+                />
+              ) : (
+                <p className="text-sm text-white">
+                  {field.value || "Sin registrar"}
+                </p>
+              )}
+
               <FieldError errors={[fieldState.error]} />
             </Field>
           )}

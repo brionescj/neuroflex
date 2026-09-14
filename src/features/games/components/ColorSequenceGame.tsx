@@ -71,7 +71,7 @@ export function ColorSequenceGame() {
               : `Nivel ${level} de ${TOTAL_LEVELS} — recuerda ${sequence.length} colores`}
           </p>
 
-          <div className="relative w-full max-w-56 xs:max-w-64 sm:max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg 2xl:max-w-xl">
+          <div className="relative w-full max-w-56 xs:max-w-64 sm:max-w-xs md:max-w-sm lg:max-w-md">
             <ColorGrid
               activeId={activeId}
               disabled={phase !== "answering"}
