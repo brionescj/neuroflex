@@ -1,23 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   SEQUENCE_COLORS,
   type SequenceColorId,
 } from "../components/ColorGrid";
+import {
+  MAX_SEQUENCE_LENGTH,
+  MIN_SEQUENCE_LENGTH,
+  TOTAL_LEVELS,
+  type LevelResult,
+} from "./colorSequenceConfig";
+import {
+  buildColorSequenceSnapshot,
+  parseColorSequenceProgress,
+  type ColorSequenceProgress,
+} from "./colorSequenceResume";
+import { useGameProgress } from "./useGameProgress";
 
-export const MIN_SEQUENCE_LENGTH = 2;
-export const MAX_SEQUENCE_LENGTH = 11;
-export const TOTAL_LEVELS = MAX_SEQUENCE_LENGTH - MIN_SEQUENCE_LENGTH + 1;
+export { MAX_SEQUENCE_LENGTH, MIN_SEQUENCE_LENGTH, TOTAL_LEVELS };
+export type { LevelResult };
 
 const ILLUMINATE_ON_MS = 600;
 const ILLUMINATE_GAP_MS = 300;
-
-export type LevelResult = {
-  level: number;
-  sequenceLength: number;
-  correctCount: number;
-  timeMs: number;
-};
 
 type GamePhase =
   | "idle"
@@ -70,16 +74,91 @@ export function useColorSequenceGame() {
   const answersRef = useRef<SequenceColorId[]>([]);
   const firstClickAtRef = useRef<number | null>(null);
 
+  const {
+    status: progressStatus,
+    error: progressError,
+    saved: savedProgress,
+    reload: reloadProgress,
+    save: saveProgress,
+    clear: clearProgress,
+  } = useGameProgress("color-sequence");
+
+  // Avance guardado ya validado (null si no hay o si esta corrupto).
+  const resumeSnapshot: ColorSequenceProgress | null = useMemo(
+    () => (savedProgress ? parseColorSequenceProgress(savedProgress) : null),
+    [savedProgress],
+  );
+
+  // Un avance que no cuadra se descarta para no dejar al alumno bloqueado.
+  // Solo en "idle": una partida en curso nunca debe borrarse por esto.
+  useEffect(() => {
+    if (phase !== "idle" || progressStatus !== "ready") return;
+
+    if (savedProgress && !resumeSnapshot) {
+      clearProgress();
+    }
+  }, [phase, progressStatus, savedProgress, resumeSnapshot, clearProgress]);
+
+  const applySnapshot = useCallback((snapshot: ColorSequenceProgress) => {
+    setLevel(snapshot.level);
+    setSequence(snapshot.sequence);
+    setLevelResults(snapshot.levelResults);
+    setActiveIndex(null);
+    setPhase(snapshot.phase);
+  }, []);
+
+  // Una partida ya terminada se muestra sola. Una a medias espera a que el
+  // alumno apriete "Continuar": evita que la secuencia se ilumine antes de
+  // que este mirando la pantalla.
+  useEffect(() => {
+    if (phase !== "idle" || resumeSnapshot?.phase !== "finished") return;
+
+    applySnapshot(resumeSnapshot);
+  }, [phase, resumeSnapshot, applySnapshot]);
+
+  const hasResumable =
+    phase === "idle" &&
+    resumeSnapshot !== null &&
+    resumeSnapshot.phase !== "finished";
+
+  // No se puede empezar de cero mientras exista un avance guardado, ni
+  // mientras no se sepa si existe.
+  const canStart = progressStatus === "ready" && resumeSnapshot === null;
+
+  const isGameInProgress =
+    (phase !== "idle" && phase !== "finished") || hasResumable;
+
   const start = useCallback(() => {
+    if (!canStart) return;
+
     setLevel(1);
     setLevelResults([]);
     setSequence(buildInitialSequence(MIN_SEQUENCE_LENGTH));
     setPhase("illuminating");
-  }, []);
+  }, [canStart]);
+
+  const resume = useCallback(() => {
+    if (resumeSnapshot) applySnapshot(resumeSnapshot);
+  }, [resumeSnapshot, applySnapshot]);
 
   const returnToStart = useCallback(() => {
+    clearProgress();
     setPhase("idle");
-  }, []);
+  }, [clearProgress]);
+
+  // Puntos de control: inicio de cada nivel, su resultado y el final.
+  useEffect(() => {
+    if (
+      phase !== "illuminating" &&
+      phase !== "level-result" &&
+      phase !== "finished"
+    ) {
+      return;
+    }
+    if (sequence.length === 0) return;
+
+    saveProgress(buildColorSequenceSnapshot(phase, level, sequence, levelResults));
+  }, [phase, level, sequence, levelResults, saveProgress]);
 
   useEffect(() => {
     if (phase !== "illuminating" || sequence.length === 0) {
@@ -169,12 +248,20 @@ export function useColorSequenceGame() {
   }, []);
 
   return {
+    progressStatus,
+    progressError,
+    retryProgress: reloadProgress,
+    canStart,
+    hasResumable,
+    isGameInProgress,
+    resumeLevel: resumeSnapshot?.level ?? null,
     phase,
     level,
     sequence,
     activeIndex,
     levelResults,
     start,
+    resume,
     returnToStart,
     registerAnswer,
     continueToNextLevel,

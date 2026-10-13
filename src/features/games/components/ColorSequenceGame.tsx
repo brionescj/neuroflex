@@ -1,5 +1,10 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
+import { ROUTES } from "@/config/routes";
+import { BackToGameHub } from "./BackToGameHub";
+import { useLockNavigation } from "../hooks/useLockNavigation";
+import { useWarnBeforeUnload } from "../hooks/useWarnBeforeUnload";
 import {
   TOTAL_LEVELS,
   useColorSequenceGame,
@@ -7,18 +12,34 @@ import {
 import { ColorGrid } from "./ColorGrid";
 
 export function ColorSequenceGame() {
+  const navigate = useNavigate();
+
   const {
+    progressStatus,
+    progressError,
+    retryProgress,
+    canStart,
+    hasResumable,
+    isGameInProgress,
+    resumeLevel,
     phase,
     level,
     sequence,
     activeIndex,
     levelResults,
     start,
+    resume,
     returnToStart,
     registerAnswer,
     continueToNextLevel,
     finish,
   } = useColorSequenceGame();
+
+  // Mientras hay partida en curso (o una pendiente de continuar) el
+  // Sidebar y "Cerrar sesion" quedan inhabilitados.
+  useLockNavigation(isGameInProgress);
+
+  useWarnBeforeUnload(phase !== "idle" && phase !== "finished");
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -60,6 +81,8 @@ export function ColorSequenceGame() {
 
   return (
     <div className="flex flex-col items-center gap-4">
+      {phase === "idle" && !hasResumable && <BackToGameHub />}
+
       <h1 className="text-2xl font-bold sm:text-3xl md:text-4xl">
       Serialización de colores
     </h1>
@@ -67,7 +90,9 @@ export function ColorSequenceGame() {
         <>
           <p className="text-sm text-zinc-400">
             {phase === "idle"
-              ? "Memoriza el orden en que se iluminan los colores"
+              ? hasResumable
+                ? `Tienes una partida en curso: vas en el nivel ${resumeLevel} de ${TOTAL_LEVELS}`
+                : "Memoriza el orden en que se iluminan los colores"
               : `Nivel ${level} de ${TOTAL_LEVELS} — recuerda ${sequence.length} colores`}
           </p>
 
@@ -80,13 +105,47 @@ export function ColorSequenceGame() {
 
             {phase === "idle" && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <button
-                  type="button"
-                  onClick={start}
-                  className="rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
-                >
-                  Comenzar
-                </button>
+                {canStart && (
+                  <button
+                    type="button"
+                    onClick={start}
+                    className="rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
+                  >
+                    Comenzar
+                  </button>
+                )}
+
+                {hasResumable && (
+                  <button
+                    type="button"
+                    onClick={resume}
+                    className="rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
+                  >
+                    Continuar
+                  </button>
+                )}
+
+                {progressStatus === "error" && (
+                  <div className="flex flex-col items-center gap-2 rounded-2xl bg-zinc-950/90 p-4 text-center">
+                    <p className="text-sm text-rose-400">
+                      {progressError ??
+                        "No se pudo verificar tu avance guardado."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={retryProgress}
+                      className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+                    >
+                      Reintentar
+                    </button>
+                  </div>
+                )}
+
+                {progressStatus === "loading" && (
+                  <p className="rounded-xl bg-zinc-950/90 px-4 py-2 text-sm text-zinc-500">
+                    Cargando...
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -152,9 +211,8 @@ export function ColorSequenceGame() {
 
             <button
               type="button"
-              disabled
-              title="Disponible cuando se habilite el tercer juego"
-              className="cursor-not-allowed rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-500"
+              onClick={() => navigate(ROUTES.STUDENT)}
+              className="rounded-lg border border-zinc-700 bg-transparent px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
             >
               Salir del juego
             </button>

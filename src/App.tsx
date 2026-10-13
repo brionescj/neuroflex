@@ -9,6 +9,8 @@ import AuthLayout from "@/layouts/AuthLayout";
 import DashboardLayout from "@/layouts/DashboardLayout";
 
 import AdminDashboard from "@/features/admin/pages/AdminDashboard";
+import { ColorSequenceGame } from "@/features/games/components/ColorSequenceGame";
+import { MiniCasesGame } from "@/features/games/mini-cases/components/MiniCasesGame";
 import StudentDashboard from "@/features/student/pages/StudentDashboard";
 import TeacherDashboard from "@/features/teacher/pages/TeacherDashboard";
 
@@ -34,6 +36,14 @@ export default function App() {
         }
       >
         <Route path={ROUTES.STUDENT} element={<StudentDashboard />} />
+        <Route
+          path={ROUTES.STUDENT_GAME_COLOR_SEQUENCE}
+          element={<ColorSequenceGame />}
+        />
+        <Route
+          path={ROUTES.STUDENT_GAME_MINI_CASES}
+          element={<MiniCasesGame />}
+        />
         <Route path={ROUTES.STUDENT_SCORES} element={<ComingSoon />} />
         <Route path={ROUTES.STUDENT_PROFILE} element={<ProfilePage />} />
       </Route>

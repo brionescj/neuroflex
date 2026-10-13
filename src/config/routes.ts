@@ -7,6 +7,10 @@ export const ROUTES = {
 
   STUDENT: "/estudiante",
 
+  STUDENT_GAME_COLOR_SEQUENCE: "/estudiante/juegos/seriacion-de-colores",
+
+  STUDENT_GAME_MINI_CASES: "/estudiante/juegos/mini-casos",
+
   STUDENT_SCORES: "/estudiante/puntuaciones",
 
   STUDENT_PROFILE: "/estudiante/perfil",

@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 
 import { ROLE_MENUS } from "@/config/menus";
 import { DASHBOARD_BY_ROLE } from "@/config/routes";
-import { useAuth } from "@/context";
+import { useAuth, useGameLock } from "@/context";
 import { cn } from "@/lib/utils";
 
 type SidebarProps = {
@@ -13,6 +13,7 @@ type SidebarProps = {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user } = useAuth();
+  const { isLocked } = useGameLock();
 
   if (!user) {
     return null;
@@ -52,6 +53,23 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {items.map((item) => {
           const Icon = item.icon;
+
+          // Partida en curso: el item se muestra pero no navega. No es un
+          // NavLink deshabilitado con CSS (seguiria siendo enfocable y
+          // activable con teclado), es un elemento que no es un enlace.
+          if (isLocked) {
+            return (
+              <span
+                key={item.path}
+                aria-disabled="true"
+                title="Termina la partida para salir"
+                className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-zinc-600"
+              >
+                <Icon className="size-4" />
+                {item.label}
+              </span>
+            );
+          }
 
           return (
             <NavLink
