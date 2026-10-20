@@ -6,10 +6,16 @@ import { BackToGameHub } from "./BackToGameHub";
 import { useLockNavigation } from "../hooks/useLockNavigation";
 import { useWarnBeforeUnload } from "../hooks/useWarnBeforeUnload";
 import {
-  TOTAL_LEVELS,
+  MIN_LEVELS,
   useColorSequenceGame,
 } from "../hooks/useColorSequenceGame";
 import { ColorGrid } from "./ColorGrid";
+import { FinishGameControl } from "./FinishGameControl";
+
+/** "Nivel 3 de 10" hasta el minimo; despues el juego no tiene tope y queda "Nivel 11". */
+function levelLabel(level: number): string {
+  return level <= MIN_LEVELS ? `Nivel ${level} de ${MIN_LEVELS}` : `Nivel ${level}`;
+}
 
 export function ColorSequenceGame() {
   const navigate = useNavigate();
@@ -21,7 +27,9 @@ export function ColorSequenceGame() {
     canStart,
     hasResumable,
     isGameInProgress,
+    canFinish,
     resumeLevel,
+    resumeLevelInProgress,
     phase,
     level,
     sequence,
@@ -75,7 +83,6 @@ export function ColorSequenceGame() {
       : null;
 
   const lastResult = levelResults[levelResults.length - 1];
-  const isLastLevel = level >= TOTAL_LEVELS;
   const showBoard =
     phase === "idle" || phase === "illuminating" || phase === "answering";
 
@@ -91,9 +98,9 @@ export function ColorSequenceGame() {
           <p className="text-sm text-zinc-400">
             {phase === "idle"
               ? hasResumable
-                ? `Tienes una partida en curso: vas en el nivel ${resumeLevel} de ${TOTAL_LEVELS}`
+                ? `Tienes una partida en curso: vas en el ${levelLabel(resumeLevel ?? 1).toLowerCase()}`
                 : "Memoriza el orden en que se iluminan los colores"
-              : `Nivel ${level} de ${TOTAL_LEVELS} — recuerda ${sequence.length} colores`}
+              : `${levelLabel(level)} — recuerda ${sequence.length} colores`}
           </p>
 
           <div className="relative w-full max-w-56 xs:max-w-64 sm:max-w-xs md:max-w-sm lg:max-w-md">
@@ -116,13 +123,22 @@ export function ColorSequenceGame() {
                 )}
 
                 {hasResumable && (
-                  <button
-                    type="button"
-                    onClick={resume}
-                    className="rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
-                  >
-                    Continuar
-                  </button>
+                  <div className="flex flex-col items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={resume}
+                      className="rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
+                    >
+                      Continuar
+                    </button>
+
+                    {canFinish && (
+                      <FinishGameControl
+                        onConfirm={finish}
+                        levelInProgress={resumeLevelInProgress}
+                      />
+                    )}
+                  </div>
                 )}
 
                 {progressStatus === "error" && (
@@ -149,14 +165,16 @@ export function ColorSequenceGame() {
               </div>
             )}
           </div>
+
+          {canFinish && phase !== "idle" && (
+            <FinishGameControl onConfirm={finish} levelInProgress />
+          )}
         </>
       )}
 
       {phase === "level-result" && lastResult && (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-8 text-center">
-          <p className="text-sm text-zinc-400">
-            Nivel {lastResult.level} de {TOTAL_LEVELS}
-          </p>
+          <p className="text-sm text-zinc-400">{levelLabel(lastResult.level)}</p>
 
           <p className="text-lg font-semibold text-white">
             {lastResult.correctCount} de {lastResult.sequenceLength} aciertos
@@ -164,11 +182,15 @@ export function ColorSequenceGame() {
 
           <button
             type="button"
-            onClick={isLastLevel ? finish : continueToNextLevel}
-            className="mt-1 text-sm font-medium text-sky-400 hover:text-sky-300"
+            onClick={continueToNextLevel}
+            className="mt-1 min-h-11 px-4 text-sm font-medium text-sky-400 hover:text-sky-300"
           >
-            {isLastLevel ? "Ver resultado final" : "Siguiente nivel"}
+            Siguiente nivel
           </button>
+
+          {canFinish && (
+            <FinishGameControl onConfirm={finish} levelInProgress={false} />
+          )}
         </div>
       )}
 

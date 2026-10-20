@@ -5,9 +5,8 @@ import {
   type SequenceColorId,
 } from "../components/ColorGrid";
 import {
-  MAX_SEQUENCE_LENGTH,
+  MIN_LEVELS,
   MIN_SEQUENCE_LENGTH,
-  TOTAL_LEVELS,
   type LevelResult,
 } from "./colorSequenceConfig";
 import {
@@ -17,7 +16,7 @@ import {
 } from "./colorSequenceResume";
 import { useGameProgress } from "./useGameProgress";
 
-export { MAX_SEQUENCE_LENGTH, MIN_SEQUENCE_LENGTH, TOTAL_LEVELS };
+export { MIN_LEVELS, MIN_SEQUENCE_LENGTH };
 export type { LevelResult };
 
 const ILLUMINATE_ON_MS = 600;
@@ -243,9 +242,31 @@ export function useColorSequenceGame() {
     setPhase("illuminating");
   }, []);
 
+  // El juego no tiene tope: terminar es una decision del alumno, posible
+  // una vez completados los niveles minimos. Tambien desde la pantalla de
+  // reanudar, para no obligar a retomar un nivel que ya no quiere jugar.
+  const completedLevels =
+    phase === "idle"
+      ? (resumeSnapshot?.levelResults.length ?? 0)
+      : levelResults.length;
+
+  const canFinish =
+    phase !== "finished" &&
+    completedLevels >= MIN_LEVELS &&
+    (phase !== "idle" || hasResumable);
+
   const finish = useCallback(() => {
+    if (!canFinish) return;
+
+    if (phase === "idle" && resumeSnapshot) {
+      setLevel(resumeSnapshot.level);
+      setSequence(resumeSnapshot.sequence);
+      setLevelResults(resumeSnapshot.levelResults);
+    }
+
+    setActiveIndex(null);
     setPhase("finished");
-  }, []);
+  }, [canFinish, phase, resumeSnapshot]);
 
   return {
     progressStatus,
@@ -254,7 +275,9 @@ export function useColorSequenceGame() {
     canStart,
     hasResumable,
     isGameInProgress,
+    canFinish,
     resumeLevel: resumeSnapshot?.level ?? null,
+    resumeLevelInProgress: resumeSnapshot?.phase === "illuminating",
     phase,
     level,
     sequence,

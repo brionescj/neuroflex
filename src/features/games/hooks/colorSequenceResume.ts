@@ -1,7 +1,8 @@
 import { SEQUENCE_COLORS, type SequenceColorId } from "../components/ColorGrid";
 import {
+  MAX_SAVED_LEVEL,
+  MIN_LEVELS,
   MIN_SEQUENCE_LENGTH,
-  TOTAL_LEVELS,
   type LevelResult,
 } from "./colorSequenceConfig";
 
@@ -13,7 +14,8 @@ export type ColorSequenceSavedPhase =
 /**
  * Avance guardado de Seriacion de colores. Se guarda al inicio de cada
  * nivel, con su resultado, y al final. Reanudar un nivel a medias vuelve a
- * iluminar la MISMA secuencia desde el principio.
+ * iluminar la MISMA secuencia desde el principio. Al terminar el juego,
+ * `level` es el ultimo completado o el que quedo a medias.
  */
 export type ColorSequenceProgress = {
   version: 1;
@@ -66,7 +68,7 @@ export function parseColorSequenceProgress(
     typeof r.level !== "number" ||
     !Number.isInteger(r.level) ||
     r.level < 1 ||
-    r.level > TOTAL_LEVELS
+    r.level > MAX_SAVED_LEVEL
   ) {
     return null;
   }
@@ -86,10 +88,17 @@ export function parseColorSequenceProgress(
   }
   const levelResults = r.levelResults as LevelResult[];
 
-  const expectedResults = phase === "illuminating" ? level - 1 : level;
-  if (levelResults.length !== expectedResults) return null;
-
-  if (phase === "finished" && level !== TOTAL_LEVELS) return null;
+  if (phase === "finished") {
+    // Se puede terminar el juego tras un nivel completado o a mitad del
+    // siguiente (ese no cuenta): siempre con el minimo de niveles hecho.
+    if (levelResults.length < MIN_LEVELS) return null;
+    if (level !== levelResults.length && level !== levelResults.length + 1) {
+      return null;
+    }
+  } else {
+    const expectedResults = phase === "illuminating" ? level - 1 : level;
+    if (levelResults.length !== expectedResults) return null;
+  }
 
   // Cada resultado debe ser del nivel que le corresponde por posicion.
   for (let i = 0; i < levelResults.length; i++) {

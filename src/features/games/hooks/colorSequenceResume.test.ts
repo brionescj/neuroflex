@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { SequenceColorId } from "../components/ColorGrid";
-import { TOTAL_LEVELS, type LevelResult } from "./colorSequenceConfig";
+import {
+  MAX_SAVED_LEVEL,
+  MIN_LEVELS,
+  type LevelResult,
+} from "./colorSequenceConfig";
 import {
   buildColorSequenceSnapshot,
   parseColorSequenceProgress,
@@ -34,17 +38,44 @@ describe("parseColorSequenceProgress", () => {
     expect(parseColorSequenceProgress(snap)).toEqual(snap);
   });
 
-  it("acepta el final solo con todos los niveles", () => {
-    const ok = buildColorSequenceSnapshot(
-      "finished",
-      TOTAL_LEVELS,
-      seq(2 + TOTAL_LEVELS - 1),
-      results(TOTAL_LEVELS),
-    );
-    expect(parseColorSequenceProgress(ok)).toEqual(ok);
+  it("acepta niveles mas alla del minimo: el juego no tiene tope", () => {
+    // nivel 15 => secuencia de 16 colores y 14 resultados previos
+    const snap = buildColorSequenceSnapshot("illuminating", 15, seq(16), results(14));
+    expect(parseColorSequenceProgress(snap)).toEqual(snap);
 
-    const incompleto = buildColorSequenceSnapshot("finished", 3, seq(4), results(3));
-    expect(parseColorSequenceProgress(incompleto)).toBeNull();
+    const result = buildColorSequenceSnapshot("level-result", 25, seq(26), results(25));
+    expect(parseColorSequenceProgress(result)).toEqual(result);
+  });
+
+  it("acepta el final tras completar el minimo de niveles", () => {
+    const exact = buildColorSequenceSnapshot("finished", MIN_LEVELS, seq(11), results(MIN_LEVELS));
+    expect(parseColorSequenceProgress(exact)).toEqual(exact);
+
+    const mas = buildColorSequenceSnapshot("finished", 14, seq(15), results(14));
+    expect(parseColorSequenceProgress(mas)).toEqual(mas);
+  });
+
+  it("acepta el final a mitad de un nivel (ese nivel no cuenta)", () => {
+    // 11 niveles hechos y terminando en el 12 sin completarlo
+    const snap = buildColorSequenceSnapshot("finished", 12, seq(13), results(11));
+    expect(parseColorSequenceProgress(snap)).toEqual(snap);
+  });
+
+  it("rechaza el final antes del minimo de niveles", () => {
+    const pocos = buildColorSequenceSnapshot("finished", 9, seq(10), results(9));
+    expect(parseColorSequenceProgress(pocos)).toBeNull();
+
+    // 9 hechos y a mitad del 10: tampoco alcanza
+    const mitad = buildColorSequenceSnapshot("finished", 10, seq(11), results(9));
+    expect(parseColorSequenceProgress(mitad)).toBeNull();
+  });
+
+  it("rechaza un final cuyo nivel no cuadra con los resultados", () => {
+    const adelantado = buildColorSequenceSnapshot("finished", 13, seq(14), results(11));
+    expect(parseColorSequenceProgress(adelantado)).toBeNull();
+
+    const atrasado = buildColorSequenceSnapshot("finished", 10, seq(11), results(12));
+    expect(parseColorSequenceProgress(atrasado)).toBeNull();
   });
 
   it("rechaza basura, null y otra version", () => {
@@ -81,7 +112,8 @@ describe("parseColorSequenceProgress", () => {
     const snap = buildColorSequenceSnapshot("illuminating", 1, seq(2), []);
     expect(parseColorSequenceProgress({ ...snap, level: 0 })).toBeNull();
     expect(
-      parseColorSequenceProgress({ ...snap, level: TOTAL_LEVELS + 1 }),
+      parseColorSequenceProgress({ ...snap, level: MAX_SAVED_LEVEL + 1 }),
     ).toBeNull();
+    expect(parseColorSequenceProgress({ ...snap, level: 2.5 })).toBeNull();
   });
 });
