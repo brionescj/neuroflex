@@ -1,11 +1,19 @@
+import {
+  optionalIsoDate,
+  optionalTimeMs,
+  parseAttemptHandle,
+} from "../attempts/attemptHandle";
+import type { AttemptHandle } from "../attempts/types";
 import { arePathsValid, isSolved } from "./board";
 import { NODE_COLORS } from "./colors";
 import { LEVELS, TOTAL_LEVELS } from "./levels";
+import { cleanStats } from "./stats";
 import type {
   Cell,
   NodeColorId,
   NodeLevelResult,
   NodePaths,
+  NodeStats,
 } from "./types";
 
 export type NodeConnectionSavedPhase = "playing" | "level-complete" | "finished";
@@ -30,7 +38,13 @@ export type NodeConnectionProgress = {
   elapsedMs: number;
   undoCount: number;
   resetCount: number;
+  /** Tiempo activo neto del nivel en curso (sin la inactividad de mas de 80 s). */
+  netMs?: number;
+  /** Contadores del nivel en curso (ausentes en avances anteriores a registrarlos). */
+  stats?: NodeStats;
   results: NodeLevelResult[];
+  /** Partida a la que pertenece (ausente en avances anteriores al registro). */
+  attempt?: AttemptHandle;
 };
 
 const SAVED_PHASES: NodeConnectionSavedPhase[] = [
@@ -70,6 +84,27 @@ function isResult(value: unknown): value is NodeLevelResult {
     isCount(r.undoCount) &&
     isCount(r.resetCount)
   );
+}
+
+/** Conserva solo los campos opcionales que vienen bien formados. */
+function cleanResult(result: NodeLevelResult): NodeLevelResult {
+  const clean: NodeLevelResult = {
+    level: result.level,
+    pairCount: result.pairCount,
+    timeMs: result.timeMs,
+    undoCount: result.undoCount,
+    resetCount: result.resetCount,
+  };
+
+  const net = optionalTimeMs(result.activeMsNet);
+  const completedAt = optionalIsoDate(result.completedAt);
+  const stats = cleanStats(result.stats);
+
+  if (net !== undefined) clean.activeMsNet = net;
+  if (completedAt !== undefined) clean.completedAt = completedAt;
+  if (stats) clean.stats = stats;
+
+  return clean;
 }
 
 function isSerializedPath(value: unknown): value is SerializedPath {
@@ -147,7 +182,7 @@ export function parseNodeConnectionProgress(
   if (!levelData) return null;
 
   if (!Array.isArray(r.results) || !r.results.every(isResult)) return null;
-  const results = r.results as NodeLevelResult[];
+  const results = (r.results as NodeLevelResult[]).map(cleanResult);
 
   const expectedResults = phase === "playing" ? level - 1 : level;
   if (results.length !== expectedResults) return null;
@@ -185,6 +220,10 @@ export function parseNodeConnectionProgress(
     return null;
   }
 
+  const netMs = optionalTimeMs(r.netMs);
+  const stats = cleanStats(r.stats);
+  const attempt = parseAttemptHandle(r.attempt);
+
   return {
     version: 1,
     phase,
@@ -193,7 +232,11 @@ export function parseNodeConnectionProgress(
     elapsedMs: r.elapsedMs,
     undoCount: r.undoCount,
     resetCount: r.resetCount,
+    // Un neto mayor que el bruto no puede ser cierto: se ignora.
+    ...(netMs !== undefined && netMs <= r.elapsedMs ? { netMs } : {}),
+    ...(stats ? { stats } : {}),
     results,
+    ...(attempt ? { attempt } : {}),
   };
 }
 
@@ -204,7 +247,10 @@ export function buildNodeConnectionSnapshot(input: {
   elapsedMs: number;
   undoCount: number;
   resetCount: number;
+  netMs?: number;
+  stats?: NodeStats;
   results: NodeLevelResult[];
+  attempt?: AttemptHandle;
 }): NodeConnectionProgress {
   const keepPaths = input.phase === "playing";
 
@@ -216,7 +262,12 @@ export function buildNodeConnectionSnapshot(input: {
     elapsedMs: keepPaths ? Math.round(input.elapsedMs) : 0,
     undoCount: keepPaths ? input.undoCount : 0,
     resetCount: keepPaths ? input.resetCount : 0,
+    ...(keepPaths && input.netMs !== undefined
+      ? { netMs: Math.round(input.netMs) }
+      : {}),
+    ...(keepPaths && input.stats ? { stats: input.stats } : {}),
     results: input.results,
+    ...(input.attempt ? { attempt: input.attempt } : {}),
   };
 }
 

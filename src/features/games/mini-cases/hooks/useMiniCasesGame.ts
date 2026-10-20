@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useActiveClock } from "../../attempts/useActiveClock";
+import { useGameAttempt } from "../../attempts/useGameAttempt";
 import { useGameProgress } from "../../hooks/useGameProgress";
 import { buildProgressSnapshot, buildResumePlan, type ResumePlan } from "../resume";
 import {
@@ -7,6 +9,10 @@ import {
   submitMiniCaseOrder,
 } from "../services/miniCases.service";
 import type { ApiMiniCase, MiniCaseResult } from "../types";
+import { toMiniCaseReports } from "./miniCaseReport";
+
+// La version del banco la calcula el servidor al abrir la partida.
+const CONTENT_VERSION = "mini-cases";
 
 /**
  * El documento fuente especifica 10 segundos de lectura base para cada
@@ -44,7 +50,15 @@ export function useMiniCasesGame() {
   const [results, setResults] = useState<MiniCaseResult[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const orderingStartRef = useRef<number | null>(null);
+  // Una partida ya terminada que se esta archivando antes de empezar otra.
+  const [archiving, setArchiving] = useState(false);
+
+  const archivedRef = useRef(false);
+
+  // Reloj del ordenamiento: bruto (pestana visible) y neto (sin inactividad
+  // de mas de 80 s).
+  const clock = useActiveClock();
+  const attempt = useGameAttempt("mini-cases", CONTENT_VERSION);
 
   // Numero de la ultima peticion del banco. React en desarrollo monta dos
   // veces (y un reintento lanza otra): el servidor baraja en CADA
@@ -119,25 +133,80 @@ export function useMiniCasesGame() {
     }
   }, [phase, casesStatus, progressStatus, savedProgress, resumePlan, clearProgress]);
 
-  const applySnapshot = useCallback((plan: ResumePlan) => {
-    setCases(plan.orderedCases);
-    setCaseIndex(plan.snapshot.caseIndex);
-    setResults(plan.snapshot.results);
-    setSelectedOptionIds([]);
-    setSubmitError(null);
-    setPhase(plan.snapshot.phase);
-  }, []);
+  // `resync` es false cuando la partida ya se intento archivar y no se pudo:
+  // repetir el envio solo alargaria la espera.
+  const applySnapshot = useCallback(
+    (plan: ResumePlan, resync = true) => {
+      if (resync) {
+        attempt.adopt(plan.snapshot.attempt);
+        // Lo que no hubiera llegado a la base antes llega ahora (es idempotente).
+        void attempt.syncResults(toMiniCaseReports(plan.snapshot.results));
+      }
 
-  // Una partida ya terminada se muestra sola (el resumen final no necesita
-  // que el alumno haga nada). Una a medias espera a que apriete "Continuar":
-  // ese clic es el gesto que el navegador exige para permitir el sonido, y
-  // evita que los 10 s de lectura corran antes de que el alumno este mirando.
+      setCases(plan.orderedCases);
+      setCaseIndex(plan.snapshot.caseIndex);
+      setResults(plan.snapshot.results);
+      setSelectedOptionIds([]);
+      setSubmitError(null);
+      setPhase(plan.snapshot.phase);
+    },
+    [attempt],
+  );
+
+  // Una partida terminada es definitiva: se archiva en la base (por si el
+  // cierre no habia llegado) y se descarta el avance, de modo que al volver a
+  // entrar se ofrece una partida nueva y no los resultados de la anterior.
+  // Si no se logra archivar, se muestran los resultados y se conserva todo.
+  // Una a medias espera a que el alumno apriete "Continuar": ese clic es el
+  // gesto que el navegador exige para permitir el sonido, y evita que los
+  // 10 s de lectura corran antes de que este mirando.
   useEffect(() => {
-    if (phase !== "idle") return;
+    if (phase !== "idle" || progressStatus !== "ready") return;
     if (resumePlan?.snapshot.phase !== "finished") return;
+    if (archivedRef.current) return;
 
-    applySnapshot(resumePlan);
-  }, [phase, resumePlan, applySnapshot]);
+    const plan = resumePlan;
+    const reports = toMiniCaseReports(plan.snapshot.results);
+
+    // Partida anterior al registro: no guardo el orden elegido, asi que no hay
+    // nada que archivar.
+    if (reports.length === 0) {
+      archivedRef.current = true;
+      clearProgress();
+      return;
+    }
+
+    archivedRef.current = true;
+    setArchiving(true);
+
+    const handle = attempt.adopt(plan.snapshot.attempt);
+
+    // Una partida anterior al registro no traia identificador: se deja
+    // anotado el nuevo, para que recargar a mitad del archivado no abra otra.
+    if (!plan.snapshot.attempt) {
+      saveProgress({ ...(savedProgress as object), attempt: handle });
+    }
+
+    void attempt.syncResults(reports, "finished").then((archived) => {
+      setArchiving(false);
+
+      if (archived) {
+        clearProgress();
+      } else {
+        archivedRef.current = false;
+        applySnapshot(plan, false);
+      }
+    });
+  }, [
+    phase,
+    progressStatus,
+    resumePlan,
+    savedProgress,
+    attempt,
+    saveProgress,
+    clearProgress,
+    applySnapshot,
+  ]);
 
   const hasResumable =
     phase === "idle" &&
@@ -156,12 +225,15 @@ export function useMiniCasesGame() {
   const start = useCallback(() => {
     if (!canStart) return;
 
+    attempt.begin();
+    archivedRef.current = false;
+
     setCaseIndex(0);
     setResults([]);
     setSelectedOptionIds([]);
     setSubmitError(null);
     setPhase("reading");
-  }, [canStart]);
+  }, [canStart, attempt]);
 
   const resume = useCallback(() => {
     if (resumePlan) applySnapshot(resumePlan);
@@ -170,10 +242,13 @@ export function useMiniCasesGame() {
   // Terminada la partida, "volver a jugar" borra el avance guardado y trae
   // un banco nuevo (otro orden de casos y de opciones).
   const returnToStart = useCallback(() => {
+    // El cierre sale en cola y se reintenta aunque se cambie de pantalla.
+    void attempt.closeAttempt("finished");
     clearProgress();
+    archivedRef.current = false;
     setPhase("idle");
     loadCases();
-  }, [clearProgress, loadCases]);
+  }, [attempt, clearProgress, loadCases]);
 
   const retryLoad = useCallback(() => {
     if (casesStatus === "error") loadCases();
@@ -189,8 +264,16 @@ export function useMiniCasesGame() {
       return;
     }
 
-    saveProgress(buildProgressSnapshot(cases, caseIndex, phase, results));
-  }, [casesStatus, phase, caseIndex, cases, results, saveProgress]);
+    saveProgress(
+      buildProgressSnapshot(
+        cases,
+        caseIndex,
+        phase,
+        results,
+        attempt.current() ?? undefined,
+      ),
+    );
+  }, [casesStatus, phase, caseIndex, cases, results, saveProgress, attempt]);
 
   // Fase 1: lectura base. Duracion fija, sin contador numerico visible
   // (la barra de progreso ya comunica el tiempo restante sin presionar
@@ -226,9 +309,10 @@ export function useMiniCasesGame() {
   const proceedToOrdering = useCallback(() => {
     setSelectedOptionIds([]);
     setSubmitError(null);
-    orderingStartRef.current = Date.now();
+    clock.reset();
+    clock.start();
     setPhase("ordering");
-  }, []);
+  }, [clock]);
 
   // Alterna la seleccion de una opcion: si ya estaba elegida, la saca del
   // orden (y las que quedan se renumeran solas, porque el numero de paso
@@ -271,9 +355,9 @@ export function useMiniCasesGame() {
 
     let cancelled = false;
 
-    const decisionTimeMs = orderingStartRef.current
-      ? Date.now() - orderingStartRef.current
-      : 0;
+    // Detenerlo es idempotente: un reintento de envio no suma tiempo.
+    clock.stop();
+    const { grossMs, netMs } = clock.read();
 
     submitMiniCaseOrder(currentCase.caseKey, selectedOptionIds).then(
       (response) => {
@@ -286,7 +370,22 @@ export function useMiniCasesGame() {
         }
 
         setSubmitError(null);
-        setResults((prev) => [...prev, { ...response.data, decisionTimeMs }]);
+        const result: MiniCaseResult = {
+          ...response.data,
+          decisionTimeMs: grossMs,
+          orderedOptionKeys: selectedOptionIds,
+          activeMsNet: netMs,
+          completedAt: new Date().toISOString(),
+        };
+
+        // El orden de este caso entre los resultados de la partida.
+        const [report] = toMiniCaseReports([result]);
+
+        if (report) {
+          void attempt.reportLevel({ ...report, index: caseIndex + 1 });
+        }
+
+        setResults((prev) => [...prev, result]);
         setPhase("result");
       },
     );
@@ -294,7 +393,7 @@ export function useMiniCasesGame() {
     return () => {
       cancelled = true;
     };
-  }, [phase, currentCase, selectedOptionIds]);
+  }, [phase, currentCase, selectedOptionIds, clock, attempt, caseIndex]);
 
   const retrySubmit = useCallback(() => {
     setPhase("submitting");
@@ -305,6 +404,11 @@ export function useMiniCasesGame() {
 
     if (nextIndex >= cases.length) {
       setPhase("finished");
+
+      // Con el cierre confirmado ya no hay nada que archivar al volver a entrar.
+      void attempt.closeAttempt("finished").then((closed) => {
+        if (closed) clearProgress();
+      });
       return;
     }
 
@@ -312,12 +416,12 @@ export function useMiniCasesGame() {
     setSelectedOptionIds([]);
     setSubmitError(null);
     setPhase("reading");
-  }, [caseIndex, cases.length]);
+  }, [caseIndex, cases.length, attempt, clearProgress]);
 
   return {
     casesStatus,
     loadError,
-    progressStatus,
+    progressStatus: archiving ? ("loading" as const) : progressStatus,
     progressError,
     retryLoad,
     canStart,

@@ -5,7 +5,7 @@ import { ROUTES } from "@/config/routes";
 import { BackToGameHub } from "@/features/games/components/BackToGameHub";
 import { useLockNavigation } from "@/features/games/hooks/useLockNavigation";
 import { useWarnBeforeUnload } from "@/features/games/hooks/useWarnBeforeUnload";
-import { formatDuration } from "../format";
+import { cellsErased, corrections } from "../stats";
 import { useNodeConnectionGame } from "../hooks/useNodeConnectionGame";
 import { NodeBoard } from "./NodeBoard";
 
@@ -168,7 +168,7 @@ export function NodeConnectionGame() {
               className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-700 px-4 text-sm font-medium text-white hover:bg-zinc-800"
             >
               <RotateCcw className="size-4" />
-              Reiniciar nivel
+              Rehacer tablero
             </button>
           </div>
         </>
@@ -181,7 +181,7 @@ export function NodeConnectionGame() {
           </p>
 
           <p className="text-lg font-semibold text-white">
-            Nivel completado en {formatDuration(lastResult.timeMs)}
+            Nivel completado
           </p>
 
           <button
@@ -205,8 +205,8 @@ export function NodeConnectionGame() {
               <tr className="border-b border-zinc-800 text-zinc-500">
                 <th className="py-1 font-normal">Nivel</th>
                 <th className="py-1 font-normal">Pares</th>
-                <th className="py-1 font-normal">Tiempo</th>
                 <th className="py-1 font-normal">Correcciones</th>
+                <th className="py-1 font-normal">Borradas</th>
               </tr>
             </thead>
             <tbody>
@@ -217,8 +217,10 @@ export function NodeConnectionGame() {
                 >
                   <td className="py-1 text-white">{r.level}</td>
                   <td className="py-1">{r.pairCount}</td>
-                  <td className="py-1">{formatDuration(r.timeMs)}</td>
-                  <td className="py-1">{r.undoCount + r.resetCount}</td>
+                  <td className="py-1">{corrections(r)}</td>
+                  <td className="py-1">
+                    {r.stats ? cellsErased(r.stats) : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>

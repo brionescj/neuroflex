@@ -5,16 +5,13 @@ import { ROUTES } from "@/config/routes";
 import { BackToGameHub } from "./BackToGameHub";
 import { useLockNavigation } from "../hooks/useLockNavigation";
 import { useWarnBeforeUnload } from "../hooks/useWarnBeforeUnload";
-import {
-  MIN_LEVELS,
-  useColorSequenceGame,
-} from "../hooks/useColorSequenceGame";
+import { useColorSequenceGame } from "../hooks/useColorSequenceGame";
 import { ColorGrid } from "./ColorGrid";
 import { FinishGameControl } from "./FinishGameControl";
 
-/** "Nivel 3 de 10" hasta el minimo; despues el juego no tiene tope y queda "Nivel 11". */
+/** El juego no tiene tope de niveles: se muestra solo el numero ("Nivel 3"). */
 function levelLabel(level: number): string {
-  return level <= MIN_LEVELS ? `Nivel ${level} de ${MIN_LEVELS}` : `Nivel ${level}`;
+  return `Nivel ${level}`;
 }
 
 export function ColorSequenceGame() {

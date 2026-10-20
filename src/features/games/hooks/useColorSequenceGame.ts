@@ -4,11 +4,15 @@ import {
   SEQUENCE_COLORS,
   type SequenceColorId,
 } from "../components/ColorGrid";
+import { useActiveClock } from "../attempts/useActiveClock";
+import { useGameAttempt } from "../attempts/useGameAttempt";
 import {
+  COLOR_SEQUENCE_CONTENT_VERSION,
   MIN_LEVELS,
   MIN_SEQUENCE_LENGTH,
   type LevelResult,
 } from "./colorSequenceConfig";
+import { toColorSequenceReport } from "./colorSequenceReport";
 import {
   buildColorSequenceSnapshot,
   parseColorSequenceProgress,
@@ -63,6 +67,12 @@ function buildInitialSequence(length: number): SequenceColorId[] {
   return sequence;
 }
 
+function reportsOf(results: LevelResult[]) {
+  const now = new Date().toISOString();
+
+  return results.map((result) => toColorSequenceReport(result, now));
+}
+
 export function useColorSequenceGame() {
   const [phase, setPhase] = useState<GamePhase>("idle");
   const [level, setLevel] = useState(1);
@@ -70,8 +80,15 @@ export function useColorSequenceGame() {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [levelResults, setLevelResults] = useState<LevelResult[]>([]);
 
+  // Una partida ya terminada que se esta archivando antes de empezar otra.
+  const [archiving, setArchiving] = useState(false);
+
   const answersRef = useRef<SequenceColorId[]>([]);
   const firstClickAtRef = useRef<number | null>(null);
+  const archivedRef = useRef(false);
+
+  const attempt = useGameAttempt("color-sequence", COLOR_SEQUENCE_CONTENT_VERSION);
+  const clock = useActiveClock();
 
   const {
     status: progressStatus,
@@ -98,22 +115,67 @@ export function useColorSequenceGame() {
     }
   }, [phase, progressStatus, savedProgress, resumeSnapshot, clearProgress]);
 
-  const applySnapshot = useCallback((snapshot: ColorSequenceProgress) => {
-    setLevel(snapshot.level);
-    setSequence(snapshot.sequence);
-    setLevelResults(snapshot.levelResults);
-    setActiveIndex(null);
-    setPhase(snapshot.phase);
-  }, []);
+  // `resync` es false cuando la partida ya se intento archivar y no se pudo:
+  // repetir el envio solo alargaria la espera.
+  const applySnapshot = useCallback(
+    (snapshot: ColorSequenceProgress, resync = true) => {
+      if (resync) {
+        attempt.adopt(snapshot.attempt);
+        // Lo que no hubiera llegado a la base antes llega ahora (es idempotente).
+        void attempt.syncResults(reportsOf(snapshot.levelResults));
+      }
 
-  // Una partida ya terminada se muestra sola. Una a medias espera a que el
-  // alumno apriete "Continuar": evita que la secuencia se ilumine antes de
-  // que este mirando la pantalla.
+      setLevel(snapshot.level);
+      setSequence(snapshot.sequence);
+      setLevelResults(snapshot.levelResults);
+      setActiveIndex(null);
+      setPhase(snapshot.phase);
+    },
+    [attempt],
+  );
+
+  // Una partida terminada es definitiva: se archiva en la base (por si el
+  // cierre no habia llegado) y se descarta el avance, de modo que al volver a
+  // entrar se ofrece una partida nueva y no los resultados de la anterior.
+  // Si no se logra archivar, se muestran los resultados y se conserva todo.
   useEffect(() => {
-    if (phase !== "idle" || resumeSnapshot?.phase !== "finished") return;
+    if (phase !== "idle" || progressStatus !== "ready") return;
+    if (resumeSnapshot?.phase !== "finished") return;
+    if (archivedRef.current) return;
 
-    applySnapshot(resumeSnapshot);
-  }, [phase, resumeSnapshot, applySnapshot]);
+    archivedRef.current = true;
+    setArchiving(true);
+
+    const handle = attempt.adopt(resumeSnapshot.attempt);
+
+    // Una partida anterior al registro no traia identificador: se deja
+    // anotado el nuevo, para que recargar a mitad del archivado no abra otra.
+    if (!resumeSnapshot.attempt) {
+      saveProgress({ ...(savedProgress as object), attempt: handle });
+    }
+
+    void attempt
+      .syncResults(reportsOf(resumeSnapshot.levelResults), "finished")
+      .then((archived) => {
+        setArchiving(false);
+
+        if (archived) {
+          clearProgress();
+        } else {
+          archivedRef.current = false;
+          applySnapshot(resumeSnapshot, false);
+        }
+      });
+  }, [
+    phase,
+    progressStatus,
+    resumeSnapshot,
+    savedProgress,
+    attempt,
+    saveProgress,
+    clearProgress,
+    applySnapshot,
+  ]);
 
   const hasResumable =
     phase === "idle" &&
@@ -130,20 +192,26 @@ export function useColorSequenceGame() {
   const start = useCallback(() => {
     if (!canStart) return;
 
+    attempt.begin();
+    archivedRef.current = false;
+
     setLevel(1);
     setLevelResults([]);
     setSequence(buildInitialSequence(MIN_SEQUENCE_LENGTH));
     setPhase("illuminating");
-  }, [canStart]);
+  }, [canStart, attempt]);
 
   const resume = useCallback(() => {
     if (resumeSnapshot) applySnapshot(resumeSnapshot);
   }, [resumeSnapshot, applySnapshot]);
 
   const returnToStart = useCallback(() => {
+    // El cierre sale en cola y se reintenta aunque se cambie de pantalla.
+    void attempt.closeAttempt("finished");
     clearProgress();
+    archivedRef.current = false;
     setPhase("idle");
-  }, [clearProgress]);
+  }, [attempt, clearProgress]);
 
   // Puntos de control: inicio de cada nivel, su resultado y el final.
   useEffect(() => {
@@ -156,8 +224,25 @@ export function useColorSequenceGame() {
     }
     if (sequence.length === 0) return;
 
-    saveProgress(buildColorSequenceSnapshot(phase, level, sequence, levelResults));
-  }, [phase, level, sequence, levelResults, saveProgress]);
+    saveProgress(
+      buildColorSequenceSnapshot(
+        phase,
+        level,
+        sequence,
+        levelResults,
+        attempt.current() ?? undefined,
+      ),
+    );
+  }, [phase, level, sequence, levelResults, saveProgress, attempt]);
+
+  // El reloj del nivel corre desde que empieza a iluminarse hasta que el
+  // alumno completa la respuesta. Reanudar un nivel lo reinicia desde cero.
+  useEffect(() => {
+    if (phase === "illuminating") {
+      clock.reset();
+      clock.start();
+    }
+  }, [phase, level, clock]);
 
   useEffect(() => {
     if (phase !== "illuminating" || sequence.length === 0) {
@@ -173,7 +258,10 @@ export function useColorSequenceGame() {
 
       timers.push(
         setTimeout(() => {
-          if (!cancelled) setActiveIndex(index);
+          if (cancelled) return;
+          // El alumno solo mira: la secuencia que se ilumina cuenta como actividad.
+          clock.touch();
+          setActiveIndex(index);
         }, onAt),
       );
 
@@ -200,7 +288,7 @@ export function useColorSequenceGame() {
       cancelled = true;
       timers.forEach(clearTimeout);
     };
-  }, [phase, sequence]);
+  }, [phase, sequence, clock]);
 
   const registerAnswer = useCallback(
     (colorId: SequenceColorId) => {
@@ -226,14 +314,27 @@ export function useColorSequenceGame() {
         ? Date.now() - firstClickAtRef.current
         : 0;
 
-      setLevelResults((prev) => [
-        ...prev,
-        { level, sequenceLength: sequence.length, correctCount, timeMs },
-      ]);
+      clock.stop();
+      const { grossMs, netMs } = clock.read();
 
+      const completedAt = new Date().toISOString();
+
+      const result: LevelResult = {
+        level,
+        sequenceLength: sequence.length,
+        correctCount,
+        timeMs,
+        activeMsGross: grossMs,
+        activeMsNet: netMs,
+        completedAt,
+      };
+
+      void attempt.reportLevel(toColorSequenceReport(result, completedAt));
+
+      setLevelResults((prev) => [...prev, result]);
       setPhase("level-result");
     },
-    [phase, sequence, level],
+    [phase, sequence, level, clock, attempt],
   );
 
   const continueToNextLevel = useCallback(() => {
@@ -259,6 +360,8 @@ export function useColorSequenceGame() {
     if (!canFinish) return;
 
     if (phase === "idle" && resumeSnapshot) {
+      attempt.adopt(resumeSnapshot.attempt);
+      void attempt.syncResults(reportsOf(resumeSnapshot.levelResults));
       setLevel(resumeSnapshot.level);
       setSequence(resumeSnapshot.sequence);
       setLevelResults(resumeSnapshot.levelResults);
@@ -266,10 +369,15 @@ export function useColorSequenceGame() {
 
     setActiveIndex(null);
     setPhase("finished");
-  }, [canFinish, phase, resumeSnapshot]);
+
+    // Con el cierre confirmado ya no hay nada que archivar al volver a entrar.
+    void attempt.closeAttempt("finished").then((closed) => {
+      if (closed) clearProgress();
+    });
+  }, [canFinish, phase, resumeSnapshot, attempt, clearProgress]);
 
   return {
-    progressStatus,
+    progressStatus: archiving ? ("loading" as const) : progressStatus,
     progressError,
     retryProgress: reloadProgress,
     canStart,

@@ -205,3 +205,98 @@ describe("isSnapshotSolved", () => {
     expect(isSnapshotSolved(playing(1, partial, []))).toBe(false);
   });
 });
+
+describe("registro de partida en el avance", () => {
+  const attempt = { attemptId: "abcdefgh12345678", startedAt: "2026-10-14T11:00:00.000Z" };
+
+  it("conserva el tiempo neto y la partida", () => {
+    const snap = buildNodeConnectionSnapshot({
+      phase: "playing",
+      level: 1,
+      paths: partial,
+      elapsedMs: 30_000,
+      netMs: 21_000.4,
+      undoCount: 0,
+      resetCount: 0,
+      results: [],
+      attempt,
+    });
+
+    const parsed = parseNodeConnectionProgress(snap);
+
+    expect(parsed?.netMs).toBe(21_000);
+    expect(parsed?.attempt).toEqual(attempt);
+  });
+
+  it("ignora un neto mayor que el bruto", () => {
+    const snap = { ...playing(1, partial, []), netMs: 999_999 };
+
+    expect(parseNodeConnectionProgress(snap)?.netMs).toBeUndefined();
+  });
+
+  it("un avance anterior al registro sigue siendo valido", () => {
+    const parsed = parseNodeConnectionProgress(playing(1, partial, []));
+
+    expect(parsed).not.toBeNull();
+    expect(parsed?.attempt).toBeUndefined();
+    expect(parsed?.netMs).toBeUndefined();
+  });
+
+  it("descarta campos opcionales mal formados de un resultado", () => {
+    const snap = playing(2, {}, [
+      { ...result(1), activeMsNet: -5, completedAt: "no es fecha" },
+    ]);
+
+    expect(parseNodeConnectionProgress(snap)?.results[0]).toEqual(result(1));
+  });
+
+  it("conserva los campos opcionales bien formados de un resultado", () => {
+    const full = {
+      ...result(1),
+      activeMsNet: 9_000,
+      completedAt: "2026-10-14T11:10:00.000Z",
+    };
+
+    expect(
+      parseNodeConnectionProgress(playing(2, {}, [full]))?.results[0],
+    ).toEqual(full);
+  });
+
+  it("conserva los contadores del nivel en curso y los de cada resultado", () => {
+    const stats = {
+      strokesStarted: 3, backtrackCells: 1, backtrackGestures: 1,
+      routeRestarts: 0, restartCells: 0, resetCells: 2, blockedCount: 4,
+    };
+    const snap = buildNodeConnectionSnapshot({
+      phase: "playing",
+      level: 2,
+      paths: {},
+      elapsedMs: 5000,
+      undoCount: 0,
+      resetCount: 0,
+      stats,
+      results: [{ ...result(1), stats }],
+    });
+    const parsed = parseNodeConnectionProgress(snap);
+
+    expect(parsed?.stats).toEqual(stats);
+    expect(parsed?.results[0]?.stats).toEqual(stats);
+  });
+
+  it("descarta contadores mal formados sin invalidar el avance", () => {
+    const snap = {
+      ...playing(2, {}, [result(1)]),
+      stats: { strokesStarted: -3 },
+    };
+    const parsed = parseNodeConnectionProgress(snap);
+
+    expect(parsed).not.toBeNull();
+    expect(parsed?.stats).toBeUndefined();
+  });
+
+  it("una partida con identificador malo se trata como sin partida", () => {
+    const snap = { ...playing(1, partial, []), attempt: { attemptId: "x" } };
+
+    expect(parseNodeConnectionProgress(snap)?.attempt).toBeUndefined();
+  });
+});

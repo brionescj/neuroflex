@@ -1,5 +1,11 @@
 import { SEQUENCE_COLORS, type SequenceColorId } from "../components/ColorGrid";
 import {
+  optionalIsoDate,
+  optionalTimeMs,
+  parseAttemptHandle,
+} from "../attempts/attemptHandle";
+import type { AttemptHandle } from "../attempts/types";
+import {
   MAX_SAVED_LEVEL,
   MIN_LEVELS,
   MIN_SEQUENCE_LENGTH,
@@ -23,6 +29,8 @@ export type ColorSequenceProgress = {
   level: number;
   sequence: SequenceColorId[];
   levelResults: LevelResult[];
+  /** Partida a la que pertenece (ausente en avances anteriores al registro). */
+  attempt?: AttemptHandle;
 };
 
 const SAVED_PHASES: ColorSequenceSavedPhase[] = [
@@ -44,6 +52,26 @@ function isLevelResult(value: unknown): value is LevelResult {
     typeof r.correctCount === "number" &&
     typeof r.timeMs === "number"
   );
+}
+
+/** Conserva solo los campos opcionales que vienen bien formados. */
+function cleanLevelResult(result: LevelResult): LevelResult {
+  const clean: LevelResult = {
+    level: result.level,
+    sequenceLength: result.sequenceLength,
+    correctCount: result.correctCount,
+    timeMs: result.timeMs,
+  };
+
+  const gross = optionalTimeMs(result.activeMsGross);
+  const net = optionalTimeMs(result.activeMsNet);
+  const completedAt = optionalIsoDate(result.completedAt);
+
+  if (gross !== undefined) clean.activeMsGross = gross;
+  if (net !== undefined) clean.activeMsNet = net;
+  if (completedAt !== undefined) clean.completedAt = completedAt;
+
+  return clean;
 }
 
 /** Valida un blob guardado; devuelve null si algo no cuadra. */
@@ -86,7 +114,7 @@ export function parseColorSequenceProgress(
   if (!Array.isArray(r.levelResults) || !r.levelResults.every(isLevelResult)) {
     return null;
   }
-  const levelResults = r.levelResults as LevelResult[];
+  const levelResults = (r.levelResults as LevelResult[]).map(cleanLevelResult);
 
   if (phase === "finished") {
     // Se puede terminar el juego tras un nivel completado o a mitad del
@@ -111,7 +139,16 @@ export function parseColorSequenceProgress(
     }
   }
 
-  return { version: 1, phase, level, sequence, levelResults };
+  const attempt = parseAttemptHandle(r.attempt);
+
+  return {
+    version: 1,
+    phase,
+    level,
+    sequence,
+    levelResults,
+    ...(attempt ? { attempt } : {}),
+  };
 }
 
 export function buildColorSequenceSnapshot(
@@ -119,6 +156,14 @@ export function buildColorSequenceSnapshot(
   level: number,
   sequence: SequenceColorId[],
   levelResults: LevelResult[],
+  attempt?: AttemptHandle,
 ): ColorSequenceProgress {
-  return { version: 1, phase, level, sequence, levelResults };
+  return {
+    version: 1,
+    phase,
+    level,
+    sequence,
+    levelResults,
+    ...(attempt ? { attempt } : {}),
+  };
 }

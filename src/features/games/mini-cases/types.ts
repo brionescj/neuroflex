@@ -1,3 +1,4 @@
+import type { AttemptHandle } from "../attempts/types";
 import type { SoundArchetype } from "./audio/distractorSounds";
 
 /**
@@ -46,7 +47,13 @@ export type MiniCaseSubmitResult = {
 
 /** Resultado local por caso, para el resumen final de la partida. */
 export type MiniCaseResult = MiniCaseSubmitResult & {
+  /** Tiempo con la pestana visible, desde que aparece el ordenamiento. */
   decisionTimeMs: number;
+  /** Orden final elegido: el servidor lo vuelve a puntuar al archivarlo. */
+  orderedOptionKeys?: string[];
+  /** Igual que decisionTimeMs pero sin la inactividad de mas de 80 s. */
+  activeMsNet?: number;
+  completedAt?: string;
 };
 
 export type MiniCasesSavedPhase = "reading" | "result" | "finished";
@@ -72,6 +79,9 @@ export type MiniCasesProgress = {
   phase: MiniCasesSavedPhase;
 
   results: MiniCaseResult[];
+
+  /** Partida a la que pertenece (ausente en avances anteriores al registro). */
+  attempt?: AttemptHandle;
 };
 
 export type PixelMotif = {

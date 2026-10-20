@@ -159,3 +159,41 @@ describe("buildResumePlan", () => {
     expect(buildResumePlan(bank, { cualquier: "cosa" })).toBeNull();
   });
 });
+
+describe("registro de partida en el avance", () => {
+  const attempt = { attemptId: "abcdefgh12345678", startedAt: "2026-10-14T11:00:00.000Z" };
+
+  it("conserva la partida y los datos del registro de cada caso", () => {
+    const full: MiniCaseResult = {
+      ...makeResult("caso-3"),
+      orderedOptionKeys: ["a", "b", "c", "d"],
+      activeMsNet: 800,
+      completedAt: "2026-10-14T11:10:00.000Z",
+    };
+    const snap = buildProgressSnapshot(session, 1, "reading", [full], attempt);
+    const parsed = parseMiniCasesProgress(snap);
+
+    expect(parsed?.attempt).toEqual(attempt);
+    expect(parsed?.results[0]).toEqual(full);
+  });
+
+  it("un avance anterior al registro sigue siendo valido", () => {
+    const snap = buildProgressSnapshot(session, 1, "reading", [makeResult("caso-3")]);
+    const parsed = parseMiniCasesProgress(snap);
+
+    expect(parsed).not.toBeNull();
+    expect(parsed?.attempt).toBeUndefined();
+  });
+
+  it("descarta campos opcionales mal formados", () => {
+    const bad = {
+      ...makeResult("caso-3"),
+      orderedOptionKeys: "abcd",
+      activeMsNet: -1,
+      completedAt: "ayer",
+    };
+    const snap = buildProgressSnapshot(session, 1, "reading", [bad as unknown as MiniCaseResult]);
+
+    expect(parseMiniCasesProgress(snap)?.results[0]).toEqual(makeResult("caso-3"));
+  });
+});

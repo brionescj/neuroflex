@@ -1,3 +1,9 @@
+import {
+  optionalIsoDate,
+  optionalTimeMs,
+  parseAttemptHandle,
+} from "../attempts/attemptHandle";
+import type { AttemptHandle } from "../attempts/types";
 import type {
   ApiMiniCase,
   ApiMiniCaseOption,
@@ -23,6 +29,28 @@ function isResult(value: unknown): value is MiniCaseResult {
     typeof r.isFullyCorrect === "boolean" &&
     typeof r.decisionTimeMs === "number"
   );
+}
+
+/** Conserva solo los campos opcionales que vienen bien formados. */
+function cleanResult(result: MiniCaseResult): MiniCaseResult {
+  const clean: MiniCaseResult = {
+    caseKey: result.caseKey,
+    correctSteps: result.correctSteps,
+    isFullyCorrect: result.isFullyCorrect,
+    decisionTimeMs: result.decisionTimeMs,
+  };
+
+  const net = optionalTimeMs(result.activeMsNet);
+  const completedAt = optionalIsoDate(result.completedAt);
+  const ordered: unknown = result.orderedOptionKeys;
+
+  if (isStringArray(ordered) && ordered.length > 0) {
+    clean.orderedOptionKeys = ordered;
+  }
+  if (net !== undefined) clean.activeMsNet = net;
+  if (completedAt !== undefined) clean.completedAt = completedAt;
+
+  return clean;
 }
 
 /**
@@ -78,7 +106,7 @@ export function parseMiniCasesProgress(
   const phase = r.phase as MiniCasesSavedPhase;
 
   if (!Array.isArray(r.results) || !r.results.every(isResult)) return null;
-  const results = r.results as MiniCaseResult[];
+  const results = (r.results as MiniCaseResult[]).map(cleanResult);
 
   // Coherencia entre la fase y cuantos resultados deberia haber.
   const expectedResults =
@@ -93,6 +121,8 @@ export function parseMiniCasesProgress(
     if (results[i]?.caseKey !== caseOrder[i]) return null;
   }
 
+  const attempt = parseAttemptHandle(r.attempt);
+
   return {
     version: 1,
     caseOrder,
@@ -100,6 +130,7 @@ export function parseMiniCasesProgress(
     caseIndex,
     phase,
     results,
+    ...(attempt ? { attempt } : {}),
   };
 }
 
@@ -159,6 +190,7 @@ export function buildProgressSnapshot(
   caseIndex: number,
   phase: MiniCasesSavedPhase,
   results: MiniCaseResult[],
+  attempt?: AttemptHandle,
 ): MiniCasesProgress {
   return {
     version: 1,
@@ -169,5 +201,6 @@ export function buildProgressSnapshot(
     caseIndex,
     phase,
     results,
+    ...(attempt ? { attempt } : {}),
   };
 }
