@@ -1,9 +1,9 @@
-import { Blocks, ListOrdered } from "lucide-react";
+import { Blocks, ListOrdered, Waypoints } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { ROUTES } from "@/config/routes";
 
-export type GameId = "color-sequence" | "mini-cases";
+export type GameId = "color-sequence" | "mini-cases" | "node-connection";
 
 export type GameCatalogEntry = {
   id: GameId;
@@ -39,5 +39,15 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     path: ROUTES.STUDENT_GAME_MINI_CASES,
     icon: ListOrdered,
     accentClassName: "bg-violet-500",
+  },
+
+  {
+    id: "node-connection",
+    name: "Conexión de nodos",
+    description:
+      "Une los pares de colores sin que las líneas se crucen: planifica la ruta y corrige si se bloquea.",
+    path: ROUTES.STUDENT_GAME_NODE_CONNECTION,
+    icon: Waypoints,
+    accentClassName: "bg-emerald-500",
   },
 ];

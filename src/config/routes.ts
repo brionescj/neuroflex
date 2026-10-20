@@ -11,6 +11,8 @@ export const ROUTES = {
 
   STUDENT_GAME_MINI_CASES: "/estudiante/juegos/mini-casos",
 
+  STUDENT_GAME_NODE_CONNECTION: "/estudiante/juegos/conexion-de-nodos",
+
   STUDENT_SCORES: "/estudiante/puntuaciones",
 
   STUDENT_PROFILE: "/estudiante/perfil",

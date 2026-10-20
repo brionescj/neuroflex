@@ -4,7 +4,11 @@ import { requireAuth } from "../../lib/auth";
 import { connectDB } from "../../lib/db";
 import { GameProgress, type GameId } from "../../lib/models/GameProgress";
 
-const VALID_GAME_IDS: GameId[] = ["color-sequence", "mini-cases"];
+const VALID_GAME_IDS: GameId[] = [
+  "color-sequence",
+  "mini-cases",
+  "node-connection",
+];
 
 function isValidGameId(value: unknown): value is GameId {
   return (

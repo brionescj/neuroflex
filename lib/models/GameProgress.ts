@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const { Schema, model, models } = mongoose;
 
-export type GameId = "color-sequence" | "mini-cases";
+export type GameId = "color-sequence" | "mini-cases" | "node-connection";
 
 export type GameProgressDocument = {
   studentRut: string;
@@ -21,7 +21,7 @@ const gameProgressSchema = new Schema<GameProgressDocument>(
     studentRut: { type: String, required: true },
     gameId: {
       type: String,
-      enum: ["color-sequence", "mini-cases"],
+      enum: ["color-sequence", "mini-cases", "node-connection"],
       required: true,
     },
     state: { type: Schema.Types.Mixed, required: true },
