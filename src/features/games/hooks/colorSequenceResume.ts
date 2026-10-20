@@ -8,25 +8,40 @@ import type { AttemptHandle } from "../attempts/types";
 import {
   MAX_SAVED_LEVEL,
   MIN_LEVELS,
-  MIN_SEQUENCE_LENGTH,
   type LevelResult,
 } from "./colorSequenceConfig";
+import {
+  MAX_TRIES_PER_LEVEL,
+  isLevelPassed,
+  replayFlow,
+  sequenceLengthOf,
+} from "./colorSequenceRules";
 
+/**
+ * - "finished": la partida termino (voluntariamente desde el nivel 11, o al
+ *   agotar los intentos de un nivel desde el 11).
+ * - "failed": agoto los intentos de un nivel obligatorio (1 a 10).
+ * Ambas son definitivas: al volver a entrar se archivan y se ofrece una nueva.
+ */
 export type ColorSequenceSavedPhase =
   | "illuminating"
   | "level-result"
-  | "finished";
+  | "finished"
+  | "failed";
 
 /**
  * Avance guardado de Seriacion de colores. Se guarda al inicio de cada
- * nivel, con su resultado, y al final. Reanudar un nivel a medias vuelve a
- * iluminar la MISMA secuencia desde el principio. Al terminar el juego,
- * `level` es el ultimo completado o el que quedo a medias.
+ * intento de nivel, con su resultado, y al final. Reanudar un intento a medias
+ * vuelve a iluminar la MISMA secuencia desde el principio. `levelResults`
+ * trae todos los intentos, pasados o no. Al terminar el juego, `level` y
+ * `tryNumber` son los del ultimo intento jugado o el que quedo a medias.
  */
 export type ColorSequenceProgress = {
-  version: 1;
+  version: 2;
   phase: ColorSequenceSavedPhase;
   level: number;
+  /** Intento dentro del nivel (1 a 3). */
+  tryNumber: number;
   sequence: SequenceColorId[];
   levelResults: LevelResult[];
   /** Partida a la que pertenece (ausente en avances anteriores al registro). */
@@ -37,11 +52,18 @@ const SAVED_PHASES: ColorSequenceSavedPhase[] = [
   "illuminating",
   "level-result",
   "finished",
+  "failed",
 ];
 
 const COLOR_IDS = new Set<string>(SEQUENCE_COLORS.map((c) => c.id));
 
-function isLevelResult(value: unknown): value is LevelResult {
+/** Lo que trae un resultado guardado: los campos de los reintentos pueden faltar. */
+type RawLevelResult = Omit<LevelResult, "tryNumber" | "passed"> & {
+  tryNumber?: unknown;
+  passed?: unknown;
+};
+
+function isLevelResult(value: unknown): value is RawLevelResult {
   if (typeof value !== "object" || value === null) return false;
 
   const r = value as Record<string, unknown>;
@@ -54,10 +76,32 @@ function isLevelResult(value: unknown): value is LevelResult {
   );
 }
 
-/** Conserva solo los campos opcionales que vienen bien formados. */
-function cleanLevelResult(result: LevelResult): LevelResult {
+function isTryNumber(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= MAX_TRIES_PER_LEVEL
+  );
+}
+
+/**
+ * Conserva solo los campos que vienen bien formados. Un avance de antes de los
+ * reintentos (version 1) no trae intento: todo nivel guardado se paso, era la
+ * unica forma de seguir jugando. En la version 2 `passed` se recalcula con las
+ * reglas: no se confia en lo que diga el avance.
+ */
+function cleanLevelResult(
+  result: RawLevelResult,
+  tryNumber: number,
+  legacy: boolean,
+): LevelResult {
   const clean: LevelResult = {
     level: result.level,
+    tryNumber,
+    passed: legacy
+      ? true
+      : isLevelPassed(result.level, result.sequenceLength, result.correctCount),
     sequenceLength: result.sequenceLength,
     correctCount: result.correctCount,
     timeMs: result.timeMs,
@@ -82,7 +126,8 @@ export function parseColorSequenceProgress(
 
   const r = raw as Record<string, unknown>;
 
-  if (r.version !== 1) return null;
+  if (r.version !== 1 && r.version !== 2) return null;
+  const legacy = r.version === 1;
 
   if (
     typeof r.phase !== "string" ||
@@ -91,6 +136,9 @@ export function parseColorSequenceProgress(
     return null;
   }
   const phase = r.phase as ColorSequenceSavedPhase;
+
+  // Antes de los reintentos no existia la fase "failed".
+  if (legacy && phase === "failed") return null;
 
   if (
     typeof r.level !== "number" ||
@@ -102,10 +150,13 @@ export function parseColorSequenceProgress(
   }
   const level = r.level;
 
+  if (!legacy && !isTryNumber(r.tryNumber)) return null;
+  const tryNumber = legacy ? 1 : (r.tryNumber as number);
+
   if (
     !Array.isArray(r.sequence) ||
     !r.sequence.every((c) => typeof c === "string" && COLOR_IDS.has(c)) ||
-    r.sequence.length !== MIN_SEQUENCE_LENGTH + level - 1
+    r.sequence.length !== sequenceLengthOf(level)
   ) {
     return null;
   }
@@ -114,37 +165,62 @@ export function parseColorSequenceProgress(
   if (!Array.isArray(r.levelResults) || !r.levelResults.every(isLevelResult)) {
     return null;
   }
-  const levelResults = (r.levelResults as LevelResult[]).map(cleanLevelResult);
+  const rawResults = r.levelResults as RawLevelResult[];
 
-  if (phase === "finished") {
-    // Se puede terminar el juego tras un nivel completado o a mitad del
-    // siguiente (ese no cuenta): siempre con el minimo de niveles hecho.
-    if (levelResults.length < MIN_LEVELS) return null;
-    if (level !== levelResults.length && level !== levelResults.length + 1) {
-      return null;
-    }
-  } else {
-    const expectedResults = phase === "illuminating" ? level - 1 : level;
-    if (levelResults.length !== expectedResults) return null;
+  if (!legacy && !rawResults.every((x) => isTryNumber(x.tryNumber))) {
+    return null;
   }
 
-  // Cada resultado debe ser del nivel que le corresponde por posicion.
-  for (let i = 0; i < levelResults.length; i++) {
-    const result = levelResults[i];
-    if (
-      result?.level !== i + 1 ||
-      result.sequenceLength !== MIN_SEQUENCE_LENGTH + i
-    ) {
-      return null;
-    }
+  // En la version 1 hay un resultado por nivel: su intento es el 1.
+  const levelResults = rawResults.map((x) =>
+    cleanLevelResult(x, legacy ? 1 : (x.tryNumber as number), legacy),
+  );
+
+  // Cada resultado debe ser el intento que correspondia por posicion y traer
+  // el largo de secuencia de su nivel.
+  const flow = replayFlow(levelResults);
+  if (!flow.ok) return null;
+
+  if (levelResults.some((x) => x.sequenceLength !== sequenceLengthOf(x.level))) {
+    return null;
+  }
+
+  const last = levelResults[levelResults.length - 1];
+  const atLastResult =
+    last !== undefined && level === last.level && tryNumber === last.tryNumber;
+
+  if (phase === "illuminating") {
+    // A mitad de un intento: toca justo el nivel/intento que sigue.
+    if (flow.terminal !== null) return null;
+    if (level !== flow.level || tryNumber !== flow.tryNumber) return null;
+  } else if (phase === "level-result") {
+    // Mostrando el resultado del ultimo intento, y la partida sigue.
+    if (flow.terminal !== null || !atLastResult) return null;
+  } else if (phase === "failed") {
+    // Agoto los intentos de un nivel obligatorio.
+    if (flow.terminal !== "restart" || !atLastResult) return null;
+  } else {
+    // "finished": agoto intentos desde el nivel 11, o el alumno decidio
+    // terminar (posible solo con los niveles obligatorios pasados). Puede
+    // terminar tras un resultado o a mitad del intento siguiente.
+    if (flow.terminal === "restart") return null;
+    if (flow.maxLevelPassed < MIN_LEVELS) return null;
+
+    const atNext =
+      flow.terminal === null &&
+      level === flow.level &&
+      tryNumber === flow.tryNumber;
+
+    if (!atLastResult && !atNext) return null;
   }
 
   const attempt = parseAttemptHandle(r.attempt);
 
   return {
-    version: 1,
+    version: 2,
     phase,
     level,
+    tryNumber,
     sequence,
     levelResults,
     ...(attempt ? { attempt } : {}),
@@ -154,14 +230,16 @@ export function parseColorSequenceProgress(
 export function buildColorSequenceSnapshot(
   phase: ColorSequenceSavedPhase,
   level: number,
+  tryNumber: number,
   sequence: SequenceColorId[],
   levelResults: LevelResult[],
   attempt?: AttemptHandle,
 ): ColorSequenceProgress {
   return {
-    version: 1,
+    version: 2,
     phase,
     level,
+    tryNumber,
     sequence,
     levelResults,
     ...(attempt ? { attempt } : {}),

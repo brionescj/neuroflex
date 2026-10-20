@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import {
   buildStudentSnapshot,
+  scoreColorSequenceLevel,
   scoreMiniCaseOrder,
   summarizeResults,
   type AttemptCloseStatus,
@@ -136,6 +137,19 @@ async function upsertResult(
   report: LevelReport,
 ): Promise<SaveLevelOutcome> {
   let metrics = report.metrics;
+
+  if (gameId === "color-sequence") {
+    // Si paso el nivel lo decide el servidor con los umbrales: lo que diga el
+    // navegador sobre porcentaje o aprobacion se ignora.
+    const { sequenceLength, correctCount } = metrics;
+
+    if (typeof sequenceLength === "number" && typeof correctCount === "number") {
+      metrics = {
+        ...metrics,
+        ...scoreColorSequenceLevel(report.index, sequenceLength, correctCount),
+      };
+    }
+  }
 
   if (gameId === "mini-cases" && report.orderedOptionKeys) {
     // El puntaje lo calcula el servidor con la clave de respuesta: lo que

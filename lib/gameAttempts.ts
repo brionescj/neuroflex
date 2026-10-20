@@ -77,6 +77,9 @@ const NODE_OPTIONAL_COUNTERS = [
   "cellsErased",
 ] as const;
 
+/** Intentos por nivel en Seriacion de colores. */
+const COLOR_SEQUENCE_MAX_TRIES = 3;
+
 const MAX_ACTIVE_MS = 24 * 60 * 60 * 1000;
 const MAX_METRICS_BYTES = 20_000;
 const MAX_JSON_DEPTH = 4;
@@ -269,6 +272,10 @@ export function parseLevelReport(
   const tryNumber = raw.tryNumber === undefined ? 1 : raw.tryNumber;
   if (!isInt(tryNumber, 1, 1000)) return fail("tryNumber invalido.");
 
+  if (gameId === "color-sequence" && tryNumber > COLOR_SEQUENCE_MAX_TRIES) {
+    return fail("tryNumber de seriacion invalido.");
+  }
+
   if (!isTimeMs(raw.activeMsGross) || !isTimeMs(raw.activeMsNet)) {
     return fail("Tiempos activos invalidos.");
   }
@@ -420,6 +427,56 @@ function num(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+/**
+ * Porcentaje de aciertos que se exige para pasar un nivel de Seriacion de
+ * colores. Copia de src/features/games/hooks/colorSequenceRules.ts (el
+ * servidor no comparte codigo con el navegador): colorSequenceRulesParity.test.ts
+ * comprueba que ambas coincidan.
+ */
+export function colorSequenceThresholdPercent(level: number): number {
+  if (level <= 5) return 60;
+  if (level <= 8) return 70;
+  if (level <= 10) return 90;
+
+  return 75;
+}
+
+/**
+ * Puntaje de un intento de nivel, recalculado por el servidor: lo que el
+ * navegador diga sobre si lo paso se ignora. Enteros, sin flotantes.
+ */
+export function scoreColorSequenceLevel(
+  level: number,
+  sequenceLength: number,
+  correctCount: number,
+): { percent: number; thresholdPercent: number; passed: boolean } {
+  const thresholdPercent = colorSequenceThresholdPercent(level);
+
+  return {
+    percent: Math.round((correctCount / sequenceLength) * 100),
+    thresholdPercent,
+    passed: correctCount * 100 >= thresholdPercent * sequenceLength,
+  };
+}
+
+/**
+ * Si el resultado de un nivel de seriacion es un nivel pasado. Usa lo que el
+ * servidor guardo; en resultados anteriores a los umbrales (sin `passed`) lo
+ * calcula con las reglas.
+ */
+export function isColorSequenceResultPassed(result: {
+  index: number;
+  metrics: Record<string, unknown>;
+}): boolean {
+  if (typeof result.metrics.passed === "boolean") return result.metrics.passed;
+
+  return scoreColorSequenceLevel(
+    result.index,
+    num(result.metrics.sequenceLength),
+    num(result.metrics.correctCount),
+  ).passed;
+}
+
 /** Resumen del intento, recalculado SIEMPRE desde los resultados guardados. */
 export function summarizeResults(
   gameId: AttemptGameId,
@@ -432,9 +489,25 @@ export function summarizeResults(
   };
 
   if (gameId === "color-sequence") {
+    const passedRows = results.filter(isColorSequenceResultPassed);
+    const maxOf = (rows: StoredResult[], pick: (r: StoredResult) => number) =>
+      rows.reduce((max, r) => Math.max(max, pick(r)), 0);
+
     return {
       ...common,
-      maxLevel: results.reduce((max, r) => Math.max(max, r.index), 0),
+      // Nivel mas alto al que llego (aunque no lo pasara).
+      maxLevel: maxOf(results, (r) => r.index),
+      // Nivel mas alto que paso: es la amplitud de memoria del alumno.
+      maxLevelPassed: maxOf(passedRows, (r) => r.index),
+      // Largo de la secuencia mas larga que logro (el nivel n tiene n + 1 colores).
+      maxSequenceLengthPassed: maxOf(passedRows, (r) => num(r.metrics.sequenceLength)),
+      // Nivel mas alto que paso al primer intento.
+      maxLevelPassedFirstTry: maxOf(
+        passedRows.filter((r) => r.tryNumber === 1),
+        (r) => r.index,
+      ),
+      levelsPassed: new Set(passedRows.map((r) => r.index)).size,
+      failedTries: results.length - passedRows.length,
       totalCorrect: results.reduce((s, r) => s + num(r.metrics.correctCount), 0),
       totalItems: results.reduce((s, r) => s + num(r.metrics.sequenceLength), 0),
     };

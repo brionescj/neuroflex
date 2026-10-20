@@ -2,6 +2,7 @@ import { Blocks, ListOrdered, Waypoints } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { ROUTES } from "@/config/routes";
+import type { UnlockKey } from "./services/gameAccess.service";
 
 export type GameId = "color-sequence" | "mini-cases" | "node-connection";
 
@@ -15,6 +16,12 @@ export type GameCatalogEntry = {
   path: string;
 
   icon: LucideIcon;
+
+  /**
+   * Si el juego se desbloquea jugando otros: hasta que el servidor confirme
+   * el desbloqueo, ni aparece en el menu.
+   */
+  unlockKey?: UnlockKey;
 
   /** Clase de fondo Tailwind para la portada del juego (no hay assets de imagen en el proyecto todavia). */
   accentClassName: string;
@@ -38,6 +45,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
       "Resuelve casos pedagógicos bajo presión y ordena el plan de acción correcto.",
     path: ROUTES.STUDENT_GAME_MINI_CASES,
     icon: ListOrdered,
+    unlockKey: "miniCases",
     accentClassName: "bg-violet-500",
   },
 

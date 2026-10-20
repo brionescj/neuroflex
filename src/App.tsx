@@ -10,6 +10,7 @@ import DashboardLayout from "@/layouts/DashboardLayout";
 
 import AdminDashboard from "@/features/admin/pages/AdminDashboard";
 import { ColorSequenceGame } from "@/features/games/components/ColorSequenceGame";
+import { RequireGameAccess } from "@/features/games/components/RequireGameAccess";
 import { MiniCasesGame } from "@/features/games/mini-cases/components/MiniCasesGame";
 import { NodeConnectionGame } from "@/features/games/node-connection/components/NodeConnectionGame";
 import StudentDashboard from "@/features/student/pages/StudentDashboard";
@@ -43,7 +44,11 @@ export default function App() {
         />
         <Route
           path={ROUTES.STUDENT_GAME_MINI_CASES}
-          element={<MiniCasesGame />}
+          element={
+            <RequireGameAccess unlockKey="miniCases">
+              <MiniCasesGame />
+            </RequireGameAccess>
+          }
         />
         <Route
           path={ROUTES.STUDENT_GAME_NODE_CONNECTION}

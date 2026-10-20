@@ -5,7 +5,11 @@ import { ROUTES } from "@/config/routes";
 import { BackToGameHub } from "./BackToGameHub";
 import { useLockNavigation } from "../hooks/useLockNavigation";
 import { useWarnBeforeUnload } from "../hooks/useWarnBeforeUnload";
-import { useColorSequenceGame } from "../hooks/useColorSequenceGame";
+import {
+  MAX_TRIES_PER_LEVEL,
+  useColorSequenceGame,
+} from "../hooks/useColorSequenceGame";
+import { requiredCorrect } from "../hooks/colorSequenceRules";
 import { ColorGrid } from "./ColorGrid";
 import { FinishGameControl } from "./FinishGameControl";
 
@@ -29,6 +33,8 @@ export function ColorSequenceGame() {
     resumeLevelInProgress,
     phase,
     level,
+    tryNumber,
+    maxLevelPassed,
     sequence,
     activeIndex,
     levelResults,
@@ -36,7 +42,7 @@ export function ColorSequenceGame() {
     resume,
     returnToStart,
     registerAnswer,
-    continueToNextLevel,
+    continueAfterResult,
     finish,
   } = useColorSequenceGame();
 
@@ -53,8 +59,9 @@ export function ColorSequenceGame() {
     if (!last) return;
 
     console.log(
-      `[ColorSequenceGame] Nivel ${last.level} (${last.sequenceLength} colores): ` +
-        `${last.correctCount} aciertos en ${last.timeMs} ms`,
+      `[ColorSequenceGame] Nivel ${last.level}, intento ${last.tryNumber} ` +
+        `(${last.sequenceLength} colores): ${last.correctCount} aciertos ` +
+        `en ${last.timeMs} ms (${last.passed ? "pasado" : "no pasado"})`,
     );
   }, [levelResults]);
 
@@ -64,6 +71,8 @@ export function ColorSequenceGame() {
     console.table(
       levelResults.map((r) => ({
         nivel: r.level,
+        intento: r.tryNumber,
+        pasado: r.passed,
         colores: r.sequenceLength,
         aciertos: r.correctCount,
         tiempoMs: r.timeMs,
@@ -83,6 +92,12 @@ export function ColorSequenceGame() {
   const showBoard =
     phase === "idle" || phase === "illuminating" || phase === "answering";
 
+  // Termino por agotar los intentos de un nivel (desde el 11), no por decision propia.
+  const ranOutOfTries =
+    lastResult !== undefined &&
+    !lastResult.passed &&
+    lastResult.tryNumber >= MAX_TRIES_PER_LEVEL;
+
   return (
     <div className="flex flex-col items-center gap-4">
       {phase === "idle" && !hasResumable && <BackToGameHub />}
@@ -97,7 +112,7 @@ export function ColorSequenceGame() {
               ? hasResumable
                 ? `Tienes una partida en curso: vas en el ${levelLabel(resumeLevel ?? 1).toLowerCase()}`
                 : "Memoriza el orden en que se iluminan los colores"
-              : `${levelLabel(level)} — recuerda ${sequence.length} colores`}
+              : `${levelLabel(level)} · Intento ${tryNumber} de ${MAX_TRIES_PER_LEVEL} — recuerda ${sequence.length} colores`}
           </p>
 
           <div className="relative w-full max-w-56 xs:max-w-64 sm:max-w-xs md:max-w-sm lg:max-w-md">
@@ -170,24 +185,74 @@ export function ColorSequenceGame() {
       )}
 
       {phase === "level-result" && lastResult && (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-8 text-center">
-          <p className="text-sm text-zinc-400">{levelLabel(lastResult.level)}</p>
+        <div className="flex max-w-xs flex-col items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-8 text-center">
+          <p className="text-sm text-zinc-400">
+            {levelLabel(lastResult.level)} · Intento {lastResult.tryNumber} de{" "}
+            {MAX_TRIES_PER_LEVEL}
+          </p>
 
           <p className="text-lg font-semibold text-white">
             {lastResult.correctCount} de {lastResult.sequenceLength} aciertos
           </p>
 
+          {!lastResult.passed && (
+            <p className="text-sm text-zinc-400">
+              Para pasar este nivel necesitas al menos{" "}
+              {requiredCorrect(lastResult.level, lastResult.sequenceLength)}{" "}
+              aciertos.{" "}
+              {MAX_TRIES_PER_LEVEL - lastResult.tryNumber === 1
+                ? "Te queda 1 intento."
+                : `Te quedan ${MAX_TRIES_PER_LEVEL - lastResult.tryNumber} intentos.`}{" "}
+              La secuencia será distinta.
+            </p>
+          )}
+
           <button
             type="button"
-            onClick={continueToNextLevel}
+            onClick={continueAfterResult}
             className="mt-1 min-h-11 px-4 text-sm font-medium text-sky-400 hover:text-sky-300"
           >
-            Siguiente nivel
+            {lastResult.passed ? "Siguiente nivel" : "Intentar de nuevo"}
           </button>
 
           {canFinish && (
             <FinishGameControl onConfirm={finish} levelInProgress={false} />
           )}
+        </div>
+      )}
+
+      {phase === "failed" && lastResult && (
+        <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-6 text-center">
+          <p className="text-lg font-semibold text-white">Fin de la partida</p>
+
+          <p className="text-sm text-zinc-300">
+            No lograste pasar el {levelLabel(lastResult.level).toLowerCase()}{" "}
+            en {MAX_TRIES_PER_LEVEL} intentos (último intento:{" "}
+            {lastResult.correctCount} de {lastResult.sequenceLength} aciertos).
+          </p>
+
+          <p className="text-sm text-zinc-400">
+            Para seguir avanzando hay que empezar de nuevo desde el nivel 1.
+            {maxLevelPassed > 0 && ` Nivel máximo superado: ${maxLevelPassed}.`}
+          </p>
+
+          <div className="mt-2 flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={returnToStart}
+              className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
+            >
+              Volver a empezar
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.STUDENT)}
+              className="rounded-lg border border-zinc-700 bg-transparent px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            >
+              Salir del juego
+            </button>
+          </div>
         </div>
       )}
 
@@ -197,23 +262,38 @@ export function ColorSequenceGame() {
             Entrenamiento completo
           </p>
 
+          {ranOutOfTries && lastResult && (
+            <p className="text-sm text-zinc-400">
+              No superaste el {levelLabel(lastResult.level).toLowerCase()} en{" "}
+              {MAX_TRIES_PER_LEVEL} intentos, por eso el juego termina aquí.
+            </p>
+          )}
+
+          <p className="text-sm text-zinc-300">
+            Nivel máximo superado: {maxLevelPassed}
+          </p>
+
           <table className="w-full text-left text-sm text-zinc-400">
             <thead>
               <tr className="border-b border-zinc-800 text-zinc-500">
                 <th className="py-1 font-normal">Nivel</th>
+                <th className="py-1 font-normal">Intento</th>
                 <th className="py-1 font-normal">Aciertos</th>
+                <th className="py-1 font-normal">Resultado</th>
               </tr>
             </thead>
             <tbody>
               {levelResults.map((r) => (
                 <tr
-                  key={r.level}
+                  key={`${r.level}-${r.tryNumber}`}
                   className="border-b border-zinc-800/50 last:border-0"
                 >
                   <td className="py-1 text-white">{r.level}</td>
+                  <td className="py-1">{r.tryNumber}</td>
                   <td className="py-1">
                     {r.correctCount} de {r.sequenceLength}
                   </td>
+                  <td className="py-1">{r.passed ? "Superado" : "No superado"}</td>
                 </tr>
               ))}
             </tbody>

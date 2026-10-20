@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import { requireAuth } from "../../lib/auth";
 import { connectDB } from "../../lib/db";
+import { resolveMiniCasesAccess } from "../../lib/gameUnlocksStore";
 import { MiniCase } from "../../lib/models/MiniCase";
 
 function shuffle<T>(items: T[]): T[] {
@@ -31,6 +32,14 @@ export default async function handler(
   if (!payload) return;
 
   await connectDB();
+
+  // Docentes y administradores ven el banco siempre; el estudiante, solo
+  // cuando desbloqueo Mini Casos.
+  if (payload.role === "student" && !(await resolveMiniCasesAccess(payload.rut))) {
+    return res
+      .status(403)
+      .json({ success: false, message: "Este juego aun no esta disponible." });
+  }
 
   const cases = await MiniCase.find({ enabled: true }).sort({ caseKey: 1 });
 

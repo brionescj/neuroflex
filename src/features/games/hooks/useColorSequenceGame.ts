@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  SEQUENCE_COLORS,
-  type SequenceColorId,
-} from "../components/ColorGrid";
+import type { SequenceColorId } from "../components/ColorGrid";
 import { useActiveClock } from "../attempts/useActiveClock";
 import { useGameAttempt } from "../attempts/useGameAttempt";
 import {
@@ -12,7 +9,13 @@ import {
   MIN_SEQUENCE_LENGTH,
   type LevelResult,
 } from "./colorSequenceConfig";
+import { buildSequence } from "./colorSequenceBuild";
 import { toColorSequenceReport } from "./colorSequenceReport";
+import {
+  MAX_TRIES_PER_LEVEL,
+  isLevelPassed,
+  nextStepAfter,
+} from "./colorSequenceRules";
 import {
   buildColorSequenceSnapshot,
   parseColorSequenceProgress,
@@ -20,7 +23,7 @@ import {
 } from "./colorSequenceResume";
 import { useGameProgress } from "./useGameProgress";
 
-export { MIN_LEVELS, MIN_SEQUENCE_LENGTH };
+export { MAX_TRIES_PER_LEVEL, MIN_LEVELS, MIN_SEQUENCE_LENGTH };
 export type { LevelResult };
 
 const ILLUMINATE_ON_MS = 600;
@@ -31,40 +34,12 @@ type GamePhase =
   | "illuminating"
   | "answering"
   | "level-result"
-  | "finished";
+  | "finished"
+  | "failed";
 
-function pickRandomColorId(exclude: Set<SequenceColorId>): SequenceColorId {
-  const pool = SEQUENCE_COLORS.filter((color) => !exclude.has(color.id));
-  const candidates = pool.length > 0 ? pool : SEQUENCE_COLORS;
-  const index = Math.floor(Math.random() * candidates.length);
-  const color = candidates[index];
-
-  if (!color) {
-    throw new Error("Indice fuera de rango en SEQUENCE_COLORS.");
-  }
-
-  return color.id;
-}
-
-/**
- * El color nuevo no puede repetir ninguno de los dos colores anteriores:
- * ni el inmediatamente previo (evita "rojo, rojo") ni el que esta dos
- * posiciones atras (evita el patron ABA tipo "amarillo, rojo, amarillo",
- * que es mas facil de recordar por la repeticion cercana).
- */
-function nextColorId(previousSequence: SequenceColorId[]): SequenceColorId {
-  const forbidden = new Set(previousSequence.slice(-2));
-  return pickRandomColorId(forbidden);
-}
-
-function buildInitialSequence(length: number): SequenceColorId[] {
-  const sequence: SequenceColorId[] = [];
-
-  for (let i = 0; i < length; i++) {
-    sequence.push(nextColorId(sequence));
-  }
-
-  return sequence;
+/** Nivel mas alto que se paso (0 si ninguno). */
+function maxLevelPassedOf(results: LevelResult[]): number {
+  return results.reduce((max, r) => (r.passed ? Math.max(max, r.level) : max), 0);
 }
 
 function reportsOf(results: LevelResult[]) {
@@ -76,6 +51,7 @@ function reportsOf(results: LevelResult[]) {
 export function useColorSequenceGame() {
   const [phase, setPhase] = useState<GamePhase>("idle");
   const [level, setLevel] = useState(1);
+  const [tryNumber, setTryNumber] = useState(1);
   const [sequence, setSequence] = useState<SequenceColorId[]>([]);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [levelResults, setLevelResults] = useState<LevelResult[]>([]);
@@ -126,6 +102,7 @@ export function useColorSequenceGame() {
       }
 
       setLevel(snapshot.level);
+      setTryNumber(snapshot.tryNumber);
       setSequence(snapshot.sequence);
       setLevelResults(snapshot.levelResults);
       setActiveIndex(null);
@@ -134,13 +111,16 @@ export function useColorSequenceGame() {
     [attempt],
   );
 
-  // Una partida terminada es definitiva: se archiva en la base (por si el
-  // cierre no habia llegado) y se descarta el avance, de modo que al volver a
-  // entrar se ofrece una partida nueva y no los resultados de la anterior.
-  // Si no se logra archivar, se muestran los resultados y se conserva todo.
+  // Una partida terminada (o fallida) es definitiva: se archiva en la base
+  // (por si el cierre no habia llegado) y se descarta el avance, de modo que
+  // al volver a entrar se ofrece una partida nueva y no los resultados de la
+  // anterior. Si no se logra archivar, se muestran los resultados y se
+  // conserva todo.
   useEffect(() => {
     if (phase !== "idle" || progressStatus !== "ready") return;
-    if (resumeSnapshot?.phase !== "finished") return;
+    if (resumeSnapshot?.phase !== "finished" && resumeSnapshot?.phase !== "failed") {
+      return;
+    }
     if (archivedRef.current) return;
 
     archivedRef.current = true;
@@ -155,7 +135,10 @@ export function useColorSequenceGame() {
     }
 
     void attempt
-      .syncResults(reportsOf(resumeSnapshot.levelResults), "finished")
+      .syncResults(
+        reportsOf(resumeSnapshot.levelResults),
+        resumeSnapshot.phase === "failed" ? "failed" : "finished",
+      )
       .then((archived) => {
         setArchiving(false);
 
@@ -180,14 +163,17 @@ export function useColorSequenceGame() {
   const hasResumable =
     phase === "idle" &&
     resumeSnapshot !== null &&
-    resumeSnapshot.phase !== "finished";
+    resumeSnapshot.phase !== "finished" &&
+    resumeSnapshot.phase !== "failed";
 
   // No se puede empezar de cero mientras exista un avance guardado, ni
   // mientras no se sepa si existe.
   const canStart = progressStatus === "ready" && resumeSnapshot === null;
 
+  // Con la partida terminada o fallida ya se puede salir.
   const isGameInProgress =
-    (phase !== "idle" && phase !== "finished") || hasResumable;
+    (phase !== "idle" && phase !== "finished" && phase !== "failed") ||
+    hasResumable;
 
   const start = useCallback(() => {
     if (!canStart) return;
@@ -196,8 +182,9 @@ export function useColorSequenceGame() {
     archivedRef.current = false;
 
     setLevel(1);
+    setTryNumber(1);
     setLevelResults([]);
-    setSequence(buildInitialSequence(MIN_SEQUENCE_LENGTH));
+    setSequence(buildSequence(MIN_SEQUENCE_LENGTH));
     setPhase("illuminating");
   }, [canStart, attempt]);
 
@@ -207,18 +194,19 @@ export function useColorSequenceGame() {
 
   const returnToStart = useCallback(() => {
     // El cierre sale en cola y se reintenta aunque se cambie de pantalla.
-    void attempt.closeAttempt("finished");
+    void attempt.closeAttempt(phase === "failed" ? "failed" : "finished");
     clearProgress();
     archivedRef.current = false;
     setPhase("idle");
-  }, [attempt, clearProgress]);
+  }, [phase, attempt, clearProgress]);
 
   // Puntos de control: inicio de cada nivel, su resultado y el final.
   useEffect(() => {
     if (
       phase !== "illuminating" &&
       phase !== "level-result" &&
-      phase !== "finished"
+      phase !== "finished" &&
+      phase !== "failed"
     ) {
       return;
     }
@@ -228,21 +216,22 @@ export function useColorSequenceGame() {
       buildColorSequenceSnapshot(
         phase,
         level,
+        tryNumber,
         sequence,
         levelResults,
         attempt.current() ?? undefined,
       ),
     );
-  }, [phase, level, sequence, levelResults, saveProgress, attempt]);
+  }, [phase, level, tryNumber, sequence, levelResults, saveProgress, attempt]);
 
-  // El reloj del nivel corre desde que empieza a iluminarse hasta que el
-  // alumno completa la respuesta. Reanudar un nivel lo reinicia desde cero.
+  // El reloj del intento corre desde que empieza a iluminarse hasta que el
+  // alumno completa la respuesta. Reanudar un intento lo reinicia desde cero.
   useEffect(() => {
     if (phase === "illuminating") {
       clock.reset();
       clock.start();
     }
-  }, [phase, level, clock]);
+  }, [phase, level, tryNumber, clock]);
 
   useEffect(() => {
     if (phase !== "illuminating" || sequence.length === 0) {
@@ -319,8 +308,12 @@ export function useColorSequenceGame() {
 
       const completedAt = new Date().toISOString();
 
+      const passed = isLevelPassed(level, sequence.length, correctCount);
+
       const result: LevelResult = {
         level,
+        tryNumber,
+        passed,
         sequenceLength: sequence.length,
         correctCount,
         timeMs,
@@ -332,28 +325,59 @@ export function useColorSequenceGame() {
       void attempt.reportLevel(toColorSequenceReport(result, completedAt));
 
       setLevelResults((prev) => [...prev, result]);
+
+      const step = nextStepAfter(result);
+
+      if (step === "restart" || step === "close") {
+        // Sin intentos: la partida termina aqui. En un nivel obligatorio (1 a
+        // 10) cuenta como fallida; desde el 11, como terminada.
+        setPhase(step === "restart" ? "failed" : "finished");
+
+        void attempt
+          .closeAttempt(step === "restart" ? "failed" : "finished")
+          .then((closed) => {
+            if (closed) clearProgress();
+          });
+
+        return;
+      }
+
       setPhase("level-result");
     },
-    [phase, sequence, level, clock, attempt],
+    [phase, sequence, level, tryNumber, clock, attempt, clearProgress],
   );
 
-  const continueToNextLevel = useCallback(() => {
-    setLevel((prev) => prev + 1);
-    setSequence((prev) => [...prev, nextColorId(prev)]);
+  // Despues de ver el resultado: el nivel siguiente si se paso, o un
+  // reintento si no. En ambos casos la secuencia es nueva (no la anterior
+  // con un color mas): nunca la misma ni una que empiece igual.
+  const continueAfterResult = useCallback(() => {
+    const last = levelResults[levelResults.length - 1];
+
+    if (!last) return;
+
+    if (last.passed) {
+      setLevel(last.level + 1);
+      setTryNumber(1);
+      setSequence((prev) => buildSequence(prev.length + 1, prev));
+    } else {
+      setTryNumber(last.tryNumber + 1);
+      setSequence((prev) => buildSequence(prev.length, prev));
+    }
+
     setPhase("illuminating");
-  }, []);
+  }, [levelResults]);
 
   // El juego no tiene tope: terminar es una decision del alumno, posible
-  // una vez completados los niveles minimos. Tambien desde la pantalla de
+  // una vez pasados los niveles obligatorios. Tambien desde la pantalla de
   // reanudar, para no obligar a retomar un nivel que ya no quiere jugar.
-  const completedLevels =
-    phase === "idle"
-      ? (resumeSnapshot?.levelResults.length ?? 0)
-      : levelResults.length;
+  const maxLevelPassed = maxLevelPassedOf(
+    phase === "idle" ? (resumeSnapshot?.levelResults ?? []) : levelResults,
+  );
 
   const canFinish =
     phase !== "finished" &&
-    completedLevels >= MIN_LEVELS &&
+    phase !== "failed" &&
+    maxLevelPassed >= MIN_LEVELS &&
     (phase !== "idle" || hasResumable);
 
   const finish = useCallback(() => {
@@ -363,6 +387,7 @@ export function useColorSequenceGame() {
       attempt.adopt(resumeSnapshot.attempt);
       void attempt.syncResults(reportsOf(resumeSnapshot.levelResults));
       setLevel(resumeSnapshot.level);
+      setTryNumber(resumeSnapshot.tryNumber);
       setSequence(resumeSnapshot.sequence);
       setLevelResults(resumeSnapshot.levelResults);
     }
@@ -388,6 +413,8 @@ export function useColorSequenceGame() {
     resumeLevelInProgress: resumeSnapshot?.phase === "illuminating",
     phase,
     level,
+    tryNumber,
+    maxLevelPassed,
     sequence,
     activeIndex,
     levelResults,
@@ -395,7 +422,7 @@ export function useColorSequenceGame() {
     resume,
     returnToStart,
     registerAnswer,
-    continueToNextLevel,
+    continueAfterResult,
     finish,
   };
 }

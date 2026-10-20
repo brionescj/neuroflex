@@ -252,6 +252,27 @@ describe("saveLevelResult", () => {
     expect(db.results[0]?.activeMsNet).toBe(1800);
   });
 
+  it("seriacion: si paso el nivel lo decide el servidor, no el navegador", async () => {
+    const attempt = await ensureAttempt("11111111-1", "color-sequence", info("attempt-0001"));
+
+    await saveLevelResult(
+      "11111111-1", "color-sequence", attempt!, "s", device,
+      level(9, {
+        key: "9.2",
+        tryNumber: 2,
+        // 8 de 10 en el nivel 9 (90% exigido): el navegador dice que paso.
+        metrics: { sequenceLength: 10, correctCount: 8, percent: 100, thresholdPercent: 10, passed: true },
+      }),
+    );
+
+    expect(db.results[0]).toMatchObject({ key: "9.2", index: 9, tryNumber: 2 });
+    expect(db.results[0]?.metrics).toMatchObject({
+      percent: 80,
+      thresholdPercent: 90,
+      passed: false,
+    });
+  });
+
   it("mini casos: el puntaje lo calcula el servidor, no el navegador", async () => {
     db.cases.push({
       caseKey: "c1",

@@ -8,6 +8,7 @@ import {
   parseCloseStatus,
   parseDeviceInfo,
   parseLevelReport,
+  scoreColorSequenceLevel,
   scoreMiniCaseOrder,
   summarizeResults,
 } from "./gameAttempts";
@@ -106,6 +107,26 @@ describe("parseLevelReport", () => {
       expect(parsed.value.tryNumber).toBe(1);
       expect(parsed.value.orderedOptionKeys).toBeNull();
     }
+  });
+
+  it("acepta hasta 3 intentos por nivel y rechaza un cuarto", () => {
+    for (const tryNumber of [1, 2, 3]) {
+      expect(parseLevelReport("color-sequence", { ...seriacion, tryNumber }, NOW).ok).toBe(true);
+    }
+
+    expect(parseLevelReport("color-sequence", { ...seriacion, tryNumber: 4 }, NOW).ok).toBe(false);
+    // la regla de 3 intentos es solo de seriacion
+    expect(
+      parseLevelReport(
+        "node-connection",
+        {
+          ...seriacion,
+          tryNumber: 4,
+          metrics: { pairCount: 3, undoCount: 0, resetCount: 0 },
+        },
+        NOW,
+      ).ok,
+    ).toBe(true);
   });
 
   it("el neto nunca supera al bruto", () => {
@@ -270,7 +291,62 @@ describe("buildStudentSnapshot", () => {
   });
 });
 
+describe("scoreColorSequenceLevel", () => {
+  it("calcula porcentaje, umbral y aprobacion con enteros", () => {
+    expect(scoreColorSequenceLevel(1, 2, 1)).toEqual({ percent: 50, thresholdPercent: 60, passed: false });
+    expect(scoreColorSequenceLevel(1, 2, 2)).toEqual({ percent: 100, thresholdPercent: 60, passed: true });
+    expect(scoreColorSequenceLevel(4, 5, 3)).toEqual({ percent: 60, thresholdPercent: 60, passed: true });
+    expect(scoreColorSequenceLevel(8, 9, 6)).toMatchObject({ thresholdPercent: 70, passed: false });
+    expect(scoreColorSequenceLevel(10, 11, 10)).toMatchObject({ thresholdPercent: 90, passed: true });
+    expect(scoreColorSequenceLevel(11, 12, 9)).toMatchObject({ thresholdPercent: 75, passed: true });
+    expect(scoreColorSequenceLevel(11, 12, 8)).toMatchObject({ thresholdPercent: 75, passed: false });
+  });
+});
+
 describe("summarizeResults", () => {
+  it("seriacion con reintentos: nivel maximo pasado, a la primera y fallos", () => {
+    const row = (
+      index: number,
+      tryNumber: number,
+      correctCount: number,
+    ): Parameters<typeof summarizeResults>[1][number] => ({
+      index,
+      tryNumber,
+      metrics: { sequenceLength: index + 1, correctCount, passed: correctCount >= index },
+      activeMsGross: 1000,
+      activeMsNet: 800,
+    });
+
+    const summary = summarizeResults("color-sequence", [
+      row(1, 1, 2),
+      row(2, 1, 3),
+      row(3, 1, 2), // no pasa
+      row(3, 2, 3), // pasa al segundo intento
+      row(4, 1, 1), // no pasa
+      row(4, 2, 1), // no pasa
+      row(4, 3, 1), // no pasa: se agotan los intentos
+    ]);
+
+    expect(summary).toMatchObject({
+      levelsReported: 7,
+      maxLevel: 4,
+      maxLevelPassed: 3,
+      maxSequenceLengthPassed: 4,
+      maxLevelPassedFirstTry: 2,
+      levelsPassed: 3,
+      failedTries: 4,
+    });
+  });
+
+  it("seriacion: si el resultado no trae passed se calcula con los umbrales", () => {
+    const summary = summarizeResults("color-sequence", [
+      { index: 1, tryNumber: 1, metrics: { sequenceLength: 2, correctCount: 2 }, activeMsGross: 1, activeMsNet: 1 },
+      { index: 2, tryNumber: 1, metrics: { sequenceLength: 3, correctCount: 1 }, activeMsGross: 1, activeMsNet: 1 },
+    ]);
+
+    expect(summary).toMatchObject({ maxLevelPassed: 1, failedTries: 1 });
+  });
+
   it("seriacion: nivel maximo y aciertos", () => {
     const summary = summarizeResults("color-sequence", [
       { index: 1, tryNumber: 1, metrics: { sequenceLength: 3, correctCount: 3 }, activeMsGross: 1000, activeMsNet: 900 },

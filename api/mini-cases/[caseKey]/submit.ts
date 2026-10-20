@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import { requireAuth } from "../../../lib/auth";
 import { connectDB } from "../../../lib/db";
+import { scoreMiniCaseOrder } from "../../../lib/gameAttempts";
+import { resolveMiniCasesAccess } from "../../../lib/gameUnlocksStore";
 import { MiniCase } from "../../../lib/models/MiniCase";
 
 export default async function handler(
@@ -29,6 +31,12 @@ export default async function handler(
 
   await connectDB();
 
+  if (!(await resolveMiniCasesAccess(payload.rut))) {
+    return res
+      .status(403)
+      .json({ success: false, message: "Este juego aun no esta disponible." });
+  }
+
   const miniCase = await MiniCase.findOne({ caseKey, enabled: true });
 
   if (!miniCase) {
@@ -37,15 +45,10 @@ export default async function handler(
       .json({ success: false, message: "Mini caso no encontrado." });
   }
 
-  const correctSteps = (orderedOptionKeys as unknown[]).filter(
-    (optionKey, index) => {
-      const option = miniCase.options.find(
-        (o: { optionKey: string; correctStep: number }) =>
-          o.optionKey === optionKey,
-      );
-      return option?.correctStep === index + 1;
-    },
-  ).length;
+  const { correctSteps, isFullyCorrect } = scoreMiniCaseOrder(
+    miniCase.options,
+    orderedOptionKeys as string[],
+  );
 
   return res.status(200).json({
     success: true,
@@ -53,7 +56,7 @@ export default async function handler(
     data: {
       caseKey,
       correctSteps,
-      isFullyCorrect: correctSteps === miniCase.options.length,
+      isFullyCorrect,
     },
   });
 }
