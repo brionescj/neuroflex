@@ -273,11 +273,14 @@ describe("saveLevelResult", () => {
     });
   });
 
+  const miniCaseOptions = ["a", "b", "c", "d"].map((k, i) => ({
+    optionKey: k,
+    text: `Texto ${k}`,
+    correctStep: i + 1,
+  }));
+
   it("mini casos: el puntaje lo calcula el servidor, no el navegador", async () => {
-    db.cases.push({
-      caseKey: "c1",
-      options: ["a", "b", "c", "d"].map((k, i) => ({ optionKey: k, correctStep: i + 1 })),
-    });
+    db.cases.push({ caseKey: "c1", options: miniCaseOptions });
     const attempt = await ensureAttempt("11111111-1", "mini-cases", info("attempt-0001"));
 
     const outcome = await saveLevelResult(
@@ -294,8 +297,99 @@ describe("saveLevelResult", () => {
     expect(db.results[0]?.metrics).toMatchObject({
       correctSteps: 2,
       isFullyCorrect: false,
+      matchedSequence: 0,
       orderedOptionKeys: ["b", "a", "c", "d"],
     });
+  });
+
+  it("mini casos: guarda en que lugar puso cada opcion, el texto de ese momento y el comportamiento", async () => {
+    db.cases.push({ caseKey: "c1", options: miniCaseOptions });
+    const attempt = await ensureAttempt("11111111-1", "mini-cases", info("attempt-0001"));
+
+    await saveLevelResult(
+      "11111111-1", "mini-cases", attempt!, "s", device,
+      level(3, {
+        key: "c1",
+        metrics: {
+          decisionTimeMs: 9000,
+          displayedOptionKeys: ["c", "a", "d", "b"],
+          taps: 5,
+          removals: 1,
+          firstTapMs: 1200,
+          twistReadMs: 4000,
+          wallMs: 9500,
+          distractorMotif: "gato",
+          distractorSound: "meow",
+          selectionLog: [{ o: "b", a: "add", t: 1200 }, { o: "b", a: "remove", t: 2000 }],
+          correctSteps: 4, // se ignora
+          algoInventado: "x", // se descarta
+        },
+        orderedOptionKeys: ["b", "a", "c", "d"],
+      }),
+    );
+
+    const stored = db.results[0]?.metrics;
+
+    expect(stored).toMatchObject({
+      decisionTimeMs: 9000,
+      taps: 5,
+      removals: 1,
+      firstTapMs: 1200,
+      twistReadMs: 4000,
+      wallMs: 9500,
+      distractorMotif: "gato",
+      distractorSound: "meow",
+      kendallDistance: 1,
+      positionCorrect: [false, false, true, true],
+      selectionLog: [{ o: "b", a: "add", t: 1200 }, { o: "b", a: "remove", t: 2000 }],
+    });
+    expect(stored.placements[0]).toEqual({ step: 1, optionKey: "b", expectedStep: 2, displayedAt: 4 });
+    expect(stored.options[0]).toEqual({ optionKey: "a", correctStep: 1, text: "Texto a" });
+    expect(stored).not.toHaveProperty("algoInventado");
+  });
+
+  it("mini casos: el caso 9 acepta sus dos secuencias y ninguna queda como fallida", async () => {
+    db.cases.push({ caseKey: "c9", options: miniCaseOptions, alternateOrders: [["c", "a", "b", "d"]] });
+
+    // Dos estudiantes distintos responden cada una de las secuencias validas.
+    const first = await ensureAttempt("11111111-1", "mini-cases", info("attempt-0001"));
+    await saveLevelResult(
+      "11111111-1", "mini-cases", first!, "s", device,
+      level(9, { key: "c9", orderedOptionKeys: ["a", "b", "c", "d"] }),
+    );
+
+    const second = await ensureAttempt("11111111-1", "mini-cases", info("attempt-0002"));
+    await saveLevelResult(
+      "11111111-1", "mini-cases", second!, "s", device,
+      level(9, { key: "c9", orderedOptionKeys: ["c", "a", "b", "d"] }),
+    );
+
+    const [principal, alternativa] = db.results;
+
+    expect(principal?.metrics).toMatchObject({ correctSteps: 4, isFullyCorrect: true, matchedSequence: 0 });
+    expect(alternativa?.metrics).toMatchObject({
+      correctSteps: 4,
+      isFullyCorrect: true,
+      matchedSequence: 1,
+      kendallDistance: 0,
+    });
+    expect(alternativa?.metrics.validOrders).toEqual([["a", "b", "c", "d"], ["c", "a", "b", "d"]]);
+  });
+
+  it("mini casos: un orden que no es una ordenacion de las 4 opciones se rechaza", async () => {
+    db.cases.push({ caseKey: "c1", options: miniCaseOptions });
+    const attempt = await ensureAttempt("11111111-1", "mini-cases", info("attempt-0001"));
+
+    for (const bad of [["a", "a", "a", "a"], ["a", "b", "c", "x"], ["a", "b", "c", "d", "e"]]) {
+      const outcome = await saveLevelResult(
+        "11111111-1", "mini-cases", attempt!, "s", device,
+        level(1, { key: "c1", orderedOptionKeys: bad }),
+      );
+
+      expect(outcome).toBe("invalid-order");
+    }
+
+    expect(db.results).toHaveLength(0);
   });
 
   it("mini casos: un caso que no existe se rechaza", async () => {

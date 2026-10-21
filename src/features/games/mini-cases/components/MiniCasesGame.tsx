@@ -52,6 +52,7 @@ export function MiniCasesGame() {
     resume,
     returnToStart,
     proceedToOrdering,
+    registerDistractor,
     toggleOption,
     retrySubmit,
     nextCase,
@@ -74,6 +75,13 @@ export function MiniCasesGame() {
     if (phase !== "distractors") return;
     setCurrentMotif(pickRandomMotif());
   }, [phase, caseIndex]);
+
+  // El analisis necesita saber que distractor vio el estudiante.
+  useEffect(() => {
+    if (phase === "distractors" && currentMotif) {
+      registerDistractor(currentMotif.name, currentMotif.sound);
+    }
+  }, [phase, currentMotif, registerDistractor]);
 
   // El AudioContext se crea (o se reactiva) dentro de un click real del
   // usuario ("Comenzar"). Es el unico gesto disponible en todo el flujo:

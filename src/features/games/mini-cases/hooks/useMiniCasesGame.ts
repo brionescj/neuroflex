@@ -9,6 +9,7 @@ import {
   submitMiniCaseOrder,
 } from "../services/miniCases.service";
 import type { ApiMiniCase, MiniCaseResult } from "../types";
+import { createBehaviorTracker } from "../behavior";
 import { toMiniCaseReports } from "./miniCaseReport";
 
 // La version del banco la calcula el servidor al abrir la partida.
@@ -55,6 +56,13 @@ export function useMiniCasesGame() {
 
   const archivedRef = useRef(false);
 
+  // Lo que el estudiante hace al ordenar (para el analisis) y las opciones
+  // elegidas en este momento. La seleccion tambien vive en una referencia
+  // porque se registra en cada toque, fuera de los actualizadores de estado
+  // (que React puede ejecutar dos veces).
+  const trackerRef = useRef(createBehaviorTracker());
+  const selectedRef = useRef<string[]>([]);
+
   // Reloj del ordenamiento: bruto (pestana visible) y neto (sin inactividad
   // de mas de 80 s).
   const clock = useActiveClock();
@@ -78,6 +86,11 @@ export function useMiniCasesGame() {
   } = progress;
 
   const currentCase = cases[caseIndex];
+
+  const setSelection = useCallback((ids: string[]) => {
+    selectedRef.current = ids;
+    setSelectedOptionIds(ids);
+  }, []);
 
   const loadCases = useCallback(() => {
     setCasesStatus("loading");
@@ -146,11 +159,11 @@ export function useMiniCasesGame() {
       setCases(plan.orderedCases);
       setCaseIndex(plan.snapshot.caseIndex);
       setResults(plan.snapshot.results);
-      setSelectedOptionIds([]);
+      setSelection([]);
       setSubmitError(null);
       setPhase(plan.snapshot.phase);
     },
-    [attempt],
+    [attempt, setSelection],
   );
 
   // Una partida terminada es definitiva: se archiva en la base (por si el
@@ -230,10 +243,10 @@ export function useMiniCasesGame() {
 
     setCaseIndex(0);
     setResults([]);
-    setSelectedOptionIds([]);
+    setSelection([]);
     setSubmitError(null);
     setPhase("reading");
-  }, [canStart, attempt]);
+  }, [canStart, attempt, setSelection]);
 
   const resume = useCallback(() => {
     if (resumePlan) applySnapshot(resumePlan);
@@ -306,35 +319,55 @@ export function useMiniCasesGame() {
     return () => clearTimeout(timer);
   }, [phase]);
 
+  // El giro de contexto aparece: desde aqui se mide cuanto tarda en leerlo.
+  useEffect(() => {
+    if (phase === "twist") trackerRef.current.twistShown();
+  }, [phase]);
+
   const proceedToOrdering = useCallback(() => {
-    setSelectedOptionIds([]);
+    setSelection([]);
     setSubmitError(null);
     clock.reset();
     clock.start();
+
+    trackerRef.current.beginOrdering(
+      currentCase?.options.map((o) => o.optionKey) ?? [],
+    );
+
     setPhase("ordering");
-  }, [clock]);
+  }, [clock, currentCase, setSelection]);
+
+  // El componente avisa que distractor eligio para este caso.
+  const registerDistractor = useCallback((motif: string, sound: string) => {
+    trackerRef.current.noteDistractor(motif, sound);
+  }, []);
 
   // Alterna la seleccion de una opcion: si ya estaba elegida, la saca del
   // orden (y las que quedan se renumeran solas, porque el numero de paso
   // es simplemente su posicion en el arreglo); si no estaba elegida, se
-  // agrega al final del orden actual.
+  // agrega al final del orden actual. Cada toque queda registrado.
   const toggleOption = useCallback(
     (optionId: string) => {
       if (phase !== "ordering" || !currentCase) return;
 
-      setSelectedOptionIds((prev) => {
-        if (prev.includes(optionId)) {
-          return prev.filter((id) => id !== optionId);
-        }
+      const previous = selectedRef.current;
+      const removing = previous.includes(optionId);
 
-        if (prev.length >= currentCase.options.length) {
-          return prev;
-        }
+      if (!removing && previous.length >= currentCase.options.length) return;
 
-        return [...prev, optionId];
-      });
+      trackerRef.current.record(
+        optionId,
+        removing ? "remove" : "add",
+        clock.read().grossMs,
+      );
+
+      setSelection(
+        removing
+          ? previous.filter((id) => id !== optionId)
+          : [...previous, optionId],
+      );
     },
-    [phase, currentCase],
+    [phase, currentCase, clock, setSelection],
   );
 
   // Detecta que se completaron las 4 selecciones y pasa a "submitting".
@@ -358,6 +391,7 @@ export function useMiniCasesGame() {
     // Detenerlo es idempotente: un reintento de envio no suma tiempo.
     clock.stop();
     const { grossMs, netMs } = clock.read();
+    const behavior = trackerRef.current.finish();
 
     submitMiniCaseOrder(currentCase.caseKey, selectedOptionIds).then(
       (response) => {
@@ -376,6 +410,7 @@ export function useMiniCasesGame() {
           orderedOptionKeys: selectedOptionIds,
           activeMsNet: netMs,
           completedAt: new Date().toISOString(),
+          ...(behavior ? { behavior } : {}),
         };
 
         // El orden de este caso entre los resultados de la partida.
@@ -413,10 +448,10 @@ export function useMiniCasesGame() {
     }
 
     setCaseIndex(nextIndex);
-    setSelectedOptionIds([]);
+    setSelection([]);
     setSubmitError(null);
     setPhase("reading");
-  }, [caseIndex, cases.length, attempt, clearProgress]);
+  }, [caseIndex, cases.length, attempt, clearProgress, setSelection]);
 
   return {
     casesStatus,
@@ -439,6 +474,7 @@ export function useMiniCasesGame() {
     resume,
     returnToStart,
     proceedToOrdering,
+    registerDistractor,
     toggleOption,
     retrySubmit,
     nextCase,

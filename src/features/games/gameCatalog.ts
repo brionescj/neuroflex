@@ -39,6 +39,18 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   },
 
   {
+    id: "node-connection",
+    name: "Conexión de nodos",
+    description:
+      "Une los pares de colores sin que las líneas se crucen: planifica la ruta y corrige si se bloquea.",
+    path: ROUTES.STUDENT_GAME_NODE_CONNECTION,
+    icon: Waypoints,
+    accentClassName: "bg-emerald-500",
+  },
+
+  // Siempre el ultimo: se desbloquea jugando los dos anteriores, y al
+  // aparecer debe quedar despues de ellos, no entre medio.
+  {
     id: "mini-cases",
     name: "Banco de Mini Casos",
     description:
@@ -47,15 +59,5 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     icon: ListOrdered,
     unlockKey: "miniCases",
     accentClassName: "bg-violet-500",
-  },
-
-  {
-    id: "node-connection",
-    name: "Conexión de nodos",
-    description:
-      "Une los pares de colores sin que las líneas se crucen: planifica la ruta y corrige si se bloquea.",
-    path: ROUTES.STUDENT_GAME_NODE_CONNECTION,
-    icon: Waypoints,
-    accentClassName: "bg-emerald-500",
   },
 ];

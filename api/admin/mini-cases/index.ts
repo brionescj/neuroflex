@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import { requireAuth } from "../../../lib/auth";
 import { connectDB } from "../../../lib/db";
+import { validateAlternateOrders } from "../../../lib/miniCaseScoring";
 import { MiniCase } from "../../../lib/models/MiniCase";
 
 export default async function handler(
@@ -24,8 +25,16 @@ export default async function handler(
   }
 
   if (req.method === "POST") {
-    const { caseKey, title, baseText, twistText, promptText, options, feedback } =
-      req.body ?? {};
+    const {
+      caseKey,
+      title,
+      baseText,
+      twistText,
+      promptText,
+      options,
+      feedback,
+      alternateOrders,
+    } = req.body ?? {};
 
     if (
       !caseKey ||
@@ -63,9 +72,26 @@ export default async function handler(
       });
     }
 
+    const alternateError = validateAlternateOrders(options, alternateOrders);
+
+    if (alternateError) {
+      return res.status(400).json({ success: false, message: alternateError });
+    }
+
     const updated = await MiniCase.findOneAndUpdate(
       { caseKey },
-      { caseKey, title, baseText, twistText, promptText, options, feedback },
+      {
+        caseKey,
+        title,
+        baseText,
+        twistText,
+        promptText,
+        options,
+        feedback,
+        // El seed es la fuente de verdad: si no trae secuencias alternativas,
+        // el caso queda sin ellas.
+        alternateOrders: alternateOrders ?? [],
+      },
       { new: true, upsert: true, setDefaultsOnInsert: true },
     );
 

@@ -23,6 +23,15 @@ export type AttemptHandle = {
   startedAt: string;
 };
 
+/** Un valor JSON simple: numero, texto, booleano, nulo, lista u objeto. */
+export type MetricValue =
+  | number
+  | string
+  | boolean
+  | null
+  | MetricValue[]
+  | { [key: string]: MetricValue };
+
 /** Un nivel (seriacion, nodos) o un caso (mini casos) terminado. */
 export type LevelReport = {
   /** Unico dentro del intento: "3" para el nivel 3, o el caseKey. */
@@ -31,7 +40,7 @@ export type LevelReport = {
   index: number;
   tryNumber: number;
   /** Metricas propias del juego. */
-  metrics: Record<string, number | string | boolean | null | number[]>;
+  metrics: Record<string, MetricValue>;
   /** Tiempo con la pestana visible. */
   activeMsGross: number;
   /** Tiempo visible sin la inactividad de mas de 80 s. */

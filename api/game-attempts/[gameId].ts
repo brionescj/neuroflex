@@ -150,6 +150,12 @@ export default async function handler(
         .status(404)
         .json({ success: false, message: "Mini caso no encontrado." });
     }
+
+    if (outcome === "invalid-order") {
+      return res
+        .status(400)
+        .json({ success: false, message: "El orden elegido no es valido." });
+    }
   }
 
   if (status?.ok) {

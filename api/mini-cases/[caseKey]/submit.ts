@@ -2,7 +2,10 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import { requireAuth } from "../../../lib/auth";
 import { connectDB } from "../../../lib/db";
-import { scoreMiniCaseOrder } from "../../../lib/gameAttempts";
+import {
+  isPermutationOfOptions,
+  scoreMiniCaseOrder,
+} from "../../../lib/miniCaseScoring";
 import { resolveMiniCasesAccess } from "../../../lib/gameUnlocksStore";
 import { MiniCase } from "../../../lib/models/MiniCase";
 
@@ -45,9 +48,20 @@ export default async function handler(
       .json({ success: false, message: "Mini caso no encontrado." });
   }
 
+  if (
+    !isPermutationOfOptions(miniCase.options, orderedOptionKeys as string[])
+  ) {
+    return res
+      .status(400)
+      .json({ success: false, message: "El orden elegido no es valido." });
+  }
+
+  // Las secuencias alternativas (si el caso las tiene) tambien cuentan como
+  // correctas: nadie queda como fallido por elegir una valida.
   const { correctSteps, isFullyCorrect } = scoreMiniCaseOrder(
     miniCase.options,
     orderedOptionKeys as string[],
+    miniCase.alternateOrders ?? [],
   );
 
   return res.status(200).json({

@@ -4,6 +4,7 @@ import {
   parseAttemptHandle,
 } from "../attempts/attemptHandle";
 import type { AttemptHandle } from "../attempts/types";
+import { parseBehavior } from "./behavior";
 import type {
   ApiMiniCase,
   ApiMiniCaseOption,
@@ -47,8 +48,11 @@ function cleanResult(result: MiniCaseResult): MiniCaseResult {
   if (isStringArray(ordered) && ordered.length > 0) {
     clean.orderedOptionKeys = ordered;
   }
+  const behavior = parseBehavior(result.behavior);
+
   if (net !== undefined) clean.activeMsNet = net;
   if (completedAt !== undefined) clean.completedAt = completedAt;
+  if (behavior) clean.behavior = behavior;
 
   return clean;
 }

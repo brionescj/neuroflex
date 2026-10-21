@@ -9,7 +9,6 @@ import {
   parseDeviceInfo,
   parseLevelReport,
   scoreColorSequenceLevel,
-  scoreMiniCaseOrder,
   summarizeResults,
 } from "./gameAttempts";
 
@@ -387,32 +386,5 @@ describe("summarizeResults", () => {
       maxLevel: 0,
       activeMsGross: 0,
     });
-  });
-});
-
-describe("scoreMiniCaseOrder", () => {
-  const options = [
-    { optionKey: "a", correctStep: 1 },
-    { optionKey: "b", correctStep: 2 },
-    { optionKey: "c", correctStep: 3 },
-    { optionKey: "d", correctStep: 4 },
-  ];
-
-  it("orden perfecto", () => {
-    expect(scoreMiniCaseOrder(options, ["a", "b", "c", "d"])).toEqual({
-      correctSteps: 4,
-      isFullyCorrect: true,
-    });
-  });
-
-  it("cuenta solo los pasos en su lugar", () => {
-    expect(scoreMiniCaseOrder(options, ["b", "a", "c", "d"])).toEqual({
-      correctSteps: 2,
-      isFullyCorrect: false,
-    });
-  });
-
-  it("una opcion desconocida no suma", () => {
-    expect(scoreMiniCaseOrder(options, ["x", "b", "c", "d"]).correctSteps).toBe(3);
   });
 });

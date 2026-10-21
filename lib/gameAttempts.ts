@@ -533,21 +533,66 @@ export function summarizeResults(
   };
 }
 
-export type ScoredOption = { optionKey: string; correctStep: number };
+const MAX_SELECTION_LOG = 60;
+
+export type MiniCaseBehavior = {
+  /** Lo que se guarda tal cual, ya limpio. */
+  metrics: Record<string, unknown>;
+  /** Orden en que el navegador dice haber mostrado las opciones. */
+  displayedOptionKeys: string[] | null;
+};
+
+function isOptionKeyList(value: unknown, length: number): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length === length &&
+    value.every((k) => typeof k === "string" && KEY_PATTERN.test(k))
+  );
+}
 
 /**
- * Pasos que el estudiante dejo en su lugar correcto. Es la unica
- * implementacion del puntaje: la usan el envio de cada caso y el registro de
- * la partida, para que ambos nunca discrepen.
+ * Comportamiento del estudiante al ordenar, tal como lo informa el
+ * navegador. Es informacion de contexto, no un puntaje: se acepta solo lo que
+ * tiene la forma esperada y se acota, y cualquier otra clave se descarta.
  */
-export function scoreMiniCaseOrder(
-  options: ScoredOption[],
-  orderedOptionKeys: string[],
-): { correctSteps: number; isFullyCorrect: boolean } {
-  const correctSteps = orderedOptionKeys.filter((optionKey, index) => {
-    const option = options.find((o) => o.optionKey === optionKey);
-    return option?.correctStep === index + 1;
-  }).length;
+export function sanitizeMiniCaseBehavior(
+  raw: Record<string, unknown>,
+): MiniCaseBehavior {
+  const metrics: Record<string, unknown> = {};
 
-  return { correctSteps, isFullyCorrect: correctSteps === options.length };
+  for (const key of ["decisionTimeMs", "firstTapMs", "twistReadMs", "wallMs"]) {
+    if (isTimeMs(raw[key])) metrics[key] = raw[key];
+  }
+
+  for (const key of ["taps", "removals"]) {
+    if (isInt(raw[key], 0, 1000)) metrics[key] = raw[key];
+  }
+
+  for (const key of ["distractorMotif", "distractorSound"]) {
+    const value = raw[key];
+
+    if (typeof value === "string" && value.length > 0) {
+      metrics[key] = value.slice(0, 40);
+    }
+  }
+
+  if (Array.isArray(raw.selectionLog)) {
+    metrics.selectionLog = raw.selectionLog
+      .filter(
+        (e): e is { o: string; a: "add" | "remove"; t: number } =>
+          isRecord(e) &&
+          typeof e.o === "string" &&
+          KEY_PATTERN.test(e.o) &&
+          (e.a === "add" || e.a === "remove") &&
+          isTimeMs(e.t),
+      )
+      .slice(0, MAX_SELECTION_LOG)
+      .map((e) => ({ o: e.o, a: e.a, t: e.t }));
+  }
+
+  const displayed = isOptionKeyList(raw.displayedOptionKeys, 4)
+    ? raw.displayedOptionKeys
+    : null;
+
+  return { metrics, displayedOptionKeys: displayed };
 }

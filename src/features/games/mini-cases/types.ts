@@ -45,6 +45,39 @@ export type MiniCaseSubmitResult = {
   isFullyCorrect: boolean;
 };
 
+/** Un toque del estudiante al ordenar: agrego (add) o quito (remove) una opcion. */
+export type MiniCaseSelectionEvent = {
+  /** optionKey de la opcion. */
+  o: string;
+  a: "add" | "remove";
+  /** Tiempo activo del ordenamiento al momento del toque. */
+  t: number;
+};
+
+/**
+ * Lo que hizo el estudiante al ordenar un caso, para el analisis. Es
+ * contexto: el puntaje lo calcula siempre el servidor.
+ */
+export type MiniCaseBehavior = {
+  /** optionKey de las opciones en el orden en que la pantalla se las mostro. */
+  displayedOptionKeys: string[];
+  /** Veces que agrego una opcion. */
+  taps: number;
+  /** Veces que quito una opcion que ya habia elegido (se arrepintio). */
+  removals: number;
+  /** Tiempo activo hasta el primer toque. */
+  firstTapMs: number | null;
+  /** Tiempo (reloj real) que tardo en leer el giro de contexto. */
+  twistReadMs: number | null;
+  /** Tiempo real desde que aparece el ordenamiento hasta enviarlo; menos el tiempo activo, es cuanto estuvo fuera de la pestana. */
+  wallMs: number;
+  /** Motivo y sonido del distractor que vio en este caso. */
+  distractorMotif: string | null;
+  distractorSound: string | null;
+  /** Los primeros toques en orden (los contadores siguen exactos aunque se corte). */
+  selectionLog: MiniCaseSelectionEvent[];
+};
+
 /** Resultado local por caso, para el resumen final de la partida. */
 export type MiniCaseResult = MiniCaseSubmitResult & {
   /** Tiempo con la pestana visible, desde que aparece el ordenamiento. */
@@ -54,6 +87,8 @@ export type MiniCaseResult = MiniCaseSubmitResult & {
   /** Igual que decisionTimeMs pero sin la inactividad de mas de 80 s. */
   activeMsNet?: number;
   completedAt?: string;
+  /** Ausente en partidas guardadas antes de registrarlo. */
+  behavior?: MiniCaseBehavior;
 };
 
 export type MiniCasesSavedPhase = "reading" | "result" | "finished";

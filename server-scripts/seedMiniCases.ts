@@ -7,6 +7,11 @@ type SeedCase = {
   promptText: string;
   feedback: string;
   options: [SeedOption, SeedOption, SeedOption, SeedOption];
+  /**
+   * Otras secuencias que tambien son correctas, ademas de la que marcan los
+   * correctStep: cada una lista las 4 optionKey en orden.
+   */
+  alternateOrders?: string[][];
 };
 
 /**
@@ -285,6 +290,9 @@ export const MINI_CASES_SEED: SeedCase[] = [
         correctStep: 4,
       },
     ],
+    // El documento acepta dos secuencias: 1-2-3-4 y 3-1-2-4 (primero la
+    // alianza con el apoderado, luego las adaptaciones y el registro).
+    alternateOrders: [["caso-9-c", "caso-9-a", "caso-9-b", "caso-9-d"]],
   },
   {
     caseKey: "caso-10",

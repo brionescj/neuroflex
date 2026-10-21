@@ -23,7 +23,12 @@ export function toMiniCaseReport(
     key: result.caseKey,
     index: position,
     tryNumber: 1,
-    metrics: { decisionTimeMs: gross },
+    // El comportamiento al ordenar viaja como contexto; el servidor lo valida y
+    // recalcula el puntaje con la clave de respuesta.
+    metrics: {
+      decisionTimeMs: gross,
+      ...(result.behavior ? { ...result.behavior } : {}),
+    },
     activeMsGross: gross,
     activeMsNet: Math.min(result.activeMsNet ?? gross, gross),
     completedAt: result.completedAt ?? fallbackDate,

@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 
 import {
   buildStudentSnapshot,
+  sanitizeMiniCaseBehavior,
   scoreColorSequenceLevel,
-  scoreMiniCaseOrder,
   summarizeResults,
   type AttemptCloseStatus,
   type AttemptGameId,
@@ -11,6 +11,11 @@ import {
   type LevelReport,
   type StoredResult,
 } from "./gameAttempts";
+import {
+  analyzeMiniCaseOrder,
+  isPermutationOfOptions,
+  type TextOption,
+} from "./miniCaseScoring";
 import { GameAttempt } from "./models/GameAttempt";
 import { GameLevelResult } from "./models/GameLevelResult";
 import { MiniCase } from "./models/MiniCase";
@@ -40,6 +45,7 @@ async function miniCasesContentVersion(): Promise<string> {
     c.twistText,
     c.promptText,
     c.options,
+    c.alternateOrders ?? [],
   ])));
 
   return `bank-${hash.digest("hex").slice(0, 10)}`;
@@ -125,7 +131,7 @@ export async function ensureAttempt(
   throw new Error("No se pudo asignar el numero de intento.");
 }
 
-export type SaveLevelOutcome = "saved" | "unknown-case";
+export type SaveLevelOutcome = "saved" | "unknown-case" | "invalid-order";
 
 /** Guarda (o reemplaza) un resultado. No toca la actividad del intento. */
 async function upsertResult(
@@ -161,9 +167,30 @@ async function upsertResult(
 
     if (!miniCase) return "unknown-case";
 
+    const options: TextOption[] = miniCase.options.map(
+      (o: TextOption) => ({
+        optionKey: o.optionKey,
+        text: o.text,
+        correctStep: o.correctStep,
+      }),
+    );
+
+    if (!isPermutationOfOptions(options, report.orderedOptionKeys)) {
+      return "invalid-order";
+    }
+
+    // Todo lo que se guarda sale de la clave de respuesta del servidor; del
+    // navegador solo el comportamiento, ya limpio y acotado.
+    const behavior = sanitizeMiniCaseBehavior(metrics);
+
     metrics = {
-      ...metrics,
-      ...scoreMiniCaseOrder(miniCase.options, report.orderedOptionKeys),
+      ...behavior.metrics,
+      ...analyzeMiniCaseOrder(
+        options,
+        miniCase.alternateOrders ?? [],
+        report.orderedOptionKeys,
+        behavior.displayedOptionKeys,
+      ),
       orderedOptionKeys: report.orderedOptionKeys,
     };
   }
@@ -219,7 +246,7 @@ export async function saveLevelResults(
     { $set: { lastActivityAt: new Date() } },
   );
 
-  return outcomes.includes("unknown-case") ? "unknown-case" : "saved";
+  return outcomes.find((outcome) => outcome !== "saved") ?? "saved";
 }
 
 export function saveLevelResult(

@@ -15,6 +15,12 @@ export type MiniCaseDocument = {
   twistText: string;
   promptText: string;
   options: MiniCaseOptionDocument[];
+  /**
+   * Otras secuencias que tambien son correctas, ademas de la que marcan los
+   * correctStep. Cada una lista las 4 optionKey en orden. Casi todos los
+   * casos no tienen ninguna.
+   */
+  alternateOrders: string[][];
   feedback: string;
   enabled: boolean;
 };
@@ -43,6 +49,7 @@ const miniCaseSchema = new Schema<MiniCaseDocument>(
         message: "Cada mini caso debe tener exactamente 4 opciones.",
       },
     },
+    alternateOrders: { type: [[String]], default: [] },
     feedback: { type: String, required: true },
     // Permite retirar un caso del banco sin borrarlo (igual que isDeleted
     // en Student, pero mas simple: esto no es informacion de una persona,

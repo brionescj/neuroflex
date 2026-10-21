@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   authorized: true as boolean,
   owned: true as boolean,
-  outcome: "saved" as "saved" | "unknown-case",
+  outcome: "saved" as "saved" | "unknown-case" | "invalid-order",
   calls: [] as { fn: string; args: unknown[] }[],
 }));
 
@@ -193,6 +193,14 @@ describe("POST /api/game-attempts/:gameId", () => {
     const out = await call({ type: "batch", attempt, results: [result(1)], status: "finished" });
 
     expect(out.status).toBe(404);
+    expect(called("closeAttempt")).toHaveLength(0);
+  });
+
+  it("un orden invalido da 400 y no cierra el intento", async () => {
+    mocks.outcome = "invalid-order";
+    const out = await call({ type: "batch", attempt, results: [result(1)], status: "finished" });
+
+    expect(out.status).toBe(400);
     expect(called("closeAttempt")).toHaveLength(0);
   });
 });

@@ -30,6 +30,44 @@ const bank = [makeCase(1), makeCase(2), makeCase(3), makeCase(4)];
 // Partida de 3 casos: el alumno ve 3, 1, 2 (el 4 no entra en esta partida).
 const session = [bank[2]!, bank[0]!, bank[1]!];
 
+describe("el comportamiento guardado en un resultado", () => {
+  const behavior = {
+    displayedOptionKeys: ["caso-3-b", "caso-3-a", "caso-3-d", "caso-3-c"],
+    taps: 4,
+    removals: 1,
+    firstTapMs: 800,
+    twistReadMs: 2500,
+    wallMs: 6000,
+    distractorMotif: "sol",
+    distractorSound: "chime",
+    selectionLog: [{ o: "caso-3-b", a: "add" as const, t: 800 }],
+  };
+
+  it("se conserva al reanudar", () => {
+    const snap = buildProgressSnapshot(session, 1, "reading", [
+      { ...makeResult("caso-3"), behavior },
+    ]);
+
+    expect(parseMiniCasesProgress(snap)?.results[0]?.behavior).toEqual(behavior);
+  });
+
+  it("si esta corrupto se descarta sin invalidar el avance", () => {
+    const snap = buildProgressSnapshot(session, 1, "reading", [
+      { ...makeResult("caso-3"), behavior: { taps: "mucho" } as never },
+    ]);
+    const parsed = parseMiniCasesProgress(snap);
+
+    expect(parsed).not.toBeNull();
+    expect(parsed?.results[0]).not.toHaveProperty("behavior");
+  });
+
+  it("un avance anterior, sin comportamiento, sigue siendo valido", () => {
+    const snap = buildProgressSnapshot(session, 1, "reading", [makeResult("caso-3")]);
+
+    expect(parseMiniCasesProgress(snap)).toEqual(snap);
+  });
+});
+
 describe("parseMiniCasesProgress", () => {
   it("acepta un avance valido al inicio de un caso", () => {
     const snap = buildProgressSnapshot(session, 1, "reading", [

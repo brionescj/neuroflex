@@ -32,6 +32,23 @@ describe("toMiniCaseReport", () => {
     });
   });
 
+  it("lleva el comportamiento al ordenar como parte de las metricas", () => {
+    const behavior = {
+      displayedOptionKeys: ["d", "b", "a", "c"],
+      taps: 5,
+      removals: 1,
+      firstTapMs: 1200,
+      twistReadMs: 3500,
+      wallMs: 9800,
+      distractorMotif: "gato",
+      distractorSound: "meow",
+      selectionLog: [{ o: "a", a: "add" as const, t: 1200 }],
+    };
+    const report = toMiniCaseReport(makeResult({ behavior }), 1, FALLBACK);
+
+    expect(report?.metrics).toEqual({ decisionTimeMs: 9000, ...behavior });
+  });
+
   it("devuelve null si no se guardo el orden (partida antigua)", () => {
     const { orderedOptionKeys: _omit, ...legacy } = makeResult();
 
