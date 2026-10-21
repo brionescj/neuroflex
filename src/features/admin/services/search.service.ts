@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 
+import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
 import { fail, type ApiResponse } from "@/types";
 
@@ -16,7 +17,7 @@ export async function findRoleByRut(
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
-      return error.response.data as ApiResponse<RoleMatch>;
+      return responseFromError<RoleMatch>(error.response);
     }
     return fail("No se pudo conectar con el servidor.");
   }

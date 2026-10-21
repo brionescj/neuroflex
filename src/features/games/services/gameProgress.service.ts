@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 
+import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
 import { fail, type ApiResponse } from "@/types";
 import type { GameId } from "../gameCatalog";
@@ -20,7 +21,7 @@ export async function loadGameProgress(
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
-      return error.response.data as ApiResponse<unknown>;
+      return responseFromError<unknown>(error.response);
     }
     return fail("No se pudo conectar con el servidor.");
   }
@@ -39,7 +40,7 @@ export async function saveGameProgress(
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
-      return error.response.data as ApiResponse<null>;
+      return responseFromError<null>(error.response);
     }
     return fail("No se pudo conectar con el servidor.");
   }
@@ -56,7 +57,7 @@ export async function clearGameProgress(
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
-      return error.response.data as ApiResponse<null>;
+      return responseFromError<null>(error.response);
     }
     return fail("No se pudo conectar con el servidor.");
   }

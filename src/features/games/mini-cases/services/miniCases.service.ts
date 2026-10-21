@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 
+import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
 import { fail, type ApiResponse } from "@/types";
 import type { ApiMiniCase, MiniCaseSubmitResult } from "../types";
@@ -10,7 +11,7 @@ export async function fetchMiniCases(): Promise<ApiResponse<ApiMiniCase[]>> {
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
-      return error.response.data as ApiResponse<ApiMiniCase[]>;
+      return responseFromError<ApiMiniCase[]>(error.response);
     }
     return fail("No se pudo conectar con el servidor.");
   }
@@ -28,7 +29,7 @@ export async function submitMiniCaseOrder(
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
-      return error.response.data as ApiResponse<MiniCaseSubmitResult>;
+      return responseFromError<MiniCaseSubmitResult>(error.response);
     }
     return fail("No se pudo conectar con el servidor.");
   }

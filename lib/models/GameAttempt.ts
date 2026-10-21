@@ -34,7 +34,6 @@ export type GameAttemptDocument = {
     region: string | null;
     gender: string | null;
     university: string | null;
-    studyPlan: string | null;
   };
   /** Una entrada por carga de la pagina: sirve para detectar cambios de equipo. */
   sessions: {

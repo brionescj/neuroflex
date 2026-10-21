@@ -76,10 +76,10 @@ vi.mock("./gameAttemptsStore", () => ({
   closeAttempt: async () => undefined,
 }));
 
-import accessHandler from "../api/games/access";
-import attemptsHandler from "../api/game-attempts/[gameId]";
-import miniCasesHandler from "../api/mini-cases/index";
-import submitHandler from "../api/mini-cases/[caseKey]/submit";
+import accessHandler from "./handlers/games/access";
+import attemptsHandler from "./handlers/games/attempts";
+import miniCasesHandler from "./handlers/miniCases/bank";
+import submitHandler from "./handlers/miniCases/submit";
 
 type Handler = (req: VercelRequest, res: VercelResponse) => unknown;
 

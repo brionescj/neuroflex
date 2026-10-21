@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+import { GENDERS, UNIVERSITIES } from "../studentFields";
+
 const { Schema, model, models } = mongoose;
 
 export type StudentDocument = {
@@ -11,6 +13,8 @@ export type StudentDocument = {
   entryYear: number;
   birthDate?: string;
   studyShift?: "day" | "evening";
+  gender?: (typeof GENDERS)[number];
+  university?: (typeof UNIVERSITIES)[number];
   enabled: boolean;
   registered: boolean;
   email?: string;
@@ -38,6 +42,8 @@ const studentSchema = new Schema<StudentDocument>({
   },
   birthDate: String,
   studyShift: { type: String, enum: ["day", "evening"] },
+  gender: { type: String, enum: GENDERS },
+  university: { type: String, enum: UNIVERSITIES },
   enabled: { type: Boolean, required: true, default: true },
   registered: { type: Boolean, required: true, default: false },
   email: String,

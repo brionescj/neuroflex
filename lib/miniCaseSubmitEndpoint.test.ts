@@ -29,7 +29,7 @@ vi.mock("./models/MiniCase", () => ({
   },
 }));
 
-import handler from "../api/mini-cases/[caseKey]/submit";
+import handler from "./handlers/miniCases/submit";
 
 async function submit(orderedOptionKeys: unknown) {
   let status = 0;

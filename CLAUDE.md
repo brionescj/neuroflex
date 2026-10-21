@@ -44,6 +44,13 @@ Lee `ARCHITECTURE.md` antes de escribir código. Es la fuente de verdad.
     el acceso a datos en `src/repositories/` (no en `features/<x>/api/`).
     Si una carpeta te parece necesaria y no está en ARCHITECTURE.md, propónla antes de crearla.
 
+17. **No agregues archivos en `api/`.** Toda la API es UNA sola funcion de Vercel
+    (`api/index.ts`, con `vercel.json` reescribiendo `/api/*` hacia ella) y el plan
+    gratuito limita cuantas se despliegan. No uses un catch-all `[...x].ts`: solo
+    cubre un segmento. Una ruta nueva es un handler en `lib/handlers/` anotado en la
+    tabla de `lib/router.ts`.
+    Un test falla si `api/` tiene algo mas o si un handler queda sin ruta.
+
 ## Estado de los datos
 
 Los datasources de `src/data/` son **arrays mutables en memoria**.

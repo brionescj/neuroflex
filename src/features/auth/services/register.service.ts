@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 
+import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
 import { fail, type ApiResponse } from "@/types";
 
@@ -21,7 +22,7 @@ export async function registerService(
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
-      return error.response.data as ApiResponse<{ rut: string }>;
+      return responseFromError<{ rut: string }>(error.response);
     }
 
     return fail("No se pudo conectar con el servidor.");

@@ -6,8 +6,14 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Button } from "@/components/ui/Button";
 import { Field, FieldLabel } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import {
+  GENDER_OPTIONS,
+  UNIVERSITY_OPTIONS,
+  genderLabel,
+  universityLabel,
+} from "@/config/studentOptions";
 import { cn } from "@/lib/utils";
-import type { Student } from "@/types";
+import type { Gender, Student, University } from "@/types";
 import { isValidRut } from "@/utils/rut";
 
 import {
@@ -16,6 +22,7 @@ import {
   setStudentEnabledAction,
   updateStudentDetailsAction,
 } from "../actions/students.action";
+import { formatBirthDate, toInputDate } from "../utils/birthDate";
 import { matchesQuery } from "../utils/matchesQuery";
 import { sanitizeNameInput } from "../utils/sanitizeInput";
 import { HighlightMatch } from "./HighlightMatch";
@@ -31,15 +38,42 @@ const EMPTY_FORM = {
   region: "",
   celular: "",
   email: "",
+  gender: "" as Gender | "",
+  university: "" as University | "",
+  birthDate: "",
 };
 
-const EMPTY_EDIT_FORM = {
+type EditFormState = {
+  email: string;
+  ciudad: string;
+  region: string;
+  celular: string;
+  gender: Gender | "";
+  university: University | "";
+  /** AAAA-MM-DD, como lo entrega <input type="date">. */
+  birthDate: string;
+};
+
+const EMPTY_EDIT_FORM: EditFormState = {
+  email: "",
   ciudad: "",
   region: "",
   celular: "",
+  gender: "",
+  university: "",
+  birthDate: "",
 };
 
-type EditFormState = typeof EMPTY_EDIT_FORM;
+const SELECT_CLASS =
+  "h-10 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white outline-none transition focus:border-white";
+
+function todayInputDate(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${now.getFullYear()}-${month}-${day}`;
+}
 
 type StudentEditFormProps = {
   editForm: EditFormState;
@@ -63,8 +97,19 @@ function StudentEditForm({
   return (
     <form
       onSubmit={onSubmit}
-      className={cn("gap-3", stacked ? "flex flex-col" : "grid sm:grid-cols-4")}
+      className={cn("gap-3", stacked ? "flex flex-col" : "grid sm:grid-cols-3")}
     >
+      <Field className="sm:col-span-3">
+        <FieldLabel htmlFor={`edit-email-${studentRut}`}>Correo</FieldLabel>
+        <Input
+          id={`edit-email-${studentRut}`}
+          type="email"
+          className="h-10"
+          value={editForm.email}
+          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+        />
+      </Field>
+
       <Field>
         <FieldLabel htmlFor={`edit-ciudad-${studentRut}`}>Ciudad</FieldLabel>
         <Input
@@ -103,13 +148,66 @@ function StudentEditForm({
               setEditForm({ ...editForm, celular: digitsOnly });
             }}
             placeholder="12345678"
-            className="h-full flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-600"
+            className="h-full min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-600"
           />
         </div>
       </Field>
 
+      <Field>
+        <FieldLabel htmlFor={`edit-gender-${studentRut}`}>Género</FieldLabel>
+        <select
+          id={`edit-gender-${studentRut}`}
+          className={SELECT_CLASS}
+          value={editForm.gender}
+          onChange={(e) =>
+            setEditForm({ ...editForm, gender: e.target.value as Gender | "" })
+          }
+        >
+          <option value="">Sin registrar</option>
+          {GENDER_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor={`edit-university-${studentRut}`}>Universidad</FieldLabel>
+        <select
+          id={`edit-university-${studentRut}`}
+          className={SELECT_CLASS}
+          value={editForm.university}
+          onChange={(e) =>
+            setEditForm({ ...editForm, university: e.target.value as University | "" })
+          }
+        >
+          <option value="">Sin registrar</option>
+          {UNIVERSITY_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor={`edit-birthDate-${studentRut}`}>
+          Fecha de nacimiento
+        </FieldLabel>
+        <Input
+          id={`edit-birthDate-${studentRut}`}
+          type="date"
+          className="h-10 scheme-dark"
+          min="1920-01-01"
+          max={todayInputDate()}
+          value={editForm.birthDate}
+          onChange={(e) => setEditForm({ ...editForm, birthDate: e.target.value })}
+        />
+      </Field>
+
       {editError && (
-        <p className="text-sm text-rose-400 sm:col-span-4">{editError}</p>
+        <p className="text-sm text-rose-400 sm:col-span-3">{editError}</p>
       )}
 
       <div className={cn("flex items-center gap-3", !stacked && "self-end")}>
@@ -141,13 +239,16 @@ function StudentDetailsView({
   stacked?: boolean;
 }) {
   const fields = [
+    { label: "Correo", value: student.email },
     { label: "Ciudad", value: student.ciudad },
     { label: "Region", value: student.region },
     {
       label: "Celular",
       value: student.celular ? `+569 ${student.celular}` : undefined,
     },
-    { label: "Correo", value: student.email },
+    { label: "Género", value: genderLabel(student.gender) },
+    { label: "Universidad", value: universityLabel(student.university) },
+    { label: "Fecha de nacimiento", value: formatBirthDate(student.birthDate) },
   ];
 
   return (
@@ -291,6 +392,9 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
       region: form.region || undefined,
       celular: form.celular || undefined,
       email: form.email || undefined,
+      gender: form.gender || undefined,
+      university: form.university || undefined,
+      birthDate: form.birthDate || undefined,
     });
 
     setIsCreating(false);
@@ -331,9 +435,13 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
     setEditingRut(student.rut);
     setEditError(null);
     setEditForm({
+      email: student.email ?? "",
       ciudad: student.ciudad ?? "",
       region: student.region ?? "",
       celular: student.celular ?? "",
+      gender: student.gender ?? "",
+      university: student.university ?? "",
+      birthDate: toInputDate(student.birthDate),
     });
   }
 
@@ -349,10 +457,22 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
 
     setEditError(null);
 
+    const current = students.find((s) => s.rut === editingRut);
+
+    // Campo vacio = se borra de la ficha. La fecha solo se manda si el admin la
+    // cambio: una fecha antigua que el selector no entiende quedaria vacia y se
+    // borraria sin querer al guardar otro dato.
+    const birthDateChanged =
+      editForm.birthDate !== toInputDate(current?.birthDate);
+
     const result = await updateStudentDetailsAction(editingRut, {
-      ciudad: editForm.ciudad || undefined,
-      region: editForm.region || undefined,
-      celular: editForm.celular || undefined,
+      email: editForm.email,
+      ciudad: editForm.ciudad,
+      region: editForm.region,
+      celular: editForm.celular,
+      gender: editForm.gender,
+      university: editForm.university,
+      ...(birthDateChanged && { birthDate: editForm.birthDate }),
     });
 
     if (!result.success) {
@@ -383,7 +503,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
       {showForm && (
         <form
           onSubmit={handleCreate}
-          className="grid gap-4 rounded-2xl border border-zinc-800 p-4 sm:grid-cols-2"
+          className="grid grid-cols-1 gap-4 rounded-2xl border border-zinc-800 p-4 sm:grid-cols-2"
         >
           <Field>
             <FieldLabel htmlFor="rut">RUT</FieldLabel>
@@ -502,9 +622,64 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
                   setForm({ ...form, celular: digitsOnly });
                 }}
                 placeholder="12345678"
-                className="h-full flex-1 bg-transparent text-white outline-none placeholder:text-zinc-500"
+                className="h-full min-w-0 flex-1 bg-transparent text-white outline-none placeholder:text-zinc-500"
               />
             </div>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="gender">Género</FieldLabel>
+            <select
+              id="gender"
+              value={form.gender}
+              onChange={(e) =>
+                setForm({ ...form, gender: e.target.value as Gender | "" })
+              }
+              className="h-12 w-full rounded-xl border border-zinc-700 bg-transparent px-4 text-white outline-none transition focus:border-white"
+            >
+              <option value="" className="bg-zinc-900">
+                Sin registrar
+              </option>
+              {GENDER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-zinc-900">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="university">Universidad</FieldLabel>
+            <select
+              id="university"
+              value={form.university}
+              onChange={(e) =>
+                setForm({ ...form, university: e.target.value as University | "" })
+              }
+              className="h-12 w-full rounded-xl border border-zinc-700 bg-transparent px-4 text-white outline-none transition focus:border-white"
+            >
+              <option value="" className="bg-zinc-900">
+                Sin registrar
+              </option>
+              {UNIVERSITY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-zinc-900">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="birthDate">Fecha de nacimiento</FieldLabel>
+            <Input
+              id="birthDate"
+              type="date"
+              className="scheme-dark"
+              min="1920-01-01"
+              max={todayInputDate()}
+              value={form.birthDate}
+              onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
+            />
           </Field>
 
           <div className="flex items-end">

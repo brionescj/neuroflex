@@ -400,10 +400,9 @@ export type StudentSnapshot = {
   studyShift: string | null;
   ciudad: string | null;
   region: string | null;
-  // Los carga el admin mas adelante; hasta entonces quedan vacios.
+  // Los edita el admin en la ficha del estudiante; vacios hasta que los cargue.
   gender: string | null;
   university: string | null;
-  studyPlan: string | null;
 };
 
 function textOrNull(value: unknown): string | null {
@@ -439,7 +438,6 @@ export function buildStudentSnapshot(
     region: textOrNull(s.region),
     gender: textOrNull(s.gender),
     university: textOrNull(s.university),
-    studyPlan: textOrNull(s.studyPlan),
   };
 }
 

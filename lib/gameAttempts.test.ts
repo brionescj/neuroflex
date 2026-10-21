@@ -376,8 +376,15 @@ describe("buildStudentSnapshot", () => {
       region: "La Araucania",
       gender: null,
       university: null,
-      studyPlan: null,
     });
+  });
+
+  it("copia genero y universidad cuando el admin los cargo", () => {
+    const snapshot = buildStudentSnapshot({ gender: "female", university: "uvm" }, NOW);
+
+    expect(snapshot.gender).toBe("female");
+    expect(snapshot.university).toBe("uvm");
+    expect(snapshot).not.toHaveProperty("studyPlan");
   });
 
   it("sin ficha del estudiante todo queda null", () => {

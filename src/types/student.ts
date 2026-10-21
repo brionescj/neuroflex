@@ -1,5 +1,5 @@
 import type { AvatarId } from "@/config/avatars";
-import type { StudyShift } from "./common";
+import type { Gender, StudyShift, University } from "./common";
 
 export type Paralelo = 1 | 2 | 3 | 4;
 
@@ -19,6 +19,10 @@ export type Student = {
   birthDate?: string;
 
   studyShift?: StudyShift;
+
+  gender?: Gender;
+
+  university?: University;
 
   enabled: boolean;
 

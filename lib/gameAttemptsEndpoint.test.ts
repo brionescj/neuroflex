@@ -37,7 +37,7 @@ vi.mock("./gameAttemptsStore", () => ({
   },
 }));
 
-import handler from "../api/game-attempts/[gameId]";
+import handler from "./handlers/games/attempts";
 
 const attempt = {
   attemptId: "abcdefgh12345678",

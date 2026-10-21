@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 
 import type { AvatarId } from "@/config/avatars";
+import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
 import {
   fail,
@@ -59,7 +60,7 @@ export async function updateProfileContact(
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
-      return error.response.data as ApiResponse<ContactData>;
+      return responseFromError<ContactData>(error.response);
     }
 
     return fail("No se pudo conectar con el servidor.");

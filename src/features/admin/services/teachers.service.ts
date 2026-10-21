@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 
+import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
 import { fail, type ApiResponse, type Teacher } from "@/types";
 
@@ -16,7 +17,7 @@ export async function listTeachers(): Promise<ApiResponse<Teacher[]>> {
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
-      return error.response.data as ApiResponse<Teacher[]>;
+      return responseFromError<Teacher[]>(error.response);
     }
     return fail("No se pudo conectar con el servidor.");
   }
@@ -33,7 +34,7 @@ export async function createTeacher(
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
-      return error.response.data as ApiResponse<Teacher>;
+      return responseFromError<Teacher>(error.response);
     }
     return fail("No se pudo conectar con el servidor.");
   }
@@ -51,7 +52,7 @@ export async function setTeacherEnabled(
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
-      return error.response.data as ApiResponse<Teacher>;
+      return responseFromError<Teacher>(error.response);
     }
     return fail("No se pudo conectar con el servidor.");
   }
