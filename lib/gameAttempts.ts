@@ -7,6 +7,11 @@
  * (tipos, rangos, tamano) antes de guardarse.
  */
 
+import {
+  reconcileColorSequenceEvents,
+  sanitizeNodeEvents,
+} from "./attemptEvents";
+
 export const ATTEMPT_GAME_IDS = [
   "color-sequence",
   "mini-cases",
@@ -54,6 +59,11 @@ export type LevelReport = {
   activeMsNet: number;
   completedAt: Date;
   orderedOptionKeys: string[] | null;
+  /**
+   * Eventos finos del nivel, ya limpios (ver lib/attemptEvents.ts). Ausente
+   * si el navegador no los mando o no pasaron la validacion.
+   */
+  events?: Record<string, unknown>[];
 };
 
 export type AttemptCloseStatus = "finished" | "failed";
@@ -75,6 +85,7 @@ const NODE_OPTIONAL_COUNTERS = [
   "resetCells",
   "blockedCount",
   "cellsErased",
+  "eventsDropped",
 ] as const;
 
 /** Intentos por nivel en Seriacion de colores. */
@@ -299,18 +310,35 @@ export function parseLevelReport(
     orderedOptionKeys = keys as string[];
   }
 
+  // Eventos finos: contexto, no puntaje. Si no pasan la validacion se
+  // descartan, pero el resultado del nivel se guarda igual.
+  let levelMetrics = metrics.value;
+  let events: Record<string, unknown>[] | undefined;
+
+  if (gameId === "color-sequence") {
+    const reconciled = reconcileColorSequenceEvents(levelMetrics, raw.events);
+
+    levelMetrics = reconciled.metrics;
+    events = reconciled.events;
+  } else if (gameId === "node-connection" && raw.events !== undefined) {
+    const clean = sanitizeNodeEvents(raw.events);
+
+    if (clean.length > 0) events = clean;
+  }
+
   return {
     ok: true,
     value: {
       key: raw.key,
       index: raw.index,
       tryNumber,
-      metrics: metrics.value,
+      metrics: levelMetrics,
       activeMsGross: raw.activeMsGross,
       // El tiempo neto nunca puede superar al bruto.
       activeMsNet: Math.min(raw.activeMsNet, raw.activeMsGross),
       completedAt: parseDate(raw.completedAt, now),
       orderedOptionKeys,
+      ...(events ? { events } : {}),
     },
   };
 }

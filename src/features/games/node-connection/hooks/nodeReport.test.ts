@@ -32,6 +32,56 @@ describe("toNodeReport", () => {
     expect(report.metrics.boardSize).toBe(LEVELS[1]?.rows);
   });
 
+  it("lleva la bitacora como eventos y avisa si quedo incompleta", () => {
+    const report = toNodeReport(
+      {
+        level: 1,
+        pairCount: 2,
+        timeMs: 8_000,
+        undoCount: 0,
+        resetCount: 0,
+        events: [
+          { t: 3100, type: "start", color: "red", row: 0, col: 3 },
+          { t: 4000, type: "end", color: "red", len: 3, done: true, back: 0 },
+        ],
+        eventsDropped: 12,
+      },
+      FALLBACK,
+    );
+
+    expect(report.events).toEqual([
+      { t: 3100, type: "start", color: "red", row: 0, col: 3 },
+      { t: 4000, type: "end", color: "red", len: 3, done: true, back: 0 },
+    ]);
+    expect(report.metrics.eventsDropped).toBe(12);
+  });
+
+  it("los eventos no llevan campos indefinidos", () => {
+    const report = toNodeReport(
+      {
+        level: 1,
+        pairCount: 2,
+        timeMs: 8_000,
+        undoCount: 0,
+        resetCount: 0,
+        events: [{ t: 10, type: "start", color: "red", row: 0, col: 0, restartCells: undefined }],
+      },
+      FALLBACK,
+    );
+
+    expect(Object.keys(report.events?.[0] ?? {}).sort()).toEqual(["col", "color", "row", "t", "type"]);
+  });
+
+  it("un nivel antiguo (sin bitacora) no inventa eventos", () => {
+    const report = toNodeReport(
+      { level: 1, pairCount: 2, timeMs: 8_000, undoCount: 0, resetCount: 0 },
+      FALLBACK,
+    );
+
+    expect(report).not.toHaveProperty("events");
+    expect(report.metrics).not.toHaveProperty("eventsDropped");
+  });
+
   it("sin neto ni fecha usa el tiempo activo y la fecha de respaldo", () => {
     const report = toNodeReport(
       { level: 1, pairCount: 2, timeMs: 8_000, undoCount: 0, resetCount: 0 },

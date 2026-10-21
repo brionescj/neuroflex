@@ -1,7 +1,18 @@
 import { LEVELS } from "../levels";
-import type { LevelReport } from "../../attempts/types";
+import type { LevelReport, MetricValue } from "../../attempts/types";
 import { cellsErased, corrections } from "../stats";
-import type { NodeLevelResult } from "../types";
+import type { NodeEvent, NodeLevelResult } from "../types";
+
+/** Un evento como objeto JSON simple (sin campos indefinidos). */
+function eventRecord(event: NodeEvent): Record<string, MetricValue> {
+  const record: Record<string, MetricValue> = {};
+
+  for (const [key, value] of Object.entries(event)) {
+    if (value !== undefined) record[key] = value;
+  }
+
+  return record;
+}
 
 /**
  * Convierte el resultado de un nivel al formato del registro de partidas.
@@ -14,6 +25,7 @@ export function toNodeReport(
 ): LevelReport {
   const level = LEVELS[result.level - 1];
   const net = Math.min(result.activeMsNet ?? result.timeMs, result.timeMs);
+  const hasEvents = (result.events?.length ?? 0) > 0;
 
   return {
     key: String(result.level),
@@ -29,10 +41,13 @@ export function toNodeReport(
       ...(result.stats
         ? { ...result.stats, cellsErased: cellsErased(result.stats) }
         : {}),
+      // Si la bitacora quedo incompleta por el tope, el servidor lo sabe.
+      ...(hasEvents ? { eventsDropped: result.eventsDropped ?? 0 } : {}),
     },
     activeMsGross: result.timeMs,
     activeMsNet: net,
     completedAt: result.completedAt ?? fallbackDate,
+    ...(hasEvents ? { events: (result.events ?? []).map(eventRecord) } : {}),
   };
 }
 

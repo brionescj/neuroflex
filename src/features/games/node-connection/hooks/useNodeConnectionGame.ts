@@ -6,11 +6,13 @@ import { useGameProgress } from "@/features/games/hooks/useGameProgress";
 import {
   advanceStroke,
   connectedCount,
+  isPathComplete,
   isSolved,
   pointToCell,
   sameCell,
   startStroke,
 } from "../board";
+import { createNodeEventLog, type NodeEventLog } from "../events";
 import { getLevel, TOTAL_LEVELS } from "../levels";
 import { emptyStats, removedCells } from "../stats";
 import {
@@ -25,6 +27,7 @@ import { nodeContentVersion, toNodeReport } from "./nodeReport";
 import type {
   Cell,
   NodeColorId,
+  NodeEvent,
   NodeLevelResult,
   NodePaths,
   NodeStats,
@@ -40,6 +43,11 @@ const BLOCKED_FLASH_MS = 250;
 type GamePhase = "idle" | "playing" | "level-complete" | "finished";
 
 const CONTENT_VERSION = nodeContentVersion();
+
+/** Omit que reparte sobre una union (para no perder los campos de cada tipo). */
+type DistributiveOmit<T, K extends keyof T> = T extends unknown
+  ? Omit<T, K>
+  : never;
 
 function reportsOf(results: NodeLevelResult[]) {
   const now = new Date().toISOString();
@@ -78,6 +86,10 @@ export function useNodeConnectionGame() {
   const statsRef = useRef<NodeStats>(emptyStats());
   // El gesto en curso (apoyar y soltar) retrocedio al menos una celda.
   const gestureBacktrackedRef = useRef(false);
+  // Celdas que retrocedio el gesto en curso (lo registra el evento "end").
+  const gestureBackCellsRef = useRef(0);
+  // Bitacora del nivel en curso: cada accion con su tiempo activo.
+  const eventLogRef = useRef<NodeEventLog>(createNodeEventLog());
   const blockedRef = useRef<Cell | null>(null);
   const blockedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -131,6 +143,8 @@ export function useNodeConnectionGame() {
         undoCount: number;
         resetCount: number;
         stats?: NodeStats;
+        events?: NodeEvent[];
+        eventsDropped?: number;
       },
     ) => {
       commitPaths(seed?.paths ?? {});
@@ -143,6 +157,12 @@ export function useNodeConnectionGame() {
       resetCountRef.current = seed?.resetCount ?? 0;
       statsRef.current = seed?.stats ? { ...seed.stats } : emptyStats();
       gestureBacktrackedRef.current = false;
+      gestureBackCellsRef.current = 0;
+      eventLogRef.current = createNodeEventLog(
+        seed
+          ? { events: seed.events ?? [], dropped: seed.eventsDropped ?? 0 }
+          : undefined,
+      );
       clock.reset();
 
       if (seed) clock.restore(seed.elapsedMs, seed.netMs ?? seed.elapsedMs);
@@ -185,6 +205,12 @@ export function useNodeConnectionGame() {
           activeMsNet: snapshot.netMs ?? snapshot.elapsedMs,
           completedAt,
           ...(snapshot.stats ? { stats: snapshot.stats } : {}),
+          ...(snapshot.events
+            ? {
+                events: snapshot.events,
+                eventsDropped: snapshot.eventsDropped ?? 0,
+              }
+            : {}),
         };
 
         void attempt.reportLevel(toNodeReport(result, completedAt));
@@ -201,6 +227,8 @@ export function useNodeConnectionGame() {
         undoCount: snapshot.undoCount,
         resetCount: snapshot.resetCount,
         stats: snapshot.stats,
+        events: snapshot.events,
+        eventsDropped: snapshot.eventsDropped,
       });
     },
     [beginLevel, attempt],
@@ -302,6 +330,8 @@ export function useNodeConnectionGame() {
         resetCount: resetCountRef.current,
         netMs: clock.read().netMs,
         stats: statsRef.current,
+        events: eventLogRef.current.events(),
+        eventsDropped: eventLogRef.current.dropped(),
         results,
         attempt: attempt.current() ?? undefined,
       }),
@@ -356,7 +386,37 @@ export function useNodeConnectionGame() {
     }
   }, []);
 
+  // Anota un evento con el tiempo activo del nivel (el mismo reloj que
+  // `activeMsGross`, que sigue contando tras un F5).
+  const record = useCallback(
+    (event: DistributiveOmit<NodeEvent, "t">) => {
+      eventLogRef.current.push({
+        ...event,
+        t: Math.round(clock.read().grossMs),
+      } as NodeEvent);
+    },
+    [clock],
+  );
+
+  // Anota el fin del trazo en curso: largo, si conecto el par y cuanto
+  // retrocedio. Se llama al soltar el dedo y al completar el nivel (el ultimo
+  // trazo termina ahi, sin un "soltar" aparte).
+  const recordStrokeEnd = useCallback(() => {
+    const color = activeColorRef.current;
+
+    if (!color) return;
+
+    record({
+      type: "end",
+      color,
+      len: pathsRef.current[color]?.length ?? 0,
+      done: isPathComplete(levelData, pathsRef.current, color),
+      back: gestureBackCellsRef.current,
+    });
+  }, [levelData, record]);
+
   const completeLevel = useCallback(() => {
+    recordStrokeEnd();
     endGesture();
     clock.stop();
     const { grossMs, netMs } = clock.read();
@@ -371,6 +431,8 @@ export function useNodeConnectionGame() {
       activeMsNet: netMs,
       completedAt,
       stats: { ...statsRef.current },
+      events: eventLogRef.current.events(),
+      eventsDropped: eventLogRef.current.dropped(),
     };
 
     activeColorRef.current = null;
@@ -381,7 +443,7 @@ export function useNodeConnectionGame() {
 
     setResults((prev) => [...prev, result]);
     setPhase("level-complete");
-  }, [level, levelData, clock, attempt, endGesture]);
+  }, [level, levelData, clock, attempt, endGesture, recordStrokeEnd]);
 
   const flashBlocked = useCallback((cell: Cell) => {
     const previous = blockedRef.current;
@@ -393,6 +455,7 @@ export function useNodeConnectionGame() {
         ...statsRef.current,
         blockedCount: statsRef.current.blockedCount + 1,
       };
+      record({ type: "blocked", row: cell.row, col: cell.col });
 
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
         navigator.vibrate(12);
@@ -405,7 +468,7 @@ export function useNodeConnectionGame() {
       blockedRef.current = null;
       setBlockedCell(null);
     }, BLOCKED_FLASH_MS);
-  }, []);
+  }, [record]);
 
   /**
    * Los tres gestos reciben la posicion del puntero en unidades de celda
@@ -415,11 +478,8 @@ export function useNodeConnectionGame() {
     (fx: number, fy: number) => {
       if (phase !== "playing") return;
 
-      const started = startStroke(
-        levelData,
-        pathsRef.current,
-        pointToCell(levelData, fx, fy),
-      );
+      const cell = pointToCell(levelData, fx, fy);
+      const started = startStroke(levelData, pathsRef.current, cell);
 
       if (!started) return;
 
@@ -437,13 +497,22 @@ export function useNodeConnectionGame() {
           : {}),
       };
       gestureBacktrackedRef.current = false;
+      gestureBackCellsRef.current = 0;
+
+      record({
+        type: "start",
+        color: started.color,
+        row: cell.row,
+        col: cell.col,
+        ...(restarted > 0 ? { restartCells: restarted } : {}),
+      });
 
       strokeBaseRef.current = pathsRef.current;
       activeColorRef.current = started.color;
       setActiveColor(started.color);
       commitPaths(started.paths);
     },
-    [phase, levelData, commitPaths],
+    [phase, levelData, commitPaths, record],
   );
 
   const pointerMove = useCallback(
@@ -475,6 +544,7 @@ export function useNodeConnectionGame() {
             backtrackCells: statsRef.current.backtrackCells + erased,
           };
           gestureBacktrackedRef.current = true;
+          gestureBackCellsRef.current += erased;
         }
 
         commitPaths(next);
@@ -491,6 +561,7 @@ export function useNodeConnectionGame() {
 
     const base = strokeBaseRef.current;
 
+    recordStrokeEnd();
     endGesture();
     activeColorRef.current = null;
     setActiveColor(null);
@@ -501,7 +572,7 @@ export function useNodeConnectionGame() {
       setCanUndo(true);
       persist();
     }
-  }, [persist, endGesture]);
+  }, [persist, endGesture, recordStrokeEnd]);
 
   const undo = useCallback(() => {
     if (phase !== "playing") return;
@@ -511,10 +582,11 @@ export function useNodeConnectionGame() {
 
     historyRef.current = historyRef.current.slice(0, -1);
     undoCountRef.current += 1;
+    record({ type: "undo" });
     setCanUndo(historyRef.current.length > 0);
     commitPaths(previous);
     persist();
-  }, [phase, commitPaths, persist]);
+  }, [phase, commitPaths, persist, record]);
 
   // Reiniciar tambien se puede deshacer: un toque por error no pierde el trabajo.
   const reset = useCallback(() => {
@@ -525,16 +597,18 @@ export function useNodeConnectionGame() {
       -HISTORY_LIMIT,
     );
     resetCountRef.current += 1;
+
+    const erased = removedCells(levelData, pathsRef.current, {});
+
     statsRef.current = {
       ...statsRef.current,
-      resetCells:
-        statsRef.current.resetCells +
-        removedCells(levelData, pathsRef.current, {}),
+      resetCells: statsRef.current.resetCells + erased,
     };
+    record({ type: "reset", cells: erased });
     setCanUndo(true);
     commitPaths({});
     persist();
-  }, [phase, levelData, commitPaths, persist]);
+  }, [phase, levelData, commitPaths, persist, record]);
 
   const continueToNextLevel = useCallback(() => {
     if (level >= TOTAL_LEVELS) return;

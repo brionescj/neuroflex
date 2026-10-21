@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
+import type { SequenceColorId } from "../hooks/colorSequenceConfig";
 
-export type SequenceColorId = "blue" | "green" | "orange" | "red";
+export type { SequenceColorId };
 
 export const SEQUENCE_COLORS: Array<{
   id: SequenceColorId;

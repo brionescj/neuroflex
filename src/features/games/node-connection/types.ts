@@ -62,6 +62,37 @@ export type NodeStats = {
   blockedCount: number;
 };
 
+/**
+ * Lo que hizo el jugador dentro de un nivel, con `t` en ms de tiempo activo
+ * desde el inicio del nivel (sigue contando tras un F5):
+ * - start: apoyo el dedo e inicio o retomo un trazo; `restartCells` si al
+ *   hacerlo borro parte de una ruta ya dibujada.
+ * - end: solto el dedo; `len` es el largo del trazo, `done` si conecto el par
+ *   y `back` las celdas que retrocedio durante el gesto.
+ * - undo / reset: uso "Deshacer" / "Rehacer tablero" (`cells`: lo que borro).
+ * - blocked: el trazo choco con una celda ocupada.
+ */
+export type NodeEvent =
+  | {
+      t: number;
+      type: "start";
+      color: NodeColorId;
+      row: number;
+      col: number;
+      restartCells?: number;
+    }
+  | {
+      t: number;
+      type: "end";
+      color: NodeColorId;
+      len: number;
+      done: boolean;
+      back: number;
+    }
+  | { t: number; type: "undo" }
+  | { t: number; type: "reset"; cells: number }
+  | { t: number; type: "blocked"; row: number; col: number };
+
 export type NodeLevelResult = {
   level: number;
 
@@ -84,4 +115,10 @@ export type NodeLevelResult = {
 
   /** Ausente en partidas guardadas antes de registrar estos datos. */
   stats?: NodeStats;
+
+  /** Bitacora del nivel. Ausente en partidas guardadas antes de registrarla. */
+  events?: NodeEvent[];
+
+  /** Eventos que no se guardaron por superar el tope de la bitacora. */
+  eventsDropped?: number;
 };

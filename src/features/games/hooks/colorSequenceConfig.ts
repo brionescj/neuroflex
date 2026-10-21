@@ -1,3 +1,9 @@
+/**
+ * Vive aqui (y no en ColorGrid.tsx) para que las reglas puras no dependan de
+ * un componente: ColorGrid lo vuelve a exportar.
+ */
+export type SequenceColorId = "blue" | "green" | "orange" | "red";
+
 export const MIN_SEQUENCE_LENGTH = 2;
 
 /**
@@ -30,7 +36,18 @@ export type LevelResult = {
   activeMsNet?: number;
   /** ISO 8601. */
   completedAt?: string;
+  /** La secuencia que se mostro. Ausente en partidas guardadas antes de registrar toques. */
+  shown?: SequenceColorId[];
+  /** Tiempo activo que duro la iluminacion, hasta que empezo a responder. */
+  illuminationMs?: number;
+  /**
+   * Cada color que toco, en orden, con los ms desde que empezo a responder
+   * (tiempo activo). Siempre trae tantos toques como colores tiene la secuencia.
+   */
+  taps?: ColorTap[];
 };
+
+export type ColorTap = { c: SequenceColorId; t: number };
 
 /**
  * Cambia cuando cambian las reglas o el contenido del juego, para no mezclar

@@ -49,6 +49,11 @@ export type LevelReport = {
   completedAt: string;
   /** Solo mini casos: el orden final elegido, para que el servidor puntue. */
   orderedOptionKeys?: string[];
+  /**
+   * Seriacion y nodos: lo que hizo el estudiante dentro del nivel, con su
+   * tiempo. El servidor lo valida, lo acota y calcula los indicadores.
+   */
+  events?: Record<string, MetricValue>[];
 };
 
 export type AttemptCloseStatus = "finished" | "failed";

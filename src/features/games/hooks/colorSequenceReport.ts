@@ -1,5 +1,9 @@
 import type { LevelReport } from "../attempts/types";
-import type { LevelResult } from "./colorSequenceConfig";
+import type {
+  ColorTap,
+  LevelResult,
+  SequenceColorId,
+} from "./colorSequenceConfig";
 import { passThresholdPercent } from "./colorSequenceRules";
 
 /**
@@ -9,6 +13,18 @@ import { passThresholdPercent } from "./colorSequenceRules";
  */
 export function colorSequenceResultKey(level: number, tryNumber: number): string {
   return tryNumber <= 1 ? String(level) : `${level}.${tryNumber}`;
+}
+
+type WithFineEvents = LevelResult & { shown: SequenceColorId[]; taps: ColorTap[] };
+
+/** Tiene la secuencia mostrada y un toque por color (si no, no se informan). */
+function hasFineEvents(result: LevelResult): result is WithFineEvents {
+  return (
+    result.shown !== undefined &&
+    result.taps !== undefined &&
+    result.shown.length === result.sequenceLength &&
+    result.taps.length === result.sequenceLength
+  );
 }
 
 /**
@@ -22,6 +38,7 @@ export function toColorSequenceReport(
 ): LevelReport {
   const gross = result.activeMsGross ?? result.timeMs;
   const net = Math.min(result.activeMsNet ?? gross, gross);
+  const hasTaps = hasFineEvents(result);
 
   return {
     key: colorSequenceResultKey(result.level, result.tryNumber),
@@ -34,9 +51,15 @@ export function toColorSequenceReport(
       thresholdPercent: passThresholdPercent(result.level),
       passed: result.passed,
       timeMs: result.timeMs,
+      // La secuencia y el inicio de la respuesta explican los toques; sin
+      // ellos (partida anterior al registro) no se inventan.
+      ...(hasTaps
+        ? { shownSequence: [...result.shown], illuminationMs: result.illuminationMs ?? 0 }
+        : {}),
     },
     activeMsGross: gross,
     activeMsNet: net,
     completedAt: result.completedAt ?? fallbackDate,
+    ...(hasTaps ? { events: result.taps.map((tap) => ({ c: tap.c, t: tap.t })) } : {}),
   };
 }

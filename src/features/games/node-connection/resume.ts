@@ -6,11 +6,13 @@ import {
 import type { AttemptHandle } from "../attempts/types";
 import { arePathsValid, isSolved } from "./board";
 import { NODE_COLORS } from "./colors";
+import { cleanDroppedCount, cleanNodeEvents } from "./events";
 import { LEVELS, TOTAL_LEVELS } from "./levels";
 import { cleanStats } from "./stats";
 import type {
   Cell,
   NodeColorId,
+  NodeEvent,
   NodeLevelResult,
   NodePaths,
   NodeStats,
@@ -42,6 +44,14 @@ export type NodeConnectionProgress = {
   netMs?: number;
   /** Contadores del nivel en curso (ausentes en avances anteriores a registrarlos). */
   stats?: NodeStats;
+  /**
+   * Bitacora del nivel en curso (trazos, deshacer, reinicios, bloqueos).
+   * Los niveles ya terminados no la conservan: salen hacia la base apenas se
+   * completan.
+   */
+  events?: NodeEvent[];
+  /** Eventos del nivel en curso que superaron el tope de la bitacora. */
+  eventsDropped?: number;
   results: NodeLevelResult[];
   /** Partida a la que pertenece (ausente en avances anteriores al registro). */
   attempt?: AttemptHandle;
@@ -223,6 +233,8 @@ export function parseNodeConnectionProgress(
   const netMs = optionalTimeMs(r.netMs);
   const stats = cleanStats(r.stats);
   const attempt = parseAttemptHandle(r.attempt);
+  const events = phase === "playing" ? cleanNodeEvents(r.events) : [];
+  const eventsDropped = phase === "playing" ? cleanDroppedCount(r.eventsDropped) : 0;
 
   return {
     version: 1,
@@ -235,6 +247,8 @@ export function parseNodeConnectionProgress(
     // Un neto mayor que el bruto no puede ser cierto: se ignora.
     ...(netMs !== undefined && netMs <= r.elapsedMs ? { netMs } : {}),
     ...(stats ? { stats } : {}),
+    ...(events.length > 0 ? { events } : {}),
+    ...(eventsDropped > 0 ? { eventsDropped } : {}),
     results,
     ...(attempt ? { attempt } : {}),
   };
@@ -249,6 +263,8 @@ export function buildNodeConnectionSnapshot(input: {
   resetCount: number;
   netMs?: number;
   stats?: NodeStats;
+  events?: NodeEvent[];
+  eventsDropped?: number;
   results: NodeLevelResult[];
   attempt?: AttemptHandle;
 }): NodeConnectionProgress {
@@ -266,9 +282,21 @@ export function buildNodeConnectionSnapshot(input: {
       ? { netMs: Math.round(input.netMs) }
       : {}),
     ...(keepPaths && input.stats ? { stats: input.stats } : {}),
-    results: input.results,
+    ...(keepPaths && input.events && input.events.length > 0
+      ? { events: input.events }
+      : {}),
+    ...(keepPaths && input.eventsDropped ? { eventsDropped: input.eventsDropped } : {}),
+    // La bitacora de un nivel terminado ya salio hacia la base: no se repite
+    // en cada guardado (pesaria cada vez mas).
+    results: input.results.map(withoutEvents),
     ...(input.attempt ? { attempt: input.attempt } : {}),
   };
+}
+
+function withoutEvents(result: NodeLevelResult): NodeLevelResult {
+  const { events: _events, eventsDropped: _dropped, ...rest } = result;
+
+  return rest;
 }
 
 /** True si el blob guardado corresponde a un tablero ya resuelto. */

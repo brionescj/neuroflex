@@ -8,6 +8,7 @@ import type { AttemptHandle } from "../attempts/types";
 import {
   MAX_SAVED_LEVEL,
   MIN_LEVELS,
+  type ColorTap,
   type LevelResult,
 } from "./colorSequenceConfig";
 import {
@@ -58,9 +59,15 @@ const SAVED_PHASES: ColorSequenceSavedPhase[] = [
 const COLOR_IDS = new Set<string>(SEQUENCE_COLORS.map((c) => c.id));
 
 /** Lo que trae un resultado guardado: los campos de los reintentos pueden faltar. */
-type RawLevelResult = Omit<LevelResult, "tryNumber" | "passed"> & {
+type RawLevelResult = Omit<
+  LevelResult,
+  "tryNumber" | "passed" | "shown" | "taps" | "illuminationMs"
+> & {
   tryNumber?: unknown;
   passed?: unknown;
+  shown?: unknown;
+  taps?: unknown;
+  illuminationMs?: unknown;
 };
 
 function isLevelResult(value: unknown): value is RawLevelResult {
@@ -115,7 +122,55 @@ function cleanLevelResult(
   if (net !== undefined) clean.activeMsNet = net;
   if (completedAt !== undefined) clean.completedAt = completedAt;
 
+  // Secuencia, inicio de la respuesta y toques van juntos: si algo no cuadra
+  // se descartan los tres y el nivel se conserva como si no los tuviera.
+  const shown = cleanColors(result.shown, result.sequenceLength);
+  const taps = cleanTaps(result.taps, result.sequenceLength);
+  const illumination = optionalTimeMs(result.illuminationMs);
+
+  if (shown && taps && illumination !== undefined) {
+    clean.shown = shown;
+    clean.taps = taps;
+    clean.illuminationMs = illumination;
+  }
+
   return clean;
+}
+
+function cleanColors(raw: unknown, length: number): SequenceColorId[] | undefined {
+  return Array.isArray(raw) &&
+    raw.length === length &&
+    raw.every((c) => typeof c === "string" && COLOR_IDS.has(c))
+    ? (raw as SequenceColorId[])
+    : undefined;
+}
+
+function cleanTaps(raw: unknown, length: number): ColorTap[] | undefined {
+  if (!Array.isArray(raw) || raw.length !== length) return undefined;
+
+  const taps: ColorTap[] = [];
+  let previous = 0;
+
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) return undefined;
+
+    const { c, t } = item as Record<string, unknown>;
+    const time = optionalTimeMs(t);
+
+    if (
+      typeof c !== "string" ||
+      !COLOR_IDS.has(c) ||
+      time === undefined ||
+      time < previous
+    ) {
+      return undefined;
+    }
+
+    previous = time;
+    taps.push({ c: c as SequenceColorId, t: time });
+  }
+
+  return taps;
 }
 
 /** Valida un blob guardado; devuelve null si algo no cuadra. */

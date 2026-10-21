@@ -38,6 +38,48 @@ function threeFails(level: number): LevelResult[] {
   return [1, 2, 3].map((t) => result(level, t, false));
 }
 
+describe("los toques guardados en un resultado", () => {
+  const length = sequenceLengthOf(1);
+  const withTaps = (): LevelResult => ({
+    ...result(1, 1, true),
+    shown: seq(length),
+    illuminationMs: 1800,
+    taps: seq(length).map((c, i) => ({ c, t: 700 + i * 500 })),
+  });
+
+  it("se conservan al reanudar", () => {
+    const snap = buildColorSequenceSnapshot("level-result", 1, 1, seq(length), [withTaps()]);
+
+    expect(parseColorSequenceProgress(snap)?.levelResults[0]).toEqual(withTaps());
+  });
+
+  it("si algo no cuadra se descartan los tres campos y el nivel se conserva", () => {
+    const broken: LevelResult[] = [
+      { ...withTaps(), taps: withTaps().taps?.slice(1) },
+      { ...withTaps(), shown: ["blue", "morado"] as never },
+      { ...withTaps(), illuminationMs: -5 },
+      { ...withTaps(), taps: [{ c: "blue", t: 900 }, { c: "green", t: 100 }] },
+    ];
+
+    for (const bad of broken) {
+      const snap = buildColorSequenceSnapshot("level-result", 1, 1, seq(length), [bad]);
+      const parsed = parseColorSequenceProgress(snap);
+
+      expect(parsed).not.toBeNull();
+      expect(parsed?.levelResults[0]).not.toHaveProperty("taps");
+      expect(parsed?.levelResults[0]).not.toHaveProperty("shown");
+      expect(parsed?.levelResults[0]).not.toHaveProperty("illuminationMs");
+      expect(parsed?.levelResults[0]?.correctCount).toBe(length);
+    }
+  });
+
+  it("un avance anterior, sin toques, sigue siendo valido", () => {
+    const snap = buildColorSequenceSnapshot("level-result", 1, 1, seq(length), passedLevels(1));
+
+    expect(parseColorSequenceProgress(snap)).toEqual(snap);
+  });
+});
+
 describe("parseColorSequenceProgress", () => {
   it("acepta el inicio de un intento (iluminando)", () => {
     const snap = buildColorSequenceSnapshot("illuminating", 3, 1, seq(4), passedLevels(2));

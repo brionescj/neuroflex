@@ -162,6 +162,120 @@ beforeEach(() => {
   });
 });
 
+describe("eventos finos al guardar un nivel", () => {
+  const shown = ["blue", "red", "green", "orange"];
+  const seriacionConEventos = (answers: string[], overrides: Partial<LevelReport> = {}) =>
+    level(3, {
+      metrics: {
+        sequenceLength: 4,
+        correctCount: answers.filter((c, i) => c === shown[i]).length,
+        shownSequence: shown,
+        illuminationMs: 3600,
+      },
+      events: answers.map((c, i) => ({ c, t: 1000 + i * 800 })),
+      ...overrides,
+    });
+
+  async function attemptFor(game: "color-sequence" | "node-connection", id = "attempt-ev01") {
+    const attempt = await ensureAttempt("11111111-1", game, info(id));
+
+    return { attemptId: id, student: attempt?.student };
+  }
+
+  it("seriacion: guarda los toques y calcula donde fallo y que tipo de error fue", async () => {
+    const attempt = await attemptFor("color-sequence");
+
+    await saveLevelResult("11111111-1", "color-sequence", attempt, "sess-aaaaaaaa", device,
+      seriacionConEventos(["blue", "green", "red", "orange"]));
+
+    const row = db.results[0] as Doc;
+
+    expect(row.events).toHaveLength(4);
+    expect(row.metrics).toMatchObject({
+      shownSequence: shown,
+      firstErrorPosition: 2,
+      swapErrors: 1,
+      substitutionErrors: 0,
+      firstTapMs: 1000,
+      maxPauseMs: 800,
+      // 2 de 4 (50 %) no alcanza el 60 % del nivel 3: lo decide el servidor.
+      passed: false,
+    });
+    expect(row.metrics.positionCorrect).toEqual([true, false, false, true]);
+  });
+
+  it("seriacion: lo que el navegador diga del analisis se ignora", async () => {
+    const attempt = await attemptFor("color-sequence");
+    const report = seriacionConEventos(["blue", "red", "green", "orange"]);
+
+    report.metrics = { ...report.metrics, firstErrorPosition: 1, swapErrors: 9 };
+
+    await saveLevelResult("11111111-1", "color-sequence", attempt, "sess-aaaaaaaa", device, report);
+
+    expect(db.results[0]?.metrics).toMatchObject({ firstErrorPosition: null, swapErrors: 0 });
+  });
+
+  it("seriacion: sin eventos guarda events vacio y no inventa analisis", async () => {
+    const attempt = await attemptFor("color-sequence");
+
+    await saveLevelResult("11111111-1", "color-sequence", attempt, "sess-aaaaaaaa", device, level(3));
+
+    expect(db.results[0]?.events).toEqual([]);
+    expect(db.results[0]?.metrics).not.toHaveProperty("firstErrorPosition");
+  });
+
+  it("reenviar el nivel sin eventos no borra los que ya llegaron", async () => {
+    const attempt = await attemptFor("color-sequence");
+
+    await saveLevelResult("11111111-1", "color-sequence", attempt, "sess-aaaaaaaa", device,
+      seriacionConEventos(["blue", "red", "green", "orange"]));
+    await saveLevelResult("11111111-1", "color-sequence", attempt, "sess-aaaaaaaa", device,
+      seriacionConEventos(["blue", "red", "green", "orange"], { events: undefined }));
+
+    expect(db.results).toHaveLength(1);
+    expect(db.results[0]?.events).toHaveLength(4);
+  });
+
+  it("nodos: guarda la bitacora y calcula planificacion y orden de colores", async () => {
+    const attempt = await attemptFor("node-connection", "attempt-ev02");
+
+    await saveLevelResult("11111111-1", "node-connection", attempt, "sess-aaaaaaaa", device,
+      level(2, {
+        metrics: { pairCount: 2, undoCount: 0, resetCount: 0 },
+        events: [
+          { t: 7400, type: "start", color: "red", row: 2, col: 2 },
+          { t: 8100, type: "end", color: "red", len: 5, done: true, back: 0 },
+          { t: 6200, type: "start", color: "blue", row: 0, col: 0 },
+          { t: 7000, type: "end", color: "blue", len: 3, done: true, back: 0 },
+        ],
+      }));
+
+    const row = db.results[0] as Doc;
+
+    expect(row.events.map((e: Doc) => e.t)).toEqual([6200, 7000, 7400, 8100]);
+    expect(row.metrics).toMatchObject({
+      firstStrokeMs: 6200,
+      firstStrokeColor: "blue",
+      colorOrder: ["blue", "red"],
+      strokeStarts: 2,
+    });
+  });
+
+  it("nodos: eventos inutilizables no impiden guardar el nivel", async () => {
+    const attempt = await attemptFor("node-connection", "attempt-ev03");
+
+    await saveLevelResult("11111111-1", "node-connection", attempt, "sess-aaaaaaaa", device,
+      level(2, {
+        metrics: { pairCount: 2, undoCount: 0, resetCount: 0 },
+        events: [{ t: 1, type: "teleport" }],
+      }));
+
+    expect(db.results).toHaveLength(1);
+    expect(db.results[0]?.events).toEqual([]);
+    expect(db.results[0]?.metrics).not.toHaveProperty("firstStrokeMs");
+  });
+});
+
 describe("ensureAttempt", () => {
   it("crea el intento con la foto del estudiante y numero 1", async () => {
     const attempt = await ensureAttempt("11111111-1", "color-sequence", info("attempt-0001"));

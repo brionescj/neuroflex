@@ -128,6 +128,101 @@ describe("parseLevelReport", () => {
     ).toBe(true);
   });
 
+  describe("eventos finos", () => {
+    const withEvents = {
+      ...seriacion,
+      metrics: {
+        ...seriacion.metrics,
+        shownSequence: ["blue", "red", "green", "orange", "blue"],
+        illuminationMs: 4500,
+      },
+      events: [
+        { c: "blue", t: 900 },
+        { c: "red", t: 1600 },
+        { c: "green", t: 2300 },
+        { c: "orange", t: 3000 },
+        { c: "red", t: 3700 },
+      ],
+    };
+
+    it("seriacion: conserva los toques coherentes con los aciertos", () => {
+      const parsed = parseLevelReport("color-sequence", withEvents, NOW);
+
+      expect(parsed.ok && parsed.value.events).toHaveLength(5);
+      expect(parsed.ok && parsed.value.metrics.shownSequence).toHaveLength(5);
+    });
+
+    it("seriacion: toques que no calzan con los aciertos se descartan, el nivel no", () => {
+      const parsed = parseLevelReport(
+        "color-sequence",
+        { ...withEvents, metrics: { ...withEvents.metrics, correctCount: 5 } },
+        NOW,
+      );
+
+      expect(parsed.ok).toBe(true);
+      expect(parsed.ok && parsed.value.events).toBeUndefined();
+      expect(parsed.ok && parsed.value.metrics).toMatchObject({
+        correctCount: 5,
+        eventsDiscarded: true,
+      });
+    });
+
+    it("seriacion sin eventos (cliente antiguo) sigue siendo valido", () => {
+      const parsed = parseLevelReport("color-sequence", seriacion, NOW);
+
+      expect(parsed.ok && parsed.value.events).toBeUndefined();
+      expect(parsed.ok && parsed.value.metrics).not.toHaveProperty("eventsDiscarded");
+    });
+
+    it("nodos: limpia los eventos y conserva el nivel aunque algunos esten mal", () => {
+      const parsed = parseLevelReport(
+        "node-connection",
+        {
+          ...seriacion,
+          metrics: { pairCount: 3, undoCount: 1, resetCount: 0, eventsDropped: 2 },
+          events: [
+            { t: 3000, type: "start", color: "red", row: 0, col: 0 },
+            { t: 3500, type: "start", color: "nope", row: 0, col: 0 },
+            { t: 4000, type: "undo" },
+          ],
+        },
+        NOW,
+      );
+
+      expect(parsed.ok && parsed.value.events).toHaveLength(2);
+    });
+
+    it("nodos: un contador de eventos descartados invalido se rechaza", () => {
+      expect(
+        parseLevelReport(
+          "node-connection",
+          {
+            ...seriacion,
+            metrics: { pairCount: 3, undoCount: 0, resetCount: 0, eventsDropped: -1 },
+          },
+          NOW,
+        ).ok,
+      ).toBe(false);
+    });
+
+    it("mini casos ignora los eventos", () => {
+      const parsed = parseLevelReport(
+        "mini-cases",
+        {
+          ...seriacion,
+          key: "caso-1",
+          index: 1,
+          metrics: { decisionTimeMs: 1000 },
+          orderedOptionKeys: ["a", "b", "c", "d"],
+          events: [{ t: 1, type: "undo" }],
+        },
+        NOW,
+      );
+
+      expect(parsed.ok && parsed.value.events).toBeUndefined();
+    });
+  });
+
   it("el neto nunca supera al bruto", () => {
     const parsed = parseLevelReport(
       "color-sequence",

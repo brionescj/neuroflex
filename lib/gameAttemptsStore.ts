@@ -1,6 +1,12 @@
 import { createHash } from "node:crypto";
 
 import {
+  analyzeColorSequenceResponse,
+  analyzeNodeEvents,
+  sanitizeColorTaps,
+  sanitizeNodeEvents,
+} from "./attemptEvents";
+import {
   buildStudentSnapshot,
   sanitizeMiniCaseBehavior,
   scoreColorSequenceLevel,
@@ -143,6 +149,8 @@ async function upsertResult(
   report: LevelReport,
 ): Promise<SaveLevelOutcome> {
   let metrics = report.metrics;
+  // Eventos finos ya limpios; sin ellos el documento conserva los que tuviera.
+  let events: unknown[] | undefined;
 
   if (gameId === "color-sequence") {
     // Si paso el nivel lo decide el servidor con los umbrales: lo que diga el
@@ -154,6 +162,28 @@ async function upsertResult(
         ...metrics,
         ...scoreColorSequenceLevel(report.index, sequenceLength, correctCount),
       };
+    }
+
+    // Donde fallo, que tipo de error fue y el ritmo de la respuesta salen de
+    // la secuencia y los toques, no de lo que diga el navegador.
+    const taps = sanitizeColorTaps(report.events);
+    const shown = metrics.shownSequence;
+
+    if (taps && Array.isArray(shown) && shown.length === taps.length) {
+      metrics = {
+        ...metrics,
+        ...analyzeColorSequenceResponse(shown as string[], taps),
+      };
+      events = taps;
+    }
+  }
+
+  if (gameId === "node-connection") {
+    const clean = sanitizeNodeEvents(report.events);
+
+    if (clean.length > 0) {
+      metrics = { ...metrics, ...analyzeNodeEvents(clean) };
+      events = clean;
     }
   }
 
@@ -207,12 +237,15 @@ async function upsertResult(
         activeMsNet: report.activeMsNet,
         completedAt: report.completedAt,
         device,
+        // Reenviar un resultado sin eventos (p. ej. al archivar una partida
+        // reanudada) no borra los que ya llegaron.
+        ...(events ? { events } : {}),
       },
       $setOnInsert: {
         studentRut: rut,
         gameId,
         student: attempt.student,
-        events: [],
+        ...(events ? {} : { events: [] }),
       },
     },
     { upsert: true },

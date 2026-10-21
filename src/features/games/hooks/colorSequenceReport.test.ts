@@ -20,6 +20,52 @@ function result(partial: Partial<LevelResult>): LevelResult {
   };
 }
 
+describe("toColorSequenceReport: toques de la respuesta", () => {
+  const withTaps = result({
+    level: 2,
+    sequenceLength: 3,
+    correctCount: 2,
+    shown: ["blue", "red", "green"],
+    illuminationMs: 2700,
+    taps: [
+      { c: "blue", t: 900 },
+      { c: "green", t: 1700 },
+      { c: "green", t: 2600 },
+    ],
+  });
+
+  it("lleva la secuencia mostrada en las metricas y los toques como eventos", () => {
+    const report = toColorSequenceReport(withTaps, FALLBACK);
+
+    expect(report.metrics).toMatchObject({
+      shownSequence: ["blue", "red", "green"],
+      illuminationMs: 2700,
+    });
+    expect(report.events).toEqual([
+      { c: "blue", t: 900 },
+      { c: "green", t: 1700 },
+      { c: "green", t: 2600 },
+    ]);
+  });
+
+  it("un resultado antiguo (sin toques) no inventa nada", () => {
+    const report = toColorSequenceReport(result({}), FALLBACK);
+
+    expect(report.metrics).not.toHaveProperty("shownSequence");
+    expect(report).not.toHaveProperty("events");
+  });
+
+  it("si los toques no son uno por color, no se informan", () => {
+    const report = toColorSequenceReport(
+      { ...withTaps, taps: withTaps.taps?.slice(0, 2) },
+      FALLBACK,
+    );
+
+    expect(report).not.toHaveProperty("events");
+    expect(report.metrics).not.toHaveProperty("shownSequence");
+  });
+});
+
 describe("toColorSequenceReport", () => {
   it("arma el reporte de un intento con su umbral y sus tiempos activos", () => {
     const report = toColorSequenceReport(

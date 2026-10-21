@@ -22,7 +22,12 @@ export type GameLevelResultDocument = {
   student: Record<string, unknown>;
   /** Metricas propias de cada juego (ver lib/gameAttempts.ts). */
   metrics: Record<string, unknown>;
-  /** Eventos crudos (toques, trazos). Vacio hasta que se instrumenten. */
+  /**
+   * Eventos finos del nivel, con su tiempo (ver lib/attemptEvents.ts):
+   * toques de la respuesta en seriacion; trazos, deshacer, reinicios y
+   * bloqueos en nodos. Vacio en mini casos (su detalle va en `metrics`) y en
+   * niveles jugados antes de registrarlos.
+   */
   events: unknown[];
   /** Tiempo con la pestana visible. */
   activeMsGross: number;

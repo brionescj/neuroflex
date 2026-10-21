@@ -8,7 +8,7 @@ import {
   parseNodeConnectionProgress,
   serializePaths,
 } from "./resume";
-import type { Cell, NodeLevelResult, NodePaths } from "./types";
+import type { Cell, NodeEvent, NodeLevelResult, NodePaths } from "./types";
 
 const c = (row: number, col: number): Cell => ({ row, col });
 
@@ -48,6 +48,88 @@ describe("serializePaths", () => {
 
   it("omite los colores sin celdas", () => {
     expect(serializePaths({ red: [] })).toEqual([]);
+  });
+});
+
+describe("bitacora de eventos en el avance guardado", () => {
+  const events: NodeEvent[] = [
+    { t: 800, type: "start", color: "red", row: 0, col: 3 },
+    { t: 1900, type: "end", color: "red", len: 2, done: false, back: 0 },
+    { t: 2500, type: "undo" },
+  ];
+
+  it("la del nivel en curso se conserva al reanudar, con lo que se dejo fuera", () => {
+    const snapshot = buildNodeConnectionSnapshot({
+      phase: "playing",
+      level: 1,
+      paths: partial,
+      elapsedMs: 3000,
+      undoCount: 1,
+      resetCount: 0,
+      events,
+      eventsDropped: 4,
+      results: [],
+    });
+    const parsed = parseNodeConnectionProgress(snapshot);
+
+    expect(parsed?.events).toEqual(events);
+    expect(parsed?.eventsDropped).toBe(4);
+  });
+
+  it("fuera de un nivel en curso no se guarda", () => {
+    const snapshot = buildNodeConnectionSnapshot({
+      phase: "level-complete",
+      level: 1,
+      paths: {},
+      elapsedMs: 0,
+      undoCount: 0,
+      resetCount: 0,
+      events,
+      results: [result(1)],
+    });
+
+    expect(snapshot).not.toHaveProperty("events");
+  });
+
+  it("los niveles terminados no repiten su bitacora en cada guardado", () => {
+    const withEvents: NodeLevelResult = { ...result(1), events, eventsDropped: 2 };
+    const snapshot = buildNodeConnectionSnapshot({
+      phase: "playing",
+      level: 2,
+      paths: {},
+      elapsedMs: 1000,
+      undoCount: 0,
+      resetCount: 0,
+      results: [withEvents],
+    });
+
+    expect(snapshot.results[0]).not.toHaveProperty("events");
+    expect(snapshot.results[0]).not.toHaveProperty("eventsDropped");
+    expect(snapshot.results[0]?.level).toBe(1);
+  });
+
+  it("un evento malo se descarta y el avance sigue siendo valido", () => {
+    const snapshot = {
+      ...buildNodeConnectionSnapshot({
+        phase: "playing",
+        level: 1,
+        paths: partial,
+        elapsedMs: 3000,
+        undoCount: 0,
+        resetCount: 0,
+        results: [],
+      }),
+      events: [...events, { t: 5, type: "teleport" }, null],
+    };
+
+    expect(parseNodeConnectionProgress(snapshot)?.events).toEqual(events);
+  });
+
+  it("un avance anterior, sin bitacora, sigue siendo valido", () => {
+    const snapshot = playing(1, partial, []);
+
+    expect(snapshot).not.toHaveProperty("events");
+    expect(parseNodeConnectionProgress(snapshot)).toEqual(snapshot);
   });
 });
 

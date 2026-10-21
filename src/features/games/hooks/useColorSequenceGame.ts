@@ -7,6 +7,7 @@ import {
   COLOR_SEQUENCE_CONTENT_VERSION,
   MIN_LEVELS,
   MIN_SEQUENCE_LENGTH,
+  type ColorTap,
   type LevelResult,
 } from "./colorSequenceConfig";
 import { buildSequence } from "./colorSequenceBuild";
@@ -61,6 +62,10 @@ export function useColorSequenceGame() {
 
   const answersRef = useRef<SequenceColorId[]>([]);
   const firstClickAtRef = useRef<number | null>(null);
+  // Cada toque de la respuesta con su tiempo (activo) desde que empezo a
+  // responder, y cuanto duro la iluminacion hasta ese momento.
+  const tapsRef = useRef<ColorTap[]>([]);
+  const answerStartRef = useRef(0);
   const archivedRef = useRef(false);
 
   const attempt = useGameAttempt("color-sequence", COLOR_SEQUENCE_CONTENT_VERSION);
@@ -269,6 +274,8 @@ export function useColorSequenceGame() {
         if (cancelled) return;
         answersRef.current = [];
         firstClickAtRef.current = null;
+        tapsRef.current = [];
+        answerStartRef.current = Math.round(clock.read().grossMs);
         setPhase("answering");
       }, totalDuration),
     );
@@ -290,6 +297,16 @@ export function useColorSequenceGame() {
       }
 
       answersRef.current = [...answersRef.current, colorId];
+      tapsRef.current = [
+        ...tapsRef.current,
+        {
+          c: colorId,
+          t: Math.max(
+            0,
+            Math.round(clock.read().grossMs) - answerStartRef.current,
+          ),
+        },
+      ];
 
       if (answersRef.current.length < sequence.length) {
         return;
@@ -320,6 +337,9 @@ export function useColorSequenceGame() {
         activeMsGross: grossMs,
         activeMsNet: netMs,
         completedAt,
+        shown: [...sequence],
+        illuminationMs: answerStartRef.current,
+        taps: tapsRef.current,
       };
 
       void attempt.reportLevel(toColorSequenceReport(result, completedAt));
