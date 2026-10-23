@@ -333,5 +333,7 @@ describe("documentos para la base", () => {
     });
 
     await expect(unlock.validate()).resolves.toBeUndefined();
-  });
+    // Validar cientos de documentos con mongoose tarda varios segundos en una
+    // maquina lenta (en Windows pasaba de los 5 s por defecto).
+  }, 30_000);
 });

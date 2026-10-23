@@ -8,13 +8,11 @@ import {
   type ApiResponse,
   type Admin,
   type Student,
-  type Teacher,
   type UserRole,
 } from "@/types";
 
 export type ProfileDetails =
   | ({ role: "student" } & Student)
-  | ({ role: "teacher" } & Teacher)
   | ({ role: "admin" } & Admin);
 
 export async function getProfileDetails(

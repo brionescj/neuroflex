@@ -40,10 +40,6 @@ function readOnlyFields(details: ProfileDetails) {
     ];
   }
 
-  if (details.role === "teacher") {
-    return [...base, { label: "Título", value: details.title }];
-  }
-
   return base;
 }
 

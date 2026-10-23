@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export type AdminTab = "students" | "teachers";
+export type AdminTab = "students" | "admins";
 
 type AdminTabsProps = {
   tab: AdminTab;
@@ -33,13 +33,13 @@ export function AdminTabs({ tab, onChange }: AdminTabsProps) {
 
       <button
         type="button"
-        onClick={() => onChange("teachers")}
+        onClick={() => onChange("admins")}
         className={cn(
           "relative z-10 flex-1 py-3 text-sm font-semibold transition-colors",
-          tab === "teachers" ? "text-black" : "text-zinc-200 hover:text-white",
+          tab === "admins" ? "text-black" : "text-zinc-200 hover:text-white",
         )}
       >
-        Docentes
+        Administradores
       </button>
     </div>
   );

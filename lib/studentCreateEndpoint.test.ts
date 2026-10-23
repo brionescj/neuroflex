@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  role: "admin" as "student" | "teacher" | "admin",
+  role: "admin" as "student" | "admin",
   authorized: true as boolean,
   exists: false as boolean,
   created: [] as Record<string, unknown>[],
@@ -168,7 +168,7 @@ describe("POST admin/students (alta manual)", () => {
   });
 
   it("solo el admin puede dar de alta", async () => {
-    mocks.role = "teacher";
+    mocks.role = "student";
     expect((await run(BASE)).status).toBe(403);
 
     mocks.authorized = false;

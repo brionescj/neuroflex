@@ -1,4 +1,4 @@
-export type UserRole = "student" | "teacher" | "admin";
+export type UserRole = "student" | "admin";
 
 export type StudyShift = "day" | "evening";
 

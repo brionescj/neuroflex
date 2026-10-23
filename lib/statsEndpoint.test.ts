@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  role: "admin" as "student" | "teacher" | "admin",
+  role: "admin" as "student" | "admin",
   authorized: true as boolean,
   connects: 0,
   students: [] as unknown[],
@@ -134,9 +134,6 @@ describe.each([
 ])("%s: acceso", (_name, handler, query) => {
   it("solo admin", async () => {
     mocks.role = "student";
-    expect((await call(handler, query)).status).toBe(403);
-
-    mocks.role = "teacher";
     expect((await call(handler, query)).status).toBe(403);
 
     mocks.authorized = false;

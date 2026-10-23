@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  role: "admin" as "student" | "teacher" | "admin",
+  role: "admin" as "student" | "admin",
   authorized: true as boolean,
   found: true as boolean,
   calls: [] as { filter: unknown; update: unknown; options: unknown }[],
@@ -135,9 +135,6 @@ describe("PATCH admin/students/:rut/details", () => {
 
     mocks.authorized = true;
     mocks.role = "student";
-    expect((await run({ ciudad: "x" })).status).toBe(403);
-
-    mocks.role = "teacher";
     expect((await run({ ciudad: "x" })).status).toBe(403);
 
     expect(mocks.calls).toHaveLength(0);

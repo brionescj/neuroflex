@@ -22,7 +22,6 @@ function model(name: string) {
 }
 
 vi.mock("./models/Student", () => ({ Student: model("student") }));
-vi.mock("./models/Teacher", () => ({ Teacher: model("teacher") }));
 vi.mock("./models/Admin", () => ({ Admin: model("admin") }));
 
 import handler from "./handlers/profile/contact";
@@ -84,17 +83,24 @@ describe("PATCH profile/:rut/contact (perfil propio)", () => {
     expect(mocks.writes).toHaveLength(0);
   });
 
-  it("aplica la misma regla a docentes y administradores", async () => {
-    mocks.session = { rut: "12345678-5", role: "teacher" };
-    await run({ email: "Doc@UVM.cl", avatarId: "cat" });
+  it("aplica la misma regla a estudiantes y administradores", async () => {
+    mocks.session = { rut: "12345678-5", role: "student" };
+    await run({ email: "Est@UVM.cl", avatarId: "cat" });
 
     mocks.session = { rut: "12345678-5", role: "admin" };
     await run({ email: "Adm@UVM.cl", avatarId: "cat" });
 
     expect(mocks.writes.map((w) => [w.model, (w.update as { email: string }).email])).toEqual([
-      ["teacher", "doc@uvm.cl"],
+      ["student", "est@uvm.cl"],
       ["admin", "adm@uvm.cl"],
     ]);
+  });
+
+  it("un rol que ya no existe (docente) no edita nada: 403", async () => {
+    mocks.session = { rut: "12345678-5", role: "teacher" };
+
+    expect((await run({ email: "doc@uvm.cl", avatarId: "cat" })).status).toBe(403);
+    expect(mocks.writes).toHaveLength(0);
   });
 
   it("solo se edita el propio perfil, y hace falta sesion", async () => {

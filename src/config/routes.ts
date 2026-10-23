@@ -17,14 +17,6 @@ export const ROUTES = {
 
   STUDENT_PROFILE: "/estudiante/perfil",
 
-  TEACHER: "/docente",
-
-  TEACHER_STUDENTS: "/docente/estudiantes",
-
-  TEACHER_REPORTS: "/docente/reportes",
-
-  TEACHER_PROFILE: "/docente/perfil",
-
   ADMIN: "/administracion",
 
   ADMIN_STATS: "/administracion/estadisticas",
@@ -34,8 +26,6 @@ export const ROUTES = {
 
 export const DASHBOARD_BY_ROLE: Record<UserRole, string> = {
   student: ROUTES.STUDENT,
-
-  teacher: ROUTES.TEACHER,
 
   admin: ROUTES.ADMIN,
 };

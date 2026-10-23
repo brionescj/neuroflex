@@ -6,15 +6,16 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Button } from "@/components/ui/Button";
 import { Field, FieldLabel } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { useAuth } from "@/context";
 import { cn } from "@/lib/utils";
-import type { Teacher } from "@/types";
+import type { Admin } from "@/types";
 import { isValidRut } from "@/utils/rut";
 
 import {
-  createTeacherAction,
-  listTeachersAction,
-  setTeacherEnabledAction,
-} from "../actions/teachers.action";
+  createAdminAction,
+  listAdminsAction,
+  setAdminEnabledAction,
+} from "../actions/admins.action";
 import { matchesQuery } from "../utils/matchesQuery";
 import { sanitizeNameInput } from "../utils/sanitizeInput";
 import { HighlightMatch } from "./HighlightMatch";
@@ -25,38 +26,47 @@ const EMPTY_FORM = {
   firstName: "",
   paternalLastName: "",
   maternalLastName: "",
+  password: "",
 };
 
-function TeacherToggle({
-  teacher,
+function AdminToggle({
+  admin,
+  isSelf,
   onToggle,
 }: {
-  teacher: Teacher;
+  admin: Admin;
+  /** Es la cuenta con la que se inició sesión: el servidor no deja inhabilitarla. */
+  isSelf: boolean;
   onToggle: () => void;
 }) {
+  if (isSelf) {
+    return <span className="inline-block w-28 text-center text-xs text-zinc-500">Tu cuenta</span>;
+  }
+
   return (
     <button
       type="button"
       onClick={onToggle}
       className={cn(
         "w-28 rounded-lg bg-white px-3 py-1.5 text-center text-sm font-medium transition-colors",
-        teacher.enabled
+        admin.enabled
           ? "text-rose-600 hover:bg-rose-500/20"
           : "text-emerald-600 hover:bg-emerald-500/20",
       )}
     >
-      {teacher.enabled ? "Inhabilitar" : "Habilitar"}
+      {admin.enabled ? "Inhabilitar" : "Habilitar"}
     </button>
   );
 }
 
-type TeachersSectionProps = {
+type AdminsSectionProps = {
   searchQuery: string;
   isActive: boolean;
 };
 
-export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps) {
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
+  const { user } = useAuth();
+  const [admins, setAdmins] = useState<Admin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -67,23 +77,23 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
   const isCardView = !useMediaQuery("(min-width: 1024px)");
   const pageSize = isCardView ? 5 : 12;
 
-  const filteredTeachers = teachers.filter((t) => matchesQuery(t, searchQuery));
+  const filteredAdmins = admins.filter((t) => matchesQuery(t, searchQuery));
 
-  const totalPages = Math.max(1, Math.ceil(filteredTeachers.length / pageSize));
-  const paginatedTeachers = filteredTeachers.slice(
+  const totalPages = Math.max(1, Math.ceil(filteredAdmins.length / pageSize));
+  const paginatedAdmins = filteredAdmins.slice(
     (page - 1) * pageSize,
     page * pageSize,
   );
 
-  async function loadTeachers() {
+  async function loadAdmins() {
     setIsLoading(true);
-    const result = await listTeachersAction();
-    if (result.success) setTeachers(result.data);
+    const result = await listAdminsAction();
+    if (result.success) setAdmins(result.data);
     setIsLoading(false);
   }
 
   useEffect(() => {
-    loadTeachers();
+    loadAdmins();
   }, []);
 
   useEffect(() => {
@@ -101,7 +111,7 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
 
     setIsCreating(true);
 
-    const result = await createTeacherAction(form);
+    const result = await createAdminAction(form);
 
     setIsCreating(false);
 
@@ -112,7 +122,7 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
 
     setForm(EMPTY_FORM);
     setShowForm(false);
-    await loadTeachers();
+    await loadAdmins();
   }
 
   useEffect(() => {
@@ -131,15 +141,15 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
     setShowForm((prev) => !prev);
   }
 
-  async function handleToggle(teacher: Teacher) {
-    await setTeacherEnabledAction(teacher.rut, !teacher.enabled);
-    await loadTeachers();
+  async function handleToggle(admin: Admin) {
+    await setAdminEnabledAction(admin.rut, !admin.enabled);
+    await loadAdmins();
   }
 
   const emptyMessage =
-    teachers.length === 0
-      ? "No hay docentes registrados."
-      : "No hay docentes que coincidan con la busqueda.";
+    admins.length === 0
+      ? "No hay administradores registrados."
+      : "No hay administradores que coincidan con la busqueda.";
 
   return (
     <div className="flex flex-col gap-6">
@@ -149,7 +159,7 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
         className="flex w-fit items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-zinc-200"
       >
         <Plus className="size-4" />
-        {showForm ? "Cancelar" : "Agregar docente"}
+        {showForm ? "Cancelar" : "Agregar administrador"}
       </button>
 
       {showForm && (
@@ -158,9 +168,9 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
           className="grid gap-4 rounded-2xl border border-zinc-800 p-4 sm:grid-cols-2"
         >
           <Field>
-            <FieldLabel htmlFor="teacher-rut">RUT</FieldLabel>
+            <FieldLabel htmlFor="admin-rut">RUT</FieldLabel>
             <RutInput
-              id="teacher-rut"
+              id="admin-rut"
               value={form.rut}
               onChange={(value) => setForm({ ...form, rut: value })}
               required
@@ -168,9 +178,9 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="teacher-firstName">Nombres</FieldLabel>
+            <FieldLabel htmlFor="admin-firstName">Nombres</FieldLabel>
             <Input
-              id="teacher-firstName"
+              id="admin-firstName"
               value={form.firstName}
               onChange={(e) =>
                 setForm({ ...form, firstName: sanitizeNameInput(e.target.value) })
@@ -180,11 +190,11 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="teacher-paternalLastName">
+            <FieldLabel htmlFor="admin-paternalLastName">
               Apellido paterno
             </FieldLabel>
             <Input
-              id="teacher-paternalLastName"
+              id="admin-paternalLastName"
               value={form.paternalLastName}
               onChange={(e) =>
                 setForm({
@@ -197,11 +207,11 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="teacher-maternalLastName">
+            <FieldLabel htmlFor="admin-maternalLastName">
               Apellido materno
             </FieldLabel>
             <Input
-              id="teacher-maternalLastName"
+              id="admin-maternalLastName"
               value={form.maternalLastName}
               onChange={(e) =>
                 setForm({
@@ -213,13 +223,30 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
             />
           </Field>
 
+          <Field className="sm:col-span-2">
+            <FieldLabel htmlFor="admin-password">Contraseña inicial</FieldLabel>
+            <Input
+              id="admin-password"
+              type="password"
+              autoComplete="new-password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              required
+            />
+            <p className="text-xs text-zinc-500">
+              Mínimo 8 caracteres, con letras y números, una mayúscula y un
+              carácter especial. Entréguesela a la persona: es con la que
+              iniciará sesión.
+            </p>
+          </Field>
+
           <div className="flex items-end sm:col-span-2">
             <Button
               type="submit"
               disabled={isCreating}
               className="bg-white text-black hover:bg-zinc-200"
             >
-              {isCreating ? "Creando..." : "Crear docente"}
+              {isCreating ? "Creando..." : "Crear administrador"}
             </Button>
           </div>
 
@@ -233,11 +260,11 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
         <>
           {isLoading && <p className="text-center text-zinc-500">Cargando...</p>}
 
-          {!isLoading && filteredTeachers.length === 0 && (
+          {!isLoading && filteredAdmins.length === 0 && (
             <p className="text-center text-zinc-500">{emptyMessage}</p>
           )}
 
-          {!isLoading && filteredTeachers.length > 0 && (
+          {!isLoading && filteredAdmins.length > 0 && (
             <div className="hidden overflow-x-auto rounded-2xl border border-zinc-800 lg:block">
               <table className="w-full text-left text-sm">
                 <thead>
@@ -249,31 +276,32 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedTeachers.map((teacher) => (
+                  {paginatedAdmins.map((admin) => (
                     <tr
-                      key={teacher.rut}
+                      key={admin.rut}
                       className="border-b border-zinc-800/50 last:border-0"
                     >
-                      <td className="p-3">{teacher.rut}</td>
+                      <td className="p-3">{admin.rut}</td>
                       <td className="p-3">
                         <HighlightMatch
-                          text={`${teacher.firstName} ${teacher.paternalLastName} ${teacher.maternalLastName}`}
+                          text={`${admin.firstName} ${admin.paternalLastName} ${admin.maternalLastName}`}
                           query={searchQuery}
                         />
                       </td>
                       <td className="p-3">
                         <span
                           className={
-                            teacher.enabled ? "text-emerald-400" : "text-rose-400"
+                            admin.enabled ? "text-emerald-400" : "text-rose-400"
                           }
                         >
-                          {teacher.enabled ? "Habilitado" : "Inhabilitado"}
+                          {admin.enabled ? "Habilitado" : "Inhabilitado"}
                         </span>
                       </td>
                       <td className="p-3">
-                        <TeacherToggle
-                          teacher={teacher}
-                          onToggle={() => handleToggle(teacher)}
+                        <AdminToggle
+                          admin={admin}
+                          isSelf={admin.rut === user?.rut}
+                          onToggle={() => handleToggle(admin)}
                         />
                       </td>
                     </tr>
@@ -283,38 +311,39 @@ export function TeachersSection({ searchQuery, isActive }: TeachersSectionProps)
             </div>
           )}
 
-          {!isLoading && filteredTeachers.length > 0 && (
+          {!isLoading && filteredAdmins.length > 0 && (
             <div className="flex flex-col gap-3 lg:hidden">
-              {paginatedTeachers.map((teacher) => (
+              {paginatedAdmins.map((admin) => (
                 <div
-                  key={teacher.rut}
+                  key={admin.rut}
                   className="rounded-2xl border border-zinc-800 p-4"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-medium text-white">
                         <HighlightMatch
-                          text={`${teacher.firstName} ${teacher.paternalLastName} ${teacher.maternalLastName}`}
+                          text={`${admin.firstName} ${admin.paternalLastName} ${admin.maternalLastName}`}
                           query={searchQuery}
                         />
                       </p>
-                      <p className="text-xs text-zinc-500">{teacher.rut}</p>
+                      <p className="text-xs text-zinc-500">{admin.rut}</p>
                     </div>
 
                     <span
                       className={cn(
                         "text-xs font-medium",
-                        teacher.enabled ? "text-emerald-400" : "text-rose-400",
+                        admin.enabled ? "text-emerald-400" : "text-rose-400",
                       )}
                     >
-                      {teacher.enabled ? "Habilitado" : "Inhabilitado"}
+                      {admin.enabled ? "Habilitado" : "Inhabilitado"}
                     </span>
                   </div>
 
                   <div className="mt-3">
-                    <TeacherToggle
-                      teacher={teacher}
-                      onToggle={() => handleToggle(teacher)}
+                    <AdminToggle
+                      admin={admin}
+                      isSelf={admin.rut === user?.rut}
+                      onToggle={() => handleToggle(admin)}
                     />
                   </div>
                 </div>

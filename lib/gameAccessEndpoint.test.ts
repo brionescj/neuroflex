@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  role: "student" as "student" | "teacher" | "admin",
+  role: "student" as "student" | "admin",
   authorized: true as boolean,
   unlocked: false as boolean,
   accessCalls: 0,
@@ -143,7 +143,7 @@ describe("GET /api/games/access", () => {
   it("solo GET y solo estudiantes con sesion", async () => {
     expect((await call(accessHandler, { method: "POST" })).status).toBe(405);
 
-    mocks.role = "teacher";
+    mocks.role = "admin";
     expect((await call(accessHandler)).status).toBe(403);
 
     mocks.authorized = false;
@@ -170,11 +170,9 @@ describe("el servidor exige el desbloqueo de Mini Casos", () => {
     expect(out.json.data).toHaveLength(1);
   });
 
-  it("docentes y administradores ven el banco sin desbloqueo ni consulta", async () => {
-    for (const role of ["teacher", "admin"] as const) {
-      mocks.role = role;
-      expect((await call(miniCasesHandler)).status).toBe(200);
-    }
+  it("el administrador ve el banco sin desbloqueo ni consulta", async () => {
+    mocks.role = "admin";
+    expect((await call(miniCasesHandler)).status).toBe(200);
 
     expect(mocks.accessCalls).toBe(0);
   });

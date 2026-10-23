@@ -28,12 +28,12 @@ export default async function handler(
       .json({ success: false, message: "Metodo no permitido." });
   }
 
-  const payload = requireAuth(req, res, ["student", "teacher", "admin"]);
+  const payload = requireAuth(req, res, ["student", "admin"]);
   if (!payload) return;
 
   await connectDB();
 
-  // Docentes y administradores ven el banco siempre; el estudiante, solo
+  // El administrador ve el banco siempre; el estudiante, solo
   // cuando desbloqueo Mini Casos.
   if (payload.role === "student" && !(await resolveMiniCasesAccess(payload.rut))) {
     return res

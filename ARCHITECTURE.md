@@ -11,7 +11,10 @@ Plataforma web para estudiantes de Educación Diferencial. Desarrolla y mide
 **funciones ejecutivas** (planificación, flexibilidad cognitiva, autocontrol,
 memoria de trabajo) mediante juegos cognitivos y mini casos interactivos.
 
-Tres roles: `student`, `teacher`, `admin`.
+Dos roles: `student` y `admin`. El rol de docente se eliminó a pedido del cliente
+(no hay intermediarios): el administrador ve directamente los datos de los
+estudiantes. Las cuentas y fichas de docente que hubiera en la base se quitan con
+`server-scripts/removeTeachers.ts`.
 
 ---
 
@@ -33,10 +36,11 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
 1. El **RUT** es el identificador principal. Formato canónico en base de datos: `12345678-5`
    (sin puntos, con guion, K mayúscula). Se normaliza con `normalizeForDatabase()`.
 2. **Nunca** se inicia sesión con correo electrónico.
-3. **Nunca** se eliminan usuarios. Solo se marca `enabled: false`.
+3. **Nunca** se eliminan usuarios. Solo se marca `enabled: false`. La única
+   excepción es la limpieza única del rol de docente (`removeTeachers.ts`).
 4. Solo pueden registrarse estudiantes **previamente cargados** por la universidad.
-   Docentes y administradores **no se autorregistran**: sus cuentas las crea la
-   universidad directamente en `authUsers`. Por eso `registerService` consulta
+   Los administradores **no se autorregistran**: otro administrador los da de alta
+   desde el panel (ficha + cuenta con contraseña inicial). Por eso `registerService` consulta
    únicamente `studentRepository`.
 5. No se guarda el nombre completo en un solo campo:
    `firstName` + `paternalLastName` + `maternalLastName`.
@@ -72,7 +76,7 @@ Un servicio **nunca** importa React.
       config/            routes.ts, env.ts
       context/           auth.context.ts, AuthProvider.tsx, useAuth.ts
       data/              datasources (mock del backend)
-      features/          auth, student, teacher, admin
+      features/          auth, student, admin
         <feature>/
           actions/       entrada desde la UI
           components/    UI propia de la feature
@@ -81,7 +85,7 @@ Un servicio **nunca** importa React.
           services/      reglas de negocio
       layouts/           AuthLayout y (futuro) layouts privados
       lib/               axios, cn
-      repositories/      auth, student, teacher, admin  (compartidos entre features)
+      repositories/      auth, student, admin  (compartidos entre features)
       services/          session.service, profile.service  (transversales)
       types/             dominio compartido
       utils/             rut.ts
@@ -121,20 +125,18 @@ importaciones cruzadas entre features.
     Student    rut, firstName, paternalLastName, maternalLastName, birthDate,
                entryYear, entrySemester, studyShift, works, enabled, registered,
                email, avatarId
-    Teacher    rut, firstName, paternalLastName, maternalLastName, enabled,
-               email, avatarId, title
     Admin      rut, firstName, paternalLastName, maternalLastName, enabled,
                email, avatarId
     SessionUser  id, rut, role, displayName, avatarId   → lo único que va al navegador
 
-`AuthUser` y la ficha (`Student`/`Teacher`/`Admin`) se unen por **`rut`**.
+`AuthUser` y la ficha (`Student`/`Admin`) se unen por **`rut`**.
 Un estudiante existe en la nómina desde que la universidad lo carga,
 pero solo aparece en `authUsers` **después de registrarse**.
 
 `email` es dato de contacto de la ficha, nunca credencial: `AuthUser` no lo
 tiene y el login sigue siendo solo por RUT. `avatarId` referencia el mapa de
 iconos+color en `src/config/avatars.ts` (`AVATARS`); todavía no hay carga de
-imágenes propias. `title` es el título profesional del docente. El nombre de
+imágenes propias. El nombre de
 la carrera (`"Educación Diferencial"`) vive como constante suelta en
 `src/config/career.ts` (`CAREER_NAME`) — no es campo de ninguna entidad.
 
@@ -198,8 +200,8 @@ archivo debe usarla para acceder a `localStorage` directamente.
 1. **Dónde vive el JWT.** `localStorage` es simple pero vulnerable a XSS; cookie
    `httpOnly` es más segura pero condiciona dominio, CORS y despliegue.
 2. **Unicidad de RUT entre nóminas.** Hoy nada impide que un mismo RUT esté en
-   `students` y en `teachers` o `admins` a la vez; `registerService` solo consulta
-   `students` y crearía una cuenta de estudiante para alguien que ya es docente.
+   `students` y en `admins` a la vez; `registerService` solo consulta
+   `students` y crearía una cuenta de estudiante para alguien que ya es administrador.
    Se ataja con una restricción de unicidad en la base de datos, no en el servicio.
    Riesgo real cuando el administrador cargue nóminas por Excel (Fase D).
 
@@ -227,8 +229,8 @@ abierta y rebote de rol incorrecto.
 7. Métricas: tiempo, errores, intentos, nivel, desbloqueos
 
 **Fase D — Gestión**
-8. Panel docente: gráficos, filtros, comparación por cohorte
-9. Panel administrador: carga masiva Excel, gestión de docentes/estudiantes/casos
+8. Panel de estadísticas del administrador: gráficos, filtros, comparación por cohorte
+9. Panel administrador: carga masiva Excel, gestión de administradores/estudiantes/casos
 10. Reportes y exportación a PDF/Excel
 
 **Fase E — Producción**

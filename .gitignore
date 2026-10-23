@@ -30,3 +30,5 @@ dist-ssr
 .vercel
 
 server-scripts/roster-2.json
+# Respaldos de los scripts de limpieza (llevan hash de contrasenas)
+server-scripts/backups/

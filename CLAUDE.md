@@ -13,16 +13,17 @@ Lee `ARCHITECTURE.md` antes de escribir código. Es la fuente de verdad.
 ## Reglas duras
 
 1. Login **solo por RUT**. Nunca por email. `AuthUser` nunca tiene campo `email`.
-   Las fichas (`Student`/`Teacher`/`Admin`) pueden tener `email` como dato de
+   Las fichas (`Student`/`Admin`) pueden tener `email` como dato de
    contacto — nunca se usa para autenticar.
-2. Un solo modelo de usuario: `AuthUser` + ficha (`Student`/`Teacher`/`Admin`),
+2. Un solo modelo de usuario: `AuthUser` + ficha (`Student`/`Admin`),
    unidos por `rut`. No crees un `User` genérico.
 3. Flujo obligatorio: `Página → Action → Service → Repository → DataSource`.
    Nunca saltes una capa. Un componente jamás importa un repositorio ni un datasource.
 4. `src/services/session.service.ts` es el único archivo que puede tocar `localStorage`.
 5. Nunca guardes `password` en el navegador ni en `SessionUser`.
 6. No hashees contraseñas en el frontend. Es del backend.
-7. No borres usuarios. Marca `enabled: false`.
+7. No borres usuarios. Marca `enabled: false`. (Única excepción: `server-scripts/removeTeachers.ts`,
+   limpieza única del rol de docente.)
 8. El correo es dato de contacto, nunca credencial: no se usa para
    autenticar, recuperar contraseña ni buscar usuarios. Acepta cualquier
    dominio (institucional o personal), por lo que su validación es solo
@@ -36,8 +37,9 @@ Lee `ARCHITECTURE.md` antes de escribir código. Es la fuente de verdad.
 13. Servicios devuelven `ApiResponse<T>` construido con `ok()` / `fail()`.
 14. Los mensajes de error de login son genéricos ("RUT o contrasena incorrectos").
     No reveles si el RUT existe.
-15. El registro es **solo para estudiantes**. Docentes y administradores reciben su
-    cuenta de la universidad. No agregues rutas ni formularios de autorregistro para ellos.
+15. El registro es **solo para estudiantes**. Los administradores los da de alta
+    otro administrador desde el panel. No agregues rutas ni formularios de autorregistro para ellos.
+    No existe el rol de docente (se eliminó a pedido del cliente): no lo reintroduzcas.
 16. **No crees convenciones de carpetas paralelas.** Las rutas viven en
     `src/config/routes.ts` (no en `src/router/`), las páginas en `features/<x>/pages/`
     (no en `src/pages/`), los estilos en `src/index.css` (no en `src/styles/`),

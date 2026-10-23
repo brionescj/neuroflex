@@ -1,10 +1,8 @@
 import {
   BarChart3,
   CircleUser,
-  ClipboardList,
   House,
   Trophy,
-  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -26,16 +24,6 @@ export const ROLE_MENUS: Record<UserRole, MenuItem[]> = {
     { label: "Mis puntuaciones", path: ROUTES.STUDENT_SCORES, icon: Trophy },
 
     { label: "Mi perfil", path: ROUTES.STUDENT_PROFILE, icon: CircleUser },
-  ],
-
-  teacher: [
-    { label: "Inicio", path: ROUTES.TEACHER, icon: House },
-
-    { label: "Estudiantes", path: ROUTES.TEACHER_STUDENTS, icon: Users },
-
-    { label: "Reportes", path: ROUTES.TEACHER_REPORTS, icon: ClipboardList },
-
-    { label: "Mi perfil", path: ROUTES.TEACHER_PROFILE, icon: CircleUser },
   ],
 
   admin: [

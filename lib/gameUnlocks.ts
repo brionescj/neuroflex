@@ -1,6 +1,6 @@
 /**
  * Regla de desbloqueo de los juegos. Es la unica definicion: para cambiarla
- * (otro nivel, o permitir que un docente habilite a un estudiante) se edita
+ * (otro nivel, u otra condicion) se edita
  * aqui y en ningun otro lugar.
  *
  * Mini Casos se desbloquea cuando el estudiante aprobo el nivel 10 de

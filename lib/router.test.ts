@@ -10,15 +10,14 @@ vi.hoisted(() => {
   process.env.JWT_SECRET = "secreto-de-prueba";
 });
 
-import adminFindRole from "./handlers/admin/findRole";
+import adminAdmins from "./handlers/admin/admins";
+import adminAdminStatus from "./handlers/admin/adminStatus";
 import adminMiniCases from "./handlers/admin/miniCases";
 import adminStats from "./handlers/admin/statsChart";
 import adminStatsCatalog from "./handlers/admin/statsCatalog";
 import adminStudentDetails from "./handlers/admin/studentDetails";
 import adminStudents from "./handlers/admin/students";
 import adminStudentStatus from "./handlers/admin/studentStatus";
-import adminTeachers from "./handlers/admin/teachers";
-import adminTeacherStatus from "./handlers/admin/teacherStatus";
 import authLogin from "./handlers/auth/login";
 import authLogout from "./handlers/auth/logout";
 import authMe from "./handlers/auth/me";
@@ -41,15 +40,14 @@ const EXPECTED: [string, unknown, Record<string, string>][] = [
   ["auth/logout", authLogout, {}],
   ["auth/me", authMe, {}],
   ["auth/register", authRegister, {}],
-  ["admin/find-role", adminFindRole, {}],
+  ["admin/admins", adminAdmins, {}],
+  ["admin/admins/98765432-1/status", adminAdminStatus, { rut: "98765432-1" }],
   ["admin/mini-cases", adminMiniCases, {}],
   ["admin/stats/catalog", adminStatsCatalog, {}],
   ["admin/stats/chart", adminStats, {}],
   ["admin/students", adminStudents, {}],
   ["admin/students/12345678-9/details", adminStudentDetails, { rut: "12345678-9" }],
   ["admin/students/12345678-9/status", adminStudentStatus, { rut: "12345678-9" }],
-  ["admin/teachers", adminTeachers, {}],
-  ["admin/teachers/98765432-1/status", adminTeacherStatus, { rut: "98765432-1" }],
   ["game-attempts/color-sequence", gamesAttempts, { gameId: "color-sequence" }],
   ["game-progress/node-connection", gamesProgress, { gameId: "node-connection" }],
   ["games/access", gamesAccess, {}],

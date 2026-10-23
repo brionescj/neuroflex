@@ -18,9 +18,9 @@ export default async function handler(
 
   const rut = req.query.rut as string;
 
-  // Por ahora, cada quien solo puede leer su propia ficha. La vista del
-  // docente sobre estudiantes de terceros es un endpoint distinto, con
-  // exclusion de campos — no relajar este check para eso mas adelante.
+  // Cada quien solo puede leer su propia ficha. Ver la de un estudiante desde
+  // el panel de administracion es otro endpoint (admin/students/:rut/details):
+  // no relajar este check para eso.
   if (payload.rut !== rut) {
     return res.status(403).json({ success: false, message: "No autorizado." });
   }

@@ -5,13 +5,13 @@ import { verifyToken } from "../../jwt";
 import { readSessionCookie } from "../../cookies";
 import { emailProblem, normalizeEmail } from "../../email";
 import { Student } from "../../models/Student";
-import { Teacher } from "../../models/Teacher";
 import { Admin } from "../../models/Admin";
 
 function modelFor(role: string) {
   if (role === "student") return Student;
-  if (role === "teacher") return Teacher;
-  return Admin;
+  if (role === "admin") return Admin;
+
+  return null;
 }
 
 export default async function handler(
@@ -47,6 +47,10 @@ export default async function handler(
   await connectDB();
 
   const Model = modelFor(payload.role);
+
+  if (!Model) {
+    return res.status(403).json({ success: false, message: "No autorizado." });
+  }
 
   const updated = await Model.findOneAndUpdate(
     { rut },

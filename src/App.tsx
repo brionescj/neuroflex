@@ -15,7 +15,6 @@ import { MiniCasesGame } from "@/features/games/mini-cases/components/MiniCasesG
 import { NodeConnectionGame } from "@/features/games/node-connection/components/NodeConnectionGame";
 import StatsPage from "@/features/stats/pages/StatsPage";
 import StudentDashboard from "@/features/student/pages/StudentDashboard";
-import TeacherDashboard from "@/features/teacher/pages/TeacherDashboard";
 
 export default function App() {
   return (
@@ -57,19 +56,6 @@ export default function App() {
         />
         <Route path={ROUTES.STUDENT_SCORES} element={<ComingSoon />} />
         <Route path={ROUTES.STUDENT_PROFILE} element={<ProfilePage />} />
-      </Route>
-
-      <Route
-        element={
-          <ProtectedRoute roles={["teacher"]}>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path={ROUTES.TEACHER} element={<TeacherDashboard />} />
-        <Route path={ROUTES.TEACHER_STUDENTS} element={<ComingSoon />} />
-        <Route path={ROUTES.TEACHER_REPORTS} element={<ComingSoon />} />
-        <Route path={ROUTES.TEACHER_PROFILE} element={<ProfilePage />} />
       </Route>
 
       <Route

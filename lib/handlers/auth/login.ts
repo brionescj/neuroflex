@@ -27,6 +27,12 @@ export default async function handler(
     return res.status(401).json({ success: false, message: "RUT o contraseña incorrectos." });
   }
 
+  // Una cuenta de un rol que ya no existe (docente) no puede entrar. Se responde
+  // igual que con una clave incorrecta: no se revela que el RUT existe.
+  if (account.role !== "student" && account.role !== "admin") {
+    return res.status(401).json({ success: false, message: "RUT o contraseña incorrectos." });
+  }
+
   if (!account.enabled) {
     return res.status(403).json({ success: false, message: "Cuenta deshabilitada." });
   }
