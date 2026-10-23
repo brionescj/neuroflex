@@ -7,7 +7,8 @@ function result(extra: Partial<ChartResult> = {}): ChartResult {
   return {
     chart: "cs-time",
     title: "Tiempo por nivel",
-    kind: "lines",
+    views: ["lines", "bars"],
+    exploratory: false,
     xLabel: "Nivel",
     yLabel: "Segundos (mediana)",
     unit: "seconds",
@@ -71,3 +72,31 @@ describe("csvFileName", () => {
     );
   });
 });
+
+describe("chartToCsv con tabla propia", () => {
+  it("usa las columnas y filas de la tabla (lista de estudiantes)", () => {
+    const csv = chartToCsv(
+      result({
+        views: [],
+        categories: [],
+        series: [],
+        table: {
+          columns: ["Estudiante", "RUT", "Paralelo"],
+          rows: [
+            ["Ana Soto", "11111111-1", 1],
+            ["=SUMA(A1)", "22222222-2", null],
+          ],
+        },
+      }),
+    )
+      .replace("\uFEFF", "")
+      .trim()
+      .split("\r\n");
+
+    expect(lines(csv)).toEqual(["Estudiante;RUT;Paralelo", "Ana Soto;11111111-1;1", "'=SUMA(A1);22222222-2;"]);
+  });
+});
+
+function lines(rows: string[]): string[] {
+  return rows;
+}

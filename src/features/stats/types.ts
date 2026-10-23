@@ -23,9 +23,21 @@ export type ChartId =
   | "participation"
   | "activity"
   | "abandonment"
+  | "gen-summary"
+  | "gen-partidas"
+  | "gen-outcomes"
+  | "gen-when"
+  | "gen-no-play"
   | "cs-max-level"
   | "cs-pass-rate"
   | "cs-time"
+  | "cs-reach"
+  | "cs-bands"
+  | "cs-improvement"
+  | "cs-tries"
+  | "cs-error-type"
+  | "cs-first-error"
+  | "cs-pace"
   | "nc-levels"
   | "nc-time"
   | "mc-steps"
@@ -33,6 +45,9 @@ export type ChartId =
 
 /** Como comparar: sin agrupar, por una caracteristica o por estudiantes elegidos. */
 export type GroupBy = "none" | "student" | DimensionId;
+
+/** Formas de ver un grafico; la tabla siempre esta aparte. */
+export type ViewId = "bars" | "lines" | "pie" | "stacked" | "cards";
 
 export type Partida = "first" | "last" | "all";
 
@@ -64,8 +79,11 @@ export type CatalogChart = {
   id: ChartId;
   title: string;
   blurb: string;
-  kind: "bars" | "lines";
+  exploratory: boolean;
+  canCompare: boolean;
   usesPartida: boolean;
+  /** Si acepta el periodo (con o sin elegir partida). */
+  usesPeriod: boolean;
   /** Si se puede separar y filtrar por dispositivo. */
   supportsDevice: boolean;
   options: ChartOptionDef[];
@@ -97,10 +115,27 @@ export type ChartSeries = {
   ns: number[];
 };
 
+/** Tabla propia de un grafico que no cabe en categorias por series (listas, resumenes). */
+export type ChartTable = {
+  columns: string[];
+  rows: (string | number | null)[][];
+};
+
+/** Tarjetas de un resumen: un bloque por grupo comparado. */
+export type ChartCards = {
+  group: string;
+  slot: number;
+  items: { label: string; value: string; hint?: string }[];
+}[];
+
 export type ChartResult = {
   chart: ChartId;
   title: string;
-  kind: "bars" | "lines";
+  /** Formas de ver el grafico; la primera es la de partida. Vacio: solo tabla. */
+  views: ViewId[];
+  exploratory: boolean;
+  table?: ChartTable;
+  cards?: ChartCards;
   xLabel: string;
   yLabel: string;
   unit: ChartUnit;

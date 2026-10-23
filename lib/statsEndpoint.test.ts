@@ -167,8 +167,15 @@ describe("GET admin/stats/catalog", () => {
 
     expect(seriation.charts.map((c: { id: string }) => c.id)).toEqual([
       "cs-max-level",
+      "cs-reach",
+      "cs-bands",
       "cs-pass-rate",
+      "cs-tries",
       "cs-time",
+      "cs-pace",
+      "cs-improvement",
+      "cs-error-type",
+      "cs-first-error",
     ]);
     expect(seriation.charts[0].blurb.length).toBeGreaterThan(40);
     expect(json.data).not.toHaveProperty("versions");

@@ -29,8 +29,10 @@ const catalog: Catalog = {
           id: "participation",
           title: "Participación",
           blurb: "x".repeat(50),
-          kind: "bars",
+          exploratory: false,
+          canCompare: true,
           usesPartida: false,
+          usesPeriod: false,
           supportsDevice: false,
           options: [{ id: "as", label: "Mostrar como", default: "percent", choices: [{ value: "percent", label: "%" }] }],
         },
@@ -44,8 +46,10 @@ const catalog: Catalog = {
           id: "cs-max-level",
           title: "Nivel máximo",
           blurb: "x".repeat(50),
-          kind: "bars",
+          exploratory: false,
+          canCompare: true,
           usesPartida: true,
+          usesPeriod: true,
           supportsDevice: true,
           options: [],
         },
@@ -53,8 +57,10 @@ const catalog: Catalog = {
           id: "cs-pass-rate",
           title: "Aprobación",
           blurb: "x".repeat(50),
-          kind: "lines",
+          exploratory: false,
+          canCompare: true,
           usesPartida: true,
+          usesPeriod: true,
           supportsDevice: true,
           options: [{ id: "measure", label: "Contar", default: "firstTry", choices: [{ value: "firstTry", label: "1" }] }],
         },
@@ -200,6 +206,24 @@ describe("buildChartParams", () => {
 
     expect(game.filters).toEqual({ gender: ["female"] });
     expect(game.groupBy).toBe("none");
+  });
+
+  it("el período viaja con los graficos que lo usan, aunque no elijan partida", () => {
+    const base = { ...initialSelection(catalog, "color-sequence"), period: "7d" as const };
+    const general = catalog.games[0]!.charts[0]!;
+    const noPeriod = buildChartParams(base, general, LIMITS);
+    const byPeriod = buildChartParams(base, { ...general, usesPeriod: true }, LIMITS);
+
+    expect(noPeriod.period).toBeUndefined();
+    expect(byPeriod.period).toBe("7d");
+    expect(byPeriod.partida).toBeUndefined();
+  });
+
+  it("una lista no se compara: la forma de comparar vuelve a «completo»", () => {
+    const list = { ...catalog.games[0]!.charts[0]!, canCompare: false };
+    const base = { ...initialSelection(catalog, "general"), groupBy: "paralelo" as const };
+
+    expect(buildChartParams(base, list, LIMITS).groupBy).toBe("none");
   });
 
   it("manda la edad como rango solo si es valida y hay algo escrito", () => {

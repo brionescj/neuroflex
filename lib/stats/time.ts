@@ -211,3 +211,18 @@ export function periodStart(period: Period, now: Date): Date | null {
 
   return chileLocalToUtc(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), 0, 0);
 }
+
+const hourFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: STATS_TIME_ZONE,
+  hour: "2-digit",
+  hourCycle: "h23",
+});
+
+/** Dia de la semana (0 = lunes ... 6 = domingo) y hora (0 a 23) en Chile. */
+export function chileWeekdayHour(at: Date): { weekday: number; hour: number } {
+  const { year, month, day } = chileDay(at);
+  const weekday = (new Date(Date.UTC(year, month - 1, day)).getUTCDay() + 6) % 7;
+  const hour = Number(hourFormatter.formatToParts(at).find((part) => part.type === "hour")?.value);
+
+  return { weekday, hour: hour === 24 ? 0 : hour };
+}

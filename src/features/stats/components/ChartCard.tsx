@@ -1,14 +1,29 @@
-import { ChartColumn, Download, Info, Table2, TriangleAlert } from "lucide-react";
+import {
+  ChartBarStacked,
+  ChartColumn,
+  ChartLine,
+  ChartPie,
+  Download,
+  FlaskConical,
+  Info,
+  LayoutGrid,
+  Table2,
+  TriangleAlert,
+} from "lucide-react";
 import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 
 import { chartToCsv, csvFileName } from "../utils/csv";
-import type { ChartResult } from "../types";
+import type { ChartResult, ViewId } from "../types";
 import { BarChart } from "./charts/BarChart";
+import { CategoryLegend } from "./charts/CategoryLegend";
 import { ChartLegend } from "./charts/ChartLegend";
 import { ChartTable } from "./charts/ChartTable";
 import { LineChart } from "./charts/LineChart";
+import { PieChart } from "./charts/PieChart";
+import { StackedChart } from "./charts/StackedChart";
+import { StatCards } from "./charts/StatCards";
 
 type ChartCardProps = {
   result: ChartResult;
@@ -18,6 +33,17 @@ type ChartCardProps = {
   loading: boolean;
   /** La seleccion cambio despues de dibujar este grafico. */
   stale: boolean;
+};
+
+type ViewChoice = ViewId | "table";
+
+const VIEW_META: Record<ViewChoice, { label: string; Icon: typeof ChartColumn }> = {
+  bars: { label: "Barras", Icon: ChartColumn },
+  lines: { label: "Líneas", Icon: ChartLine },
+  pie: { label: "Torta", Icon: ChartPie },
+  stacked: { label: "Apiladas", Icon: ChartBarStacked },
+  cards: { label: "Tarjetas", Icon: LayoutGrid },
+  table: { label: "Tabla", Icon: Table2 },
 };
 
 function download(result: ChartResult) {
@@ -34,7 +60,11 @@ function download(result: ChartResult) {
 }
 
 export function ChartCard({ result, subtitle, loading, stale }: ChartCardProps) {
-  const [table, setTable] = useState(false);
+  const [chosen, setChosen] = useState<ViewChoice | null>(null);
+
+  const choices: ViewChoice[] = [...result.views, "table"];
+  // Si la vista elegida no existe en este grafico, se vuelve a la primera.
+  const view: ViewChoice = chosen && choices.includes(chosen) ? chosen : (choices[0] as ViewChoice);
 
   return (
     <article className="viz-root rounded-2xl border border-white/10 bg-[var(--viz-surface)] p-4 text-[var(--viz-text)]">
@@ -48,17 +78,6 @@ export function ChartCard({ result, subtitle, loading, stale }: ChartCardProps) 
           <div className="flex shrink-0 gap-1.5">
             <button
               type="button"
-              onClick={() => setTable((value) => !value)}
-              aria-pressed={table}
-              aria-label={table ? "Ver el gráfico" : "Ver como tabla"}
-              title={table ? "Ver el gráfico" : "Ver como tabla"}
-              className="flex size-11 items-center justify-center rounded-lg border border-white/10 text-[var(--viz-text-2)] hover:bg-white/5"
-            >
-              {table ? <ChartColumn aria-hidden="true" className="size-4" /> : <Table2 aria-hidden="true" className="size-4" />}
-            </button>
-
-            <button
-              type="button"
               onClick={() => download(result)}
               aria-label="Descargar CSV"
               title="Descargar CSV"
@@ -68,6 +87,43 @@ export function ChartCard({ result, subtitle, loading, stale }: ChartCardProps) 
             </button>
           </div>
         </div>
+
+        {result.exploratory && (
+          <p className="flex items-start gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-[var(--viz-text-2)]">
+            <FlaskConical aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+              <strong className="font-medium text-[var(--viz-text)]">Indicador exploratorio.</strong> Describe cómo
+              juegan, pero no basta para evaluar a nadie ni para sacar conclusiones por sí solo.
+            </span>
+          </p>
+        )}
+
+        {choices.length > 1 && (
+          <div role="radiogroup" aria-label="Forma de ver el gráfico" className="flex flex-wrap gap-1.5">
+            {choices.map((choice) => {
+              const { label, Icon } = VIEW_META[choice];
+
+              return (
+                <button
+                  key={choice}
+                  type="button"
+                  role="radio"
+                  aria-checked={view === choice}
+                  onClick={() => setChosen(choice)}
+                  className={cn(
+                    "flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors",
+                    view === choice
+                      ? "border-white bg-white text-black"
+                      : "border-white/10 text-[var(--viz-text-2)] hover:bg-white/5",
+                  )}
+                >
+                  <Icon aria-hidden="true" className="size-4" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {stale && (
           <p role="status" className="flex items-start gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs text-[var(--viz-text-2)]">
@@ -89,15 +145,24 @@ export function ChartCard({ result, subtitle, loading, stale }: ChartCardProps) 
       </header>
 
       <div className={cn("mt-4 flex flex-col gap-3 transition-opacity", loading && "opacity-50")} aria-busy={loading}>
-        {table ? (
+        {view === "table" ? (
           <ChartTable result={result} />
-        ) : result.kind === "lines" ? (
+        ) : view === "cards" && result.cards ? (
+          <StatCards cards={result.cards} />
+        ) : view === "lines" ? (
           <LineChart result={result} />
+        ) : view === "pie" ? (
+          <PieChart result={result} />
+        ) : view === "stacked" ? (
+          <>
+            <StackedChart result={result} />
+            <CategoryLegend result={result} />
+          </>
         ) : (
           <BarChart result={result} />
         )}
 
-        <ChartLegend result={result} />
+        {(view === "bars" || view === "lines") && <ChartLegend result={result} view={view} />}
       </div>
 
       <details className="mt-4 text-xs text-[var(--viz-text-2)]">

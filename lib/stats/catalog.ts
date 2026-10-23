@@ -23,7 +23,12 @@ export type CatalogChart = {
   id: string;
   title: string;
   blurb: string;
-  kind: "bars" | "lines";
+  /** Indicador exploratorio: orienta, no concluye. */
+  exploratory: boolean;
+  /** Si se puede comparar por grupos. */
+  canCompare: boolean;
+  /** Si acepta el periodo (con o sin elegir partida). */
+  usesPeriod: boolean;
   usesPartida: boolean;
   /** Si el grafico se puede separar y filtrar por dispositivo. */
   supportsDevice: boolean;
@@ -68,7 +73,9 @@ export function buildCatalog(
         id: chart.id,
         title: chart.title,
         blurb: chart.blurb,
-        kind: chart.kind,
+        exploratory: chart.exploratory ?? false,
+        canCompare: chart.compare ?? true,
+        usesPeriod: chart.usesPartida || (chart.usesPeriod ?? false),
         usesPartida: chart.usesPartida,
         supportsDevice: chart.supportsDevice,
         options: chart.options,

@@ -48,13 +48,31 @@ export type ChartId =
   | "participation"
   | "activity"
   | "abandonment"
+  | "gen-summary"
+  | "gen-partidas"
+  | "gen-outcomes"
+  | "gen-when"
+  | "gen-no-play"
   | "cs-max-level"
   | "cs-pass-rate"
   | "cs-time"
+  | "cs-reach"
+  | "cs-bands"
+  | "cs-improvement"
+  | "cs-tries"
+  | "cs-error-type"
+  | "cs-first-error"
+  | "cs-pace"
   | "nc-levels"
   | "nc-time"
   | "mc-steps"
   | "mc-time";
+
+/**
+ * Formas de ver un grafico. La tabla siempre esta disponible aparte. Torta y
+ * apiladas solo se ofrecen cuando los valores son partes de un total.
+ */
+export type ViewId = "bars" | "lines" | "pie" | "stacked" | "cards";
 
 /** Como comparar: sin agrupar, por una caracteristica o por estudiantes elegidos. */
 export type GroupBy = "none" | "student" | DimensionId;
@@ -100,10 +118,29 @@ export type ChartSeries = {
   ns: number[];
 };
 
+/** Tabla propia de un grafico que no cabe en categorias por series (listas, resumenes). */
+export type ChartTable = {
+  columns: string[];
+  rows: (string | number | null)[][];
+};
+
+/** Tarjetas de un resumen: un bloque por grupo comparado. */
+export type ChartCards = {
+  group: string;
+  slot: number;
+  items: { label: string; value: string; hint?: string }[];
+}[];
+
 export type ChartResult = {
   chart: ChartId;
   title: string;
-  kind: "bars" | "lines";
+  /** Formas de ver el grafico; la primera es la de partida. */
+  views: ViewId[];
+  /** Indicador exploratorio: orienta, pero no concluye por si solo. */
+  exploratory: boolean;
+  /** Si viene, la vista de tabla muestra esto en vez de categorias por series. */
+  table?: ChartTable;
+  cards?: ChartCards;
   xLabel: string;
   yLabel: string;
   unit: ChartUnit;
@@ -187,10 +224,18 @@ export type StudentRow = {
   enabled?: boolean;
 };
 
+export type UnlockRow = {
+  studentRut: string;
+  gameId: GameId;
+  unlockedAt: Date;
+};
+
 export type StatsData = {
   students: StudentRow[];
   attempts: AttemptRow[];
   results: ResultRow[];
+  /** Desbloqueos de juegos (solo si el grafico los necesita). */
+  unlocks?: UnlockRow[];
   /** caseKey -> titulo, para rotular los mini casos. */
   caseTitles: Record<string, string>;
 };

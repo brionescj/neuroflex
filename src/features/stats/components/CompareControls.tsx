@@ -36,7 +36,7 @@ function SelectField({
 
 /** Ver el grafico completo o compararlo, mas las opciones propias del grafico. */
 export function CompareControls({ catalog, chart, selection, onChange }: CompareControlsProps) {
-  const comparing = selection.groupBy !== "none";
+  const comparing = selection.groupBy !== "none" && chart.canCompare;
 
   function setGroupBy(groupBy: GroupBy) {
     onChange({ ...selection, groupBy });
@@ -44,7 +44,17 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
 
   return (
     <div className="flex flex-col gap-4">
-      <div role="radiogroup" aria-label="Cómo ver el gráfico" className="grid grid-cols-2 gap-2">
+      {!chart.canCompare && (
+        <p className="rounded-lg bg-white/5 px-3 py-2 text-xs leading-relaxed text-zinc-300">
+          Este gráfico es una lista de estudiantes: no se compara por grupos. Usa los filtros para acotarla.
+        </p>
+      )}
+
+      <div
+        role="radiogroup"
+        aria-label="Cómo ver el gráfico"
+        className={cn("grid grid-cols-2 gap-2", !chart.canCompare && "hidden")}
+      >
         {[
           { value: false, label: "Verlo completo" },
           { value: true, label: "Compararlo" },
@@ -139,7 +149,7 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
         </SelectField>
       )}
 
-      {chart.usesPartida && (
+      {chart.usesPeriod && (
         <SelectField
           label="Período"
           value={selection.period}

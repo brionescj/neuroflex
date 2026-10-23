@@ -21,6 +21,14 @@ function numberCell(value: number | null): string {
 }
 
 export function chartToCsv(result: ChartResult): string {
+  if (result.table) {
+    const lines = [result.table.columns, ...result.table.rows.map((row) => row.map((v) => (typeof v === "number" ? numberCell(v) : (v ?? ""))))].map((row) =>
+      row.map((text) => cell(safeText(String(text)))).join(SEPARATOR),
+    );
+
+    return `\uFEFF${lines.join("\r\n")}\r\n`;
+  }
+
   const header = [
     result.xLabel,
     ...result.series.flatMap((series) => [

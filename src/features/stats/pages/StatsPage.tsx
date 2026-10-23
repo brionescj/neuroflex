@@ -129,7 +129,7 @@ export default function StatsPage() {
         groupByLabel(catalog, selection.groupBy),
         chart.usesPartida ? partida : null,
         chart.usesPartida && selection.partida === "all" && selection.countBy === "attempts" ? "Contando partidas" : null,
-        chart.usesPartida && selection.period !== "all"
+        chart.usesPeriod && selection.period !== "all"
           ? catalog.periods.find((p) => p.value === selection.period)?.label
           : null,
         filtersSummary(catalog, selection.filters, selection.age),

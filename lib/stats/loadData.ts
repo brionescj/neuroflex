@@ -1,5 +1,6 @@
 import { GameAttempt } from "../models/GameAttempt";
 import { GameLevelResult } from "../models/GameLevelResult";
+import { GameUnlock } from "../models/GameUnlock";
 import { MiniCase } from "../models/MiniCase";
 import { Student } from "../models/Student";
 import type { ChartDef } from "./charts";
@@ -9,6 +10,7 @@ import type {
   ResultRow,
   StatsData,
   StudentRow,
+  UnlockRow,
 } from "./types";
 
 /**
@@ -23,7 +25,17 @@ const ATTEMPT_FIELDS =
 
 /** Metricas de cada juego que algun grafico necesita. */
 const METRICS_BY_GAME: Record<GameId, string[]> = {
-  "color-sequence": ["passed", "correctCount", "sequenceLength"],
+  "color-sequence": [
+    "passed",
+    "correctCount",
+    "sequenceLength",
+    "swapErrors",
+    "substitutionErrors",
+    "firstErrorPosition",
+    "firstTapMs",
+    "meanInterTapMs",
+    "maxPauseMs",
+  ],
   "node-connection": [],
   "mini-cases": ["correctSteps", "isFullyCorrect"],
 };
@@ -43,6 +55,7 @@ export async function loadChartData(def: ChartDef): Promise<StatsData> {
   ]);
 
   let results: ResultRow[] = [];
+  let unlocks: UnlockRow[] = [];
   const caseTitles: Record<string, string> = {};
 
   if (def.game === "general") {
@@ -51,6 +64,14 @@ export async function loadChartData(def: ChartDef): Promise<StatsData> {
       results = (await GameLevelResult.find()
         .select("attemptId studentRut gameId completedAt")
         .lean()) as ResultRow[];
+    }
+
+    // El resumen necesita el nivel y el tiempo de cada nivel de seriacion y nodos.
+    if (def.id === "gen-summary") {
+      results = (await GameLevelResult.find({ gameId: { $in: ["color-sequence", "node-connection"] } })
+        .select("studentRut gameId index tryNumber activeMsNet metrics.passed metrics.correctCount metrics.sequenceLength")
+        .lean()) as ResultRow[];
+      unlocks = (await GameUnlock.find().select("studentRut gameId unlockedAt").lean()) as UnlockRow[];
     }
   } else {
     const projection: Record<string, 1> = {
@@ -85,5 +106,5 @@ export async function loadChartData(def: ChartDef): Promise<StatsData> {
     if (!result.metrics) result.metrics = {};
   }
 
-  return { students, attempts, results, caseTitles };
+  return { students, attempts, results, unlocks, caseTitles };
 }

@@ -1,9 +1,61 @@
 import { seriesColor } from "../../utils/colors";
-import { formatValue } from "../../utils/format";
+import { formatNumber, formatValue } from "../../utils/format";
 import type { ChartResult } from "../../types";
+
+/** Tabla propia de listas y resumenes (estudiantes sin partidas, indicadores por grupo). */
+function OwnTable({ result }: { result: ChartResult }) {
+  const table = result.table as NonNullable<ChartResult["table"]>;
+
+  if (table.rows.length === 0) {
+    return (
+      <p className="rounded-lg border border-white/10 px-3 py-6 text-center text-xs text-[var(--viz-muted)]">
+        No hay filas para mostrar con estos filtros.
+      </p>
+    );
+  }
+
+  return (
+    <div className="max-h-[28rem] max-w-full overflow-auto rounded-lg border border-white/10">
+      <table className="w-full min-w-max border-collapse text-left text-xs text-[var(--viz-text-2)]">
+        <caption className="sr-only">{result.title}</caption>
+
+        <thead className="sticky top-0 bg-[var(--viz-surface)]">
+          <tr className="border-b border-white/10 text-[var(--viz-muted)]">
+            {table.columns.map((column) => (
+              <th key={column} scope="col" className="px-3 py-2 font-medium">
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+
+        <tbody>
+          {table.rows.map((row, r) => (
+            <tr key={r} className="border-b border-white/5 last:border-0">
+              {row.map((value, c) => (
+                <td
+                  key={c}
+                  className={
+                    c === 0
+                      ? "px-3 py-1.5 font-normal text-[var(--viz-text)]"
+                      : "px-3 py-1.5 tabular-nums"
+                  }
+                >
+                  {value === null || value === "" ? "—" : typeof value === "number" ? formatNumber(value) : value}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 /** La version en tabla de cualquier grafico: todos los valores, sin pasar el cursor. */
 export function ChartTable({ result }: { result: ChartResult }) {
+  if (result.table) return <OwnTable result={result} />;
+
   return (
     <div className="max-w-full overflow-x-auto rounded-lg border border-white/10">
       <table className="w-full min-w-max border-collapse text-left text-xs text-[var(--viz-text-2)]">

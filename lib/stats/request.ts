@@ -165,6 +165,14 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
 
   if (filters === null) return fail("Los filtros no son válidos.");
 
+  if (groupBy !== "none" && def.compare === false) {
+    return fail("Este gráfico es una lista: no se compara por grupos.");
+  }
+
+  if (periodRaw !== "all" && !def.usesPartida && !def.usesPeriod) {
+    return fail("Este gráfico no se puede acotar por período.");
+  }
+
   if (!def.supportsDevice) {
     if (groupBy === "device" || filters.device) {
       return fail("Este gráfico no se puede separar ni filtrar por dispositivo.");

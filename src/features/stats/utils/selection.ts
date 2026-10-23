@@ -63,20 +63,21 @@ export function selectChart(
 
   if (!def) return selection;
 
-  return withDeviceSupport({ ...selection, chart, options: defaultOptions(def) }, def);
+  return fitSelection({ ...selection, chart, options: defaultOptions(def) }, def);
 }
 
-/** Si el grafico no distingue dispositivos, se quita ese filtro y esa forma de comparar. */
-export function withDeviceSupport(selection: Selection, chart: CatalogChart): Selection {
-  if (chart.supportsDevice) return selection;
+/**
+ * Ajusta la seleccion a lo que el grafico permite: sin dispositivo si no lo
+ * distingue, y sin comparar si es una lista.
+ */
+export function fitSelection(selection: Selection, chart: CatalogChart): Selection {
+  const { device: _device, ...withoutDevice } = selection.filters;
+  const filters = chart.supportsDevice ? selection.filters : withoutDevice;
+  let groupBy = selection.groupBy;
 
-  const { device: _device, ...filters } = selection.filters;
+  if (!chart.canCompare || (groupBy === "device" && !chart.supportsDevice)) groupBy = "none";
 
-  return {
-    ...selection,
-    filters,
-    groupBy: selection.groupBy === "device" ? "none" : selection.groupBy,
-  };
+  return { ...selection, filters, groupBy };
 }
 
 /** Cambia de juego: parte del primer grafico; filtros y comparacion se conservan. */
@@ -88,7 +89,7 @@ export function selectGame(
   const fresh = initialSelection(catalog, game);
   const first = findChartDef(catalog, fresh.chart) as CatalogChart;
 
-  return withDeviceSupport(
+  return fitSelection(
     {
       ...fresh,
       groupBy: selection.groupBy,
@@ -178,15 +179,16 @@ export function buildChartParams(
 ): Record<string, string> {
   const params: Record<string, string> = {
     chart: chart.id,
-    groupBy: selection.groupBy === "device" && !chart.supportsDevice ? "none" : selection.groupBy,
+    groupBy: fitSelection(selection, chart).groupBy,
   };
 
   if (chart.usesPartida) {
     params.partida = selection.partida;
     // Solo viaja lo que cambia el resultado: contar partidas importa con "todas".
     if (selection.partida === "all" && selection.countBy === "attempts") params.countBy = "attempts";
-    if (selection.period !== "all") params.period = selection.period;
   }
+
+  if (chart.usesPeriod && selection.period !== "all") params.period = selection.period;
 
   const { device: _device, ...withoutDevice } = selection.filters;
   const filters = cleanFilters(chart.supportsDevice ? selection.filters : withoutDevice);

@@ -554,7 +554,7 @@ describe("Seriacion: aprobacion por nivel", () => {
     const chart = run(colorData(), { chart: "cs-pass-rate" });
     const all = seriesOf(chart);
 
-    expect(chart.kind).toBe("lines");
+    expect(chart.views).toEqual(["lines", "bars"]);
     expect(chart.categories).toEqual(["1", "2", "3"]);
     expect(all.values).toEqual([100, 66.7, 0]);
     expect(all.ns).toEqual([3, 3, 1]);
