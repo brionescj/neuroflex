@@ -1,4 +1,5 @@
 import { ageAt } from "../gameAttempts";
+import { MAX_STUDENT_AGE } from "../studentFields";
 import { REGIONS, normalizeRegion } from "../region";
 import type {
   AttemptRow,
@@ -25,30 +26,17 @@ export const DIMENSION_IDS: readonly DimensionId[] = [
 ];
 
 /**
- * Por cuales se puede filtrar. La edad no esta: se filtra con un rango
- * (AgeRange) y solo se usa en bandas para comparar.
+ * Por cuales se puede filtrar: por todas. La edad se puede filtrar de dos
+ * maneras que se combinan: un rango exacto (AgeRange) o los tramos de 5 anos
+ * (`ageBand`), que son los mismos grupos que se usan para comparar.
  */
-export const FILTER_DIMENSIONS: readonly DimensionId[] = DIMENSION_IDS.filter(
-  (id) => id !== "ageBand",
-);
-
-/** Como se elige el valor de un filtro: botones o lista desplegable. */
-export const FILTER_CONTROL: Partial<Record<DimensionId, "chips" | "select">> = {
-  paralelo: "chips",
-  university: "chips",
-  gender: "chips",
-  studyShift: "chips",
-  entryYear: "chips",
-  device: "chips",
-  region: "select",
-  ciudad: "select",
-};
+export const FILTER_DIMENSIONS: readonly DimensionId[] = DIMENSION_IDS;
 
 export const DIMENSION_LABELS: Record<DimensionId, string> = {
   paralelo: "Paralelo",
   university: "Universidad",
   gender: "Género",
-  ageBand: "Edad",
+  ageBand: "Tramo de edad",
   region: "Región",
   ciudad: "Ciudad",
   studyShift: "Jornada",
@@ -64,6 +52,16 @@ export const NO_DATA_LABEL = "Sin dato";
 export const OTHERS_KEY = "others";
 export const OTHERS_LABEL = "Otros";
 
+/**
+ * Tramos de edad: 17 a 20 y despues de 5 en 5 (21 a 25, 26 a 30...) hasta el
+ * limite de edad de las fichas.
+ */
+const AGE_BANDS: string[] = ["17-20"];
+
+for (let from = 21; from <= MAX_STUDENT_AGE; from += 5) {
+  AGE_BANDS.push(`${from}-${Math.min(from + 4, MAX_STUDENT_AGE)}`);
+}
+
 const FIXED: Partial<Record<DimensionId, OptionChoice[]>> = {
   paralelo: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `Paralelo ${n}` })),
   university: [
@@ -76,13 +74,7 @@ const FIXED: Partial<Record<DimensionId, OptionChoice[]>> = {
     { value: "other", label: "Otro" },
     { value: "undisclosed", label: "No informa" },
   ],
-  ageBand: [
-    { value: "-19", label: "19 años o menos" },
-    { value: "20-22", label: "20 a 22 años" },
-    { value: "23-25", label: "23 a 25 años" },
-    { value: "26-30", label: "26 a 30 años" },
-    { value: "31-", label: "31 años o más" },
-  ],
+  ageBand: AGE_BANDS.map((band) => ({ value: band, label: `${band.replace("-", " a ")} años` })),
   studyShift: [
     { value: "day", label: "Diurna" },
     { value: "evening", label: "Vespertina" },
@@ -135,14 +127,17 @@ export function deviceOfAttempt(attempt: Pick<AttemptRow, "sessions">): string |
   return deviceClassOf(attempt.sessions?.[0]?.device);
 }
 
+/** Tramo de edad ("17-20", "21-25", "26-30"...). Fuera del rango de las fichas queda en el tramo de la punta. */
 export function ageBandOf(age: number | null | undefined): string | null {
   if (typeof age !== "number" || !Number.isFinite(age)) return null;
-  if (age <= 19) return "-19";
-  if (age <= 22) return "20-22";
-  if (age <= 25) return "23-25";
-  if (age <= 30) return "26-30";
 
-  return "31-";
+  const whole = Math.floor(age);
+
+  if (whole <= 20) return AGE_BANDS[0] as string;
+
+  const index = Math.min(Math.floor((whole - 21) / 5) + 1, AGE_BANDS.length - 1);
+
+  return AGE_BANDS[index] as string;
 }
 
 const SMALL_WORDS = new Set(["de", "del", "la", "las", "los", "el", "y", "e"]);
@@ -267,6 +262,29 @@ export function compareValues(
   return a.localeCompare(b, "es");
 }
 
+/**
+ * Tramos de edad que hay entre los estudiantes. Como la edad de una partida es
+ * la que tenia al jugar (puede ser menor que la de hoy), se ofrece tambien el
+ * tramo que tenian un ano atras: asi no se pierde el grupo de quien cumplio
+ * anos desde entonces.
+ */
+function presentAgeBands(students: StudentRow[], now: Date): string[] {
+  const found = new Set<string>();
+  const yearAgo = new Date(now);
+
+  yearAgo.setUTCFullYear(yearAgo.getUTCFullYear() - 1);
+
+  for (const student of students) {
+    for (const at of [now, yearAgo]) {
+      const band = ageBandOf(ageAt(student.birthDate, at));
+
+      if (band !== null) found.add(band);
+    }
+  }
+
+  return AGE_BANDS.filter((band) => found.has(band));
+}
+
 /** Valores de la ficha que de verdad hay, sin repetir, con su orden natural. */
 function presentValues(
   dimension: DimensionId,
@@ -305,6 +323,8 @@ export function filterOptions(
       values = [...new Set([...presentValues(dimension, students, now), String(currentYear)])].sort(
         (a, b) => Number(a) - Number(b),
       );
+    } else if (dimension === "ageBand") {
+      values = presentAgeBands(students, now);
     } else if (FIXED[dimension] && dimension !== "paralelo") {
       values = fixedValues(dimension) as string[];
     } else {

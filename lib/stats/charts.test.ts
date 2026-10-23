@@ -311,25 +311,17 @@ describe("Seriacion: nivel maximo superado", () => {
     expect(seriesOf(chart).values[0]).toBe(100);
   });
 
-  it("al comparar usa porcentaje por defecto y avisa de los grupos chicos", () => {
+  it("al comparar usa porcentaje por defecto y no avisa de grupos chicos", () => {
     const chart = run(colorData(), { chart: "cs-max-level", groupBy: "paralelo" });
 
     expect(chart.unit).toBe("percent");
     expect(seriesOf(chart, "1").values).toEqual([0, 50, 0, 50]);
     expect(seriesOf(chart, "2").values).toEqual([0, 0, 100, 0]);
-    expect(seriesOf(chart, "1")).toMatchObject({ n: 2, slot: 0, lowN: true });
-    expect(seriesOf(chart, "2")).toMatchObject({ n: 1, slot: 1, lowN: true });
-    expect(chart.warnings.join(" ")).toMatch(/Pocos estudiantes.*Paralelo 1 \(2\).*Paralelo 2 \(1\)/);
-  });
-
-  it("no avisa si todos los grupos tienen 5 o mas estudiantes", () => {
-    const students = Array.from({ length: 5 }, (_, i) => student(String(i + 1)));
-    const attempts = students.map((s) => attempt(s.rut, "color-sequence", 1));
-    const results = attempts.map((a) => level(a, 1, 1, true, 10));
-    const chart = run({ students, attempts, results, caseTitles: {} }, { chart: "cs-max-level" });
-
-    expect(seriesOf(chart).lowN).toBe(false);
+    expect(seriesOf(chart, "1")).toMatchObject({ n: 2, slot: 0 });
+    expect(seriesOf(chart, "2")).toMatchObject({ n: 1, slot: 1 });
+    // Con grupos de 2 y 1 estudiantes no hay ningun aviso de "pocos datos".
     expect(chart.warnings).toEqual([]);
+    expect(JSON.stringify(chart)).not.toMatch(/lowN|Pocos estudiantes|No saques conclusiones/);
   });
 
   it("filtra por caracteristica antes de contar", () => {
@@ -671,7 +663,6 @@ describe("Mini casos", () => {
     expect(seriesOf(chart, R1).values).toEqual([4, 2]);
     expect(seriesOf(chart, R2).values).toEqual([2, 3]);
     expect(seriesOf(chart, R3).values).toEqual([null, null]);
-    expect(chart.series.some((s) => s.lowN)).toBe(false);
     expect(chart.warnings.join(" ")).toContain("Sin datos para");
   });
 });

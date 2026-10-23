@@ -21,7 +21,9 @@ export function StackedChart({ result }: { result: ChartResult }) {
           <div key={series.key} className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-3 text-xs">
               <span className="min-w-0 truncate font-medium text-[var(--viz-text)]">{series.label}</span>
-              <span className="shrink-0 text-[var(--viz-muted)]">n = {series.n}</span>
+              <span className="shrink-0 text-[var(--viz-muted)]">
+                Total de estudiantes: {formatNumber(series.n)}
+              </span>
             </div>
 
             {drawable ? (

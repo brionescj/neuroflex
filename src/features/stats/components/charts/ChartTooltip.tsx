@@ -12,7 +12,7 @@ type ChartTooltipProps = {
   containerWidth: number;
 };
 
-const WIDTH = 224;
+const WIDTH = 248;
 
 /**
  * Un solo tooltip con todas las series de la categoria. El valor va primero y
@@ -38,30 +38,32 @@ export function ChartTooltip({ result, index, x, y, containerWidth }: ChartToolt
         {result.categories[index]}
       </p>
 
-      <ul className="space-y-1">
+      <ul className="space-y-1.5">
         {result.series.map((series) => {
           const value = series.values[index] ?? null;
 
           return (
-            <li key={series.key} className="flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="w-3 shrink-0 rounded-full"
-                style={{ background: seriesColor(series.slot), height: 3 }}
-              />
+            <li key={series.key}>
+              <div className="flex items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="w-3 shrink-0 rounded-full"
+                  style={{ background: seriesColor(series.slot), height: 3 }}
+                />
 
-              <span className="font-semibold text-[var(--viz-text)]">
-                {value === null ? "Sin datos" : formatValue(value, result.unit)}
-              </span>
+                <span className="font-semibold text-[var(--viz-text)]">
+                  {value === null ? "Sin datos" : formatValue(value, result.unit)}
+                </span>
 
-              <span className="min-w-0 flex-1 truncate text-[var(--viz-muted)]">
-                {result.series.length > 1 ? series.label : ""}
-              </span>
+                <span className="min-w-0 flex-1 truncate text-[var(--viz-muted)]">
+                  {series.key !== "all" ? series.label : ""}
+                </span>
+              </div>
 
               {showN && (
-                <span className="shrink-0 text-[var(--viz-muted)]">
-                  n = {formatNumber(series.ns[index] ?? 0)}
-                </span>
+                <p className="pl-5 leading-snug text-[var(--viz-muted)]">
+                  Total de {result.unitLabel}: {formatNumber(series.ns[index] ?? 0)}
+                </p>
               )}
             </li>
           );

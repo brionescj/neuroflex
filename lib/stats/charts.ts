@@ -28,7 +28,6 @@ import {
 import { NO_DATA_KEY, TABLET_MIN_SHORT_SIDE, ageOf, dimensionValue } from "./dimensions";
 import { mean, median, percentOf } from "./numbers";
 import {
-  LOW_N,
   groupItems,
   indexStudents,
   passesAge,
@@ -413,7 +412,6 @@ const activity: ChartDef = {
         n: new Set(
           (grouped.byGroup.get(spec.key) ?? []).map((attempt) => attempt.studentRut),
         ).size,
-        lowN: false,
         values,
         ns: values,
       };
@@ -477,7 +475,6 @@ const abandonment: ChartDef = {
         n: new Set(
           (grouped.byGroup.get(spec.key) ?? []).map((a) => a.studentRut),
         ).size,
-        lowN: false,
         values,
         ns: values,
       };
@@ -545,11 +542,7 @@ export function buildChart(
   const built = def.build(ctx);
   const byStudent = request.groupBy === "student";
 
-  const series = built.series.map((item) => ({
-    ...item,
-    // Al comparar estudiantes elegidos cada grupo es 1 a proposito.
-    lowN: !byStudent && item.n < LOW_N,
-  }));
+  const { series } = built;
 
   const notes = [...built.notes, "Solo se cuentan estudiantes habilitados."];
 
@@ -572,16 +565,6 @@ export function buildChart(
   }
 
   const warnings: string[] = [];
-  const small = series.filter((item) => item.lowN && item.n > 0);
-
-  if (small.length > 0) {
-    warnings.push(
-      `Pocos estudiantes (menos de ${LOW_N}) en: ${small
-        .map((item) => `${item.label} (${item.n})`)
-        .join(", ")}. No saques conclusiones con tan pocos datos.`,
-    );
-  }
-
   const hasData = series.some((item) => item.ns.some((n) => n > 0));
 
   // Las listas y los resumenes no tienen series: su tabla (o sus tarjetas) es el dato.

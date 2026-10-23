@@ -108,10 +108,8 @@ export type ChartSeries = {
    * "Sin dato" (grises). Sigue a la entidad, no a su posicion en la lista.
    */
   slot: number;
-  /** Estudiantes (o partidas, segun `unitLabel`) en el grupo. */
+  /** Estudiantes distintos del grupo (lo que se cuenta en cada punto, `ns`, se mide en `unitLabel`). */
   n: number;
-  /** n bajo: el grupo es demasiado chico para sacar conclusiones. */
-  lowN: boolean;
   /** Un valor por categoria; null = sin datos. */
   values: (number | null)[];
   /** Cuantos datos hay detras de cada valor. */

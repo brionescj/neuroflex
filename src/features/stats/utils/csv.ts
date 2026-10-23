@@ -33,7 +33,7 @@ export function chartToCsv(result: ChartResult): string {
     result.xLabel,
     ...result.series.flatMap((series) => [
       `${series.label} (${result.yLabel})`,
-      `${series.label} (n de ${result.unitLabel})`,
+      `${series.label} (total de ${result.unitLabel})`,
     ]),
   ];
 

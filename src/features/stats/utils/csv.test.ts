@@ -15,8 +15,8 @@ function result(extra: Partial<ChartResult> = {}): ChartResult {
     unitLabel: "estudiantes",
     categories: ["1", "2"],
     series: [
-      { key: "1", label: "Paralelo 1", slot: 0, n: 4, lowN: true, values: [12.5, null], ns: [4, 0] },
-      { key: "2", label: "Paralelo 2", slot: 1, n: 6, lowN: false, values: [1234.5, 20], ns: [6, 5] },
+      { key: "1", label: "Paralelo 1", slot: 0, n: 4, values: [12.5, null], ns: [4, 0] },
+      { key: "2", label: "Paralelo 2", slot: 1, n: 6, values: [1234.5, 20], ns: [6, 5] },
     ],
     warnings: [],
     notes: [],
@@ -35,7 +35,7 @@ describe("chartToCsv", () => {
 
   it("separa con punto y coma y usa coma decimal, sin separador de miles", () => {
     expect(lines[0]).toBe(
-      "Nivel;Paralelo 1 (Segundos (mediana));Paralelo 1 (n de estudiantes);Paralelo 2 (Segundos (mediana));Paralelo 2 (n de estudiantes)",
+      "Nivel;Paralelo 1 (Segundos (mediana));Paralelo 1 (total de estudiantes);Paralelo 2 (Segundos (mediana));Paralelo 2 (total de estudiantes)",
     );
     expect(lines[1]).toBe("1;12,5;4;1234,5;6");
   });
@@ -48,7 +48,7 @@ describe("chartToCsv", () => {
     const csv = chartToCsv(
       result({
         categories: ["=HYPERLINK(\"http://x\")", "+56 9"],
-        series: [{ key: "a", label: "@grupo", slot: 0, n: 1, lowN: false, values: [1, 2], ns: [1, 1] }],
+        series: [{ key: "a", label: "@grupo", slot: 0, n: 1, values: [1, 2], ns: [1, 1] }],
       }),
     );
 

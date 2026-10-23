@@ -2,11 +2,10 @@ import { CHARTS } from "./charts";
 import {
   DIMENSION_IDS,
   DIMENSION_LABELS,
-  FILTER_CONTROL,
   FILTER_DIMENSIONS,
   filterOptions,
 } from "./dimensions";
-import { LOW_N, studentName } from "./pipeline";
+import { studentName } from "./pipeline";
 import { MAX_AGE, MAX_COMPARED_STUDENTS, MIN_AGE } from "./request";
 import { PERIOD_LABELS, PERIODS, chileDay } from "./time";
 import {
@@ -38,8 +37,6 @@ export type CatalogChart = {
 export type FilterSpec = {
   id: DimensionId;
   label: string;
-  /** Botones (pocas opciones fijas) o lista desplegable (muchas). */
-  control: "chips" | "select";
   options: OptionChoice[];
 };
 
@@ -55,7 +52,6 @@ export type Catalog = {
   periods: OptionChoice[];
   students: { rut: string; name: string; paralelo: number | null }[];
   maxComparedStudents: number;
-  lowN: number;
 };
 
 export function buildCatalog(
@@ -85,7 +81,6 @@ export function buildCatalog(
     filters: FILTER_DIMENSIONS.map((id) => ({
       id,
       label: DIMENSION_LABELS[id],
-      control: FILTER_CONTROL[id] ?? "chips",
       options: options[id] ?? [],
     })).filter((spec) => spec.options.length > 0),
     ageLimits: { min: MIN_AGE, max: MAX_AGE },
@@ -114,6 +109,5 @@ export function buildCatalog(
         paralelo: typeof student.paralelo === "number" ? student.paralelo : null,
       })),
     maxComparedStudents: MAX_COMPARED_STUDENTS,
-    lowN: LOW_N,
   };
 }

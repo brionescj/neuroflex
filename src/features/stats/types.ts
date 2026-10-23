@@ -60,11 +60,10 @@ export type Filters = Partial<Record<DimensionId, string[]>>;
 
 export type OptionChoice = { value: string; label: string };
 
-/** Un filtro por caracteristica: botones si hay pocas opciones, lista si hay muchas. */
+/** Un filtro por caracteristica, con las opciones que existen. */
 export type FilterSpec = {
   id: DimensionId;
   label: string;
-  control: "chips" | "select";
   options: OptionChoice[];
 };
 
@@ -99,7 +98,6 @@ export type Catalog = {
   periods: { value: PeriodId; label: string }[];
   students: { rut: string; name: string; paralelo: number | null }[];
   maxComparedStudents: number;
-  lowN: number;
 };
 
 export type ChartUnit = "students" | "percent" | "seconds" | "steps" | "level";
@@ -110,7 +108,6 @@ export type ChartSeries = {
   /** 0 a 7: puesto en la paleta; -1 es "Otros" y -2 es "Sin dato". */
   slot: number;
   n: number;
-  lowN: boolean;
   values: (number | null)[];
   ns: number[];
 };

@@ -10,8 +10,6 @@ import { useDismissOutside } from "./useDismissOutside";
 import { useElementWidth } from "./useElementWidth";
 
 const FONT = 11;
-/** Pocos datos detras de un punto: se dibuja hueco. */
-const HOLLOW_BELOW = 3;
 const MAX_MARKERS = 31;
 const DIRECT_LABEL_MIN_WIDTH = 560;
 const DIRECT_LABEL_AREA = 112;
@@ -224,17 +222,14 @@ export function LineChart({ result }: { result: ChartResult }) {
 
                 if (!showMarkers && !isLast && active !== i) return null;
 
-                // Con un solo estudiante por serie (comparar estudiantes) todo seria hueco: no aplica.
-                const hollow = series.n > 1 && (series.ns[i] ?? 0) < HOLLOW_BELOW;
-
                 return (
                   <circle
                     key={i}
                     cx={point.x}
                     cy={point.y}
                     r={4}
-                    fill={hollow ? "var(--viz-surface)" : color}
-                    stroke={hollow ? color : "var(--viz-surface)"}
+                    fill={color}
+                    stroke="var(--viz-surface)"
                     strokeWidth={2}
                     paintOrder="stroke"
                   />

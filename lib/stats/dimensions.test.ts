@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { deviceClassOf, deviceOfAttempt, filterOptions, titleCase } from "./dimensions";
+import {
+  ageBandOf,
+  deviceClassOf,
+  deviceOfAttempt,
+  dimensionValueLabel,
+  filterOptions,
+  fixedValues,
+  titleCase,
+} from "./dimensions";
 import type { StudentRow } from "./types";
 
 const NOW = new Date("2026-10-23T15:00:00Z");
@@ -40,8 +48,42 @@ describe("filterOptions", () => {
     expect(values("ciudad")).toEqual(["Santiago"]);
   });
 
-  it("no ofrece filtrar por edad como lista (es un rango)", () => {
-    expect(options).not.toHaveProperty("ageBand");
+  it("los tramos de edad son 17 a 20 y despues de 5 en 5", () => {
+    expect(fixedValues("ageBand")).toEqual([
+      "17-20", "21-25", "26-30", "31-35", "36-40", "41-45", "46-50",
+      "51-55", "56-60", "61-65", "66-70", "71-75", "76-80",
+    ]);
+    expect(dimensionValueLabel("ageBand", "17-20")).toBe("17 a 20 años");
+    expect(dimensionValueLabel("ageBand", "21-25")).toBe("21 a 25 años");
+  });
+
+  it("ageBandOf pone cada edad en su tramo, en los bordes y fuera de rango", () => {
+    const expected: [number, string][] = [
+      [17, "17-20"], [20, "17-20"], [21, "21-25"], [25, "21-25"], [26, "26-30"], [30, "26-30"],
+      [31, "31-35"], [35, "31-35"], [36, "36-40"], [75, "71-75"], [76, "76-80"], [80, "76-80"],
+      [16, "17-20"], [90, "76-80"],
+    ];
+
+    for (const [age, band] of expected) expect(ageBandOf(age), String(age)).toBe(band);
+
+    expect(ageBandOf(null)).toBeNull();
+    expect(ageBandOf(undefined)).toBeNull();
+    expect(ageBandOf(Number.NaN)).toBeNull();
+  });
+
+  it("ofrece solo los tramos de edad que hay, y el de un ano atras por si cumplieron anos", () => {
+    const aged = filterOptions(
+      [
+        student("1", { birthDate: "2005-10-01" }), // 21 hoy, 20 hace un ano
+        student("2", { birthDate: "1988-03-01" }), // 38 hoy y 37 hace un ano
+        student("3"), // sin fecha de nacimiento: no aporta
+      ],
+      NOW,
+      2026,
+    );
+
+    expect((aged.ageBand ?? []).map((o) => o.value)).toEqual(["17-20", "21-25", "36-40"]);
+    expect((aged.ageBand ?? [])[0]?.label).toBe("17 a 20 años");
   });
 
   it("el ano en curso aparece aunque nadie haya ingresado todavia ese ano", () => {

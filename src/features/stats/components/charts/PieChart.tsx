@@ -31,6 +31,7 @@ function arcPath(from: number, to: number): string {
  */
 export function PieChart({ result }: { result: ChartResult }) {
   return (
+    <>
     <div className="grid gap-5 sm:grid-cols-2">
       {result.series.map((series) => {
         const parts = shares(series.values);
@@ -42,10 +43,12 @@ export function PieChart({ result }: { result: ChartResult }) {
         return (
           <figure key={series.key} className="flex flex-col items-center gap-3">
             <figcaption className="text-center text-xs text-[var(--viz-text-2)]">
-              {result.series.length > 1 && (
+              {series.key !== "all" && (
                 <span className="block font-medium text-[var(--viz-text)]">{series.label}</span>
               )}
-              <span className="text-[var(--viz-muted)]">n = {series.n}</span>
+              <span className="text-[var(--viz-muted)]">
+                Total de estudiantes: {formatNumber(series.n)}
+              </span>
             </figcaption>
 
             {drawable ? (
@@ -140,5 +143,10 @@ export function PieChart({ result }: { result: ChartResult }) {
         );
       })}
     </div>
+
+    <p className="text-[11px] leading-snug text-[var(--viz-muted)]">
+      Entre paréntesis, el total de {result.unitLabel} en cada parte.
+    </p>
+    </>
   );
 }

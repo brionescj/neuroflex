@@ -24,9 +24,6 @@ import type {
 /** Tope de series en un grafico: pasado esto, los grupos chicos se juntan en "Otros". */
 export const MAX_COLORED_GROUPS = 7;
 
-/** Menos estudiantes que esto en un grupo: se avisa que no se debe concluir. */
-export const LOW_N = 5;
-
 /** Una partida sin actividad por mas de esto se considera abandonada. */
 export const ABANDON_AFTER_MS = 4 * 60 * 60 * 1000;
 

@@ -434,3 +434,43 @@ describe("comparar por dispositivo con todas las partidas juntas", () => {
     expect(chart.notes.join(" ")).toMatch(/aparece en cada uno/);
   });
 });
+
+describe("tramos de edad: comparar y filtrar", () => {
+  function aged(): StatsData {
+    const mk = (rut: string, age: number) =>
+      attempt(rut, "color-sequence", 1, {
+        student: { ageAtStart: age } as AttemptRow["student"],
+      });
+    const a = mk("1", 19);
+    const b = mk("2", 22);
+    const c = mk("3", 28);
+    const d = mk("4", 25);
+
+    return {
+      students: [student("1"), student("2"), student("3"), student("4")],
+      attempts: [a, b, c, d],
+      results: [a, b, c, d].map((x) => level(x, 1, 1, true)),
+      caseTitles: {},
+    };
+  }
+
+  it("compara por tramos de 5 en 5, en orden y con su nombre", () => {
+    const chart = run(aged(), { chart: "cs-reach", groupBy: "ageBand" });
+
+    expect(chart.series.map((s) => [s.key, s.label, s.n])).toEqual([
+      ["17-20", "17 a 20 años", 1],
+      ["21-25", "21 a 25 años", 2],
+      ["26-30", "26 a 30 años", 1],
+    ]);
+  });
+
+  it("elegir tramos deja solo esos grupos", () => {
+    const chart = run(aged(), {
+      chart: "cs-reach",
+      groupBy: "ageBand",
+      filters: '{"ageBand":["21-25","26-30"]}',
+    });
+
+    expect(chart.series.map((s) => s.key)).toEqual(["21-25", "26-30"]);
+  });
+});

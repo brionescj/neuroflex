@@ -4,6 +4,8 @@ import {
   activeFilterCount,
   buildChartParams,
   cleanFilters,
+  compareSummary,
+  comparedValues,
   filtersSummary,
   groupByLabel,
   initialSelection,
@@ -13,6 +15,7 @@ import {
   paramsKey,
   selectChart,
   selectGame,
+  toggleComparedValue,
   toggleFilterValue,
 } from "./selection";
 import type { Catalog } from "../types";
@@ -75,10 +78,9 @@ const catalog: Catalog = {
     {
       id: "paralelo",
       label: "Paralelo",
-      control: "chips",
       options: [{ value: "1", label: "Paralelo 1" }, { value: "2", label: "Paralelo 2" }],
     },
-    { id: "gender", label: "Género", control: "chips", options: [{ value: "female", label: "Femenino" }] },
+    { id: "gender", label: "Género", options: [{ value: "female", label: "Femenino" }] },
   ],
   ageLimits: LIMITS,
   partidas: [],
@@ -92,7 +94,6 @@ const catalog: Catalog = {
   ],
   students: [],
   maxComparedStudents: 6,
-  lowN: 5,
 };
 
 describe("seleccion inicial y cambios", () => {
@@ -309,5 +310,60 @@ describe("textos", () => {
 
   it("la busqueda ignora tildes y mayusculas", () => {
     expect(normalizeSearch("  María Peña ")).toBe("maria pena");
+  });
+});
+
+describe("elegir que se compara", () => {
+  const all = ["1", "2", "3"];
+
+  it("sin filtro se comparan todos", () => {
+    expect(comparedValues({}, "paralelo", all)).toEqual(["1", "2", "3"]);
+    expect(comparedValues({ paralelo: [] }, "paralelo", all)).toEqual(["1", "2", "3"]);
+  });
+
+  it("desmarcar uno deja los demas; con todos marcados el filtro se quita", () => {
+    const without2 = toggleComparedValue({}, "paralelo", all, "2");
+
+    expect(without2).toEqual({ paralelo: ["1", "3"] });
+    expect(comparedValues(without2, "paralelo", all)).toEqual(["1", "3"]);
+    // Volver a marcarlo: quedan todos, asi que ya no hay filtro.
+    expect(toggleComparedValue(without2, "paralelo", all, "2")).toEqual({});
+  });
+
+  it("conserva el orden natural al volver a marcar", () => {
+    const only3 = { paralelo: ["3"] };
+    const back1 = toggleComparedValue(only3, "paralelo", all, "1");
+
+    expect(back1).toEqual({ paralelo: ["1", "3"] });
+  });
+
+  it("siempre queda al menos uno marcado", () => {
+    const only1 = { paralelo: ["1"] };
+
+    expect(toggleComparedValue(only1, "paralelo", all, "1")).toBe(only1);
+  });
+
+  it("no toca los filtros de otras caracteristicas", () => {
+    expect(toggleComparedValue({ gender: ["female"] }, "paralelo", all, "1")).toEqual({
+      gender: ["female"],
+      paralelo: ["2", "3"],
+    });
+  });
+
+  it("el resumen de «Cómo verlo» dice cuantos grupos se comparan", () => {
+    const base = { ...initialSelection(catalog), groupBy: "paralelo" as const };
+
+    expect(compareSummary(catalog, base)).toBe("Comparar por paralelo");
+    expect(compareSummary(catalog, { ...base, filters: { paralelo: ["1"] } })).toBe(
+      "Comparar por paralelo (1 de 2)",
+    );
+    expect(compareSummary(catalog, { ...base, groupBy: "none" })).toBe("Ver el gráfico completo");
+  });
+
+  it("el resumen de filtros omite la caracteristica que se compara", () => {
+    const filters = { paralelo: ["1"], gender: ["female"] };
+
+    expect(filtersSummary(catalog, filters, undefined, "paralelo")).toBe("Género: Femenino");
+    expect(filtersSummary(catalog, { paralelo: ["1"] }, undefined, "paralelo")).toBe("Sin filtros");
   });
 });

@@ -12,6 +12,9 @@ import type {
 
 export const EMPTY_AGE: AgeInput = { min: "", max: "" };
 
+/** Cuantos grupos caben con color en un grafico; el resto se junta en «Otros» (igual que en el servidor). */
+export const MAX_COLORED_GROUPS = 7;
+
 export function chartsOf(catalog: Catalog, game: StatGame): CatalogChart[] {
   return catalog.games.find((g) => g.id === game)?.charts ?? [];
 }
@@ -226,14 +229,65 @@ export function groupByLabel(catalog: Catalog, groupBy: GroupBy): string {
   return `Comparar por ${(catalog.dimensions.find((d) => d.id === groupBy)?.label ?? groupBy).toLowerCase()}`;
 }
 
+/** Los valores que se comparan: los marcados o, sin marcar nada, todos. */
+export function comparedValues(filters: Filters, dimension: DimensionId, all: string[]): string[] {
+  const chosen = filters[dimension];
+
+  return chosen && chosen.length > 0 ? all.filter((value) => chosen.includes(value)) : all;
+}
+
+/**
+ * Marca o desmarca un valor de los que se comparan. Siempre queda al menos
+ * uno, y con todos marcados el filtro se quita (entran tambien los que no
+ * tienen ese dato y los valores que aparezcan despues).
+ */
+export function toggleComparedValue(
+  filters: Filters,
+  dimension: DimensionId,
+  all: string[],
+  value: string,
+): Filters {
+  const current = comparedValues(filters, dimension, all);
+  const next = current.includes(value)
+    ? current.filter((v) => v !== value)
+    : all.filter((v) => v === value || current.includes(v));
+
+  if (next.length === 0) return filters;
+
+  return cleanFilters({ ...filters, [dimension]: next.length === all.length ? [] : next });
+}
+
+/** Lo que muestra la seccion «Cómo verlo» cerrada: como se ve y, al comparar, cuantos grupos. */
+export function compareSummary(catalog: Catalog, selection: Selection): string {
+  const base = groupByLabel(catalog, selection.groupBy);
+
+  if (selection.groupBy === "none" || selection.groupBy === "student") return base;
+
+  const spec = catalog.filters.find((item) => item.id === selection.groupBy);
+
+  if (!spec) return base;
+
+  const all = spec.options.map((option) => option.value);
+  const chosen = comparedValues(selection.filters, selection.groupBy, all);
+
+  return chosen.length < all.length ? `${base} (${chosen.length} de ${all.length})` : base;
+}
+
+/**
+ * Resumen de los filtros. `skip` es la caracteristica que se esta comparando:
+ * sus valores se eligen en «Cómo verlo», no aqui.
+ */
 export function filtersSummary(
   catalog: Catalog,
   filters: Filters,
   age: AgeInput = EMPTY_AGE,
+  skip: DimensionId | null = null,
 ): string {
   const parts: string[] = [];
 
   for (const spec of catalog.filters) {
+    if (spec.id === skip) continue;
+
     const values = filters[spec.id];
 
     if (!values || values.length === 0) continue;

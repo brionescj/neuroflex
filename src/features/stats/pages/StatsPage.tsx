@@ -15,9 +15,9 @@ import {
   EMPTY_AGE,
   buildChartParams,
   chartsOf,
+  compareSummary,
   filtersSummary,
   findChartDef,
-  groupByLabel,
   initialSelection,
   paramsKey,
   parseAge,
@@ -95,6 +95,9 @@ export default function StatsPage() {
   const ageProblem = parseAge(selection.age, catalog.ageLimits);
   const needsStudents = selection.groupBy === "student" && selection.students.length === 0;
   const gameLabel = catalog.games.find((g) => g.id === selection.game)?.label ?? "";
+  // La caracteristica que se compara: sus valores se eligen en «Cómo verlo», no en los filtros.
+  const compareBy =
+    chart.canCompare && selection.groupBy !== "none" && selection.groupBy !== "student" ? selection.groupBy : null;
 
   function toggle(step: number) {
     setOpen((current) => ({ ...current, [step]: !current[step] }));
@@ -126,13 +129,13 @@ export default function StatsPage() {
       key: paramsKey(params),
       subtitle: [
         gameLabel,
-        groupByLabel(catalog, selection.groupBy),
+        compareSummary(catalog, selection),
         chart.usesPartida ? partida : null,
         chart.usesPartida && selection.partida === "all" && selection.countBy === "attempts" ? "Contando partidas" : null,
         chart.usesPeriod && selection.period !== "all"
           ? catalog.periods.find((p) => p.value === selection.period)?.label
           : null,
-        filtersSummary(catalog, selection.filters, selection.age),
+        filtersSummary(catalog, selection.filters, selection.age, compareBy),
       ]
         .filter(Boolean)
         .join(" · "),
@@ -167,7 +170,14 @@ export default function StatsPage() {
             />
           </Section>
 
-          <Section step={2} title="Gráfico" summary={chart.title} open={!!open[2]} onToggle={() => toggle(2)}>
+          <Section
+            step={2}
+            title="Gráfico"
+            summary={chart.title}
+            open={!!open[2]}
+            onToggle={() => toggle(2)}
+            help={{ label: `Qué muestra «${chart.title}»`, text: chart.blurb }}
+          >
             <ChartPicker
               charts={charts}
               value={selection.chart}
@@ -178,7 +188,7 @@ export default function StatsPage() {
           <Section
             step={3}
             title="Cómo verlo"
-            summary={groupByLabel(catalog, selection.groupBy)}
+            summary={compareSummary(catalog, selection)}
             open={!!open[3]}
             onToggle={() => toggle(3)}
           >
@@ -193,7 +203,7 @@ export default function StatsPage() {
           <Section
             step={4}
             title="Filtros"
-            summary={filtersSummary(catalog, selection.filters, selection.age)}
+            summary={filtersSummary(catalog, selection.filters, selection.age, compareBy)}
             open={!!open[4]}
             onToggle={() => toggle(4)}
           >
@@ -203,8 +213,16 @@ export default function StatsPage() {
               age={selection.age}
               onChange={(filters) => update({ ...selection, filters })}
               onAgeChange={(age) => update({ ...selection, age })}
-              onClear={() => update({ ...selection, filters: {}, age: EMPTY_AGE })}
+              onClear={() =>
+                update({
+                  ...selection,
+                  // Lo que se compara se elige en «Cómo verlo»: aqui no se toca.
+                  filters: compareBy && selection.filters[compareBy] ? { [compareBy]: selection.filters[compareBy] } : {},
+                  age: EMPTY_AGE,
+                })
+              }
               hideDevice={!chart.supportsDevice}
+              compareBy={compareBy}
             />
           </Section>
 

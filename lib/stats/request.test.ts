@@ -67,9 +67,12 @@ describe("parseChartRequest", () => {
     }
   });
 
-  it("filtra por ciudad, pero no por franja de edad (eso es el rango)", () => {
+  it("filtra por ciudad y por tramo de edad, y rechaza lo que no es una caracteristica", () => {
     expect(ok({ chart: "nc-levels", filters: '{"ciudad":["Temuco"]}' }).filters).toEqual({ ciudad: ["Temuco"] });
-    expect(message({ chart: "nc-levels", filters: '{"ageBand":["20-22"]}' })).toMatch(/filtros/);
+    expect(ok({ chart: "nc-levels", filters: '{"ageBand":["21-25","26-30"]}' }).filters).toEqual({
+      ageBand: ["21-25", "26-30"],
+    });
+    expect(message({ chart: "nc-levels", filters: '{"edad":["21-25"]}' })).toMatch(/filtros/);
   });
 
   it("valida la forma de comparar y la partida", () => {

@@ -142,7 +142,6 @@ export function seriesOf<T>(
       label: spec.label,
       slot: spec.slot,
       n: distinctStudents(items, rutOf),
-      lowN: false,
       values: cells.map((c) => round(c.value)),
       ns: cells.map((c) => c.n),
     };
@@ -573,7 +572,6 @@ export function compositionSeries<T>(
       label: spec.label,
       slot: spec.slot,
       n: distinctStudents(items, rutOf),
-      lowN: false,
       values: Array.from({ length: categoryCount }, (_, i) =>
         round(mode === "percent" ? percentOf(parts[i] ?? 0, total) : (parts[i] ?? 0)),
       ),

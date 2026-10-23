@@ -3,29 +3,29 @@ import {
   ChartColumn,
   ChartLine,
   ChartPie,
-  CircleHelp,
   Download,
   FlaskConical,
   Info,
   LayoutGrid,
-  X,
   Table2,
   TriangleAlert,
 } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
 import { chartToCsv, csvFileName } from "../utils/csv";
+import { groupsOf, groupsSignature, toggleGroup, withoutGroups } from "../utils/groups";
 import type { ChartResult, ViewId } from "../types";
 import { BarChart } from "./charts/BarChart";
 import { CategoryLegend } from "./charts/CategoryLegend";
-import { ChartLegend } from "./charts/ChartLegend";
 import { ChartTable } from "./charts/ChartTable";
+import { GroupLegend } from "./charts/GroupLegend";
 import { LineChart } from "./charts/LineChart";
 import { PieChart } from "./charts/PieChart";
 import { StackedChart } from "./charts/StackedChart";
 import { StatCards } from "./charts/StatCards";
+import { HelpButton, HelpNote } from "./HelpNote";
 
 type ChartCardProps = {
   result: ChartResult;
@@ -63,10 +63,26 @@ function download(result: ChartResult) {
   URL.revokeObjectURL(url);
 }
 
-export function ChartCard({ result, description, subtitle, loading, stale }: ChartCardProps) {
+const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
+
+export function ChartCard({ result: full, description, subtitle, loading, stale }: ChartCardProps) {
   const [chosen, setChosen] = useState<ViewChoice | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [hiddenState, setHiddenState] = useState<{ signature: string; keys: Set<string> }>({
+    signature: "",
+    keys: new Set(),
+  });
   const helpId = useId();
+
+  // Los grupos ocultos valen mientras sean los mismos grupos: al cambiar la comparacion se olvidan.
+  const groups = useMemo(() => groupsOf(full), [full]);
+  const signature = groupsSignature(groups);
+  const hidden: ReadonlySet<string> = hiddenState.signature === signature ? hiddenState.keys : NOTHING_HIDDEN;
+  const result = useMemo(() => withoutGroups(full, hidden), [full, hidden]);
+
+  function setHidden(keys: Set<string>) {
+    setHiddenState({ signature, keys });
+  }
 
   const choices: ViewChoice[] = [...result.views, "table"];
   // Si la vista elegida no existe en este grafico, se vuelve a la primera.
@@ -81,17 +97,14 @@ export function ChartCard({ result, description, subtitle, loading, stale }: Cha
               <h2 className="text-base font-semibold text-[var(--viz-text)]">{result.title}</h2>
 
               {description && (
-                <button
-                  type="button"
+                <HelpButton
+                  label={`Qué muestra «${result.title}»`}
+                  open={helpOpen}
+                  controls={helpId}
                   onClick={() => setHelpOpen((open) => !open)}
-                  aria-expanded={helpOpen}
-                  aria-controls={helpId}
-                  aria-label={`Qué muestra «${result.title}»`}
-                  title="Qué muestra este gráfico"
-                  className="-my-2 flex size-11 shrink-0 items-center justify-center rounded-lg text-[var(--viz-text-2)] hover:bg-white/5"
-                >
-                  <CircleHelp aria-hidden="true" className={cn("size-5", helpOpen && "text-[var(--viz-text)]")} />
-                </button>
+                  tone="viz"
+                  className="-my-2"
+                />
               )}
             </div>
             <p className="mt-0.5 text-xs leading-relaxed text-[var(--viz-text-2)]">{subtitle}</p>
@@ -111,25 +124,9 @@ export function ChartCard({ result, description, subtitle, loading, stale }: Cha
         </div>
 
         {description && helpOpen && (
-          <div
-            id={helpId}
-            role="region"
-            aria-label={`Qué muestra «${result.title}»`}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") setHelpOpen(false);
-            }}
-            className="flex items-start gap-2 rounded-lg border border-white/10 bg-white/5 py-1 pl-3 pr-1 text-xs leading-relaxed text-[var(--viz-text-2)]"
-          >
-            <p className="min-w-0 flex-1 py-2">{description}</p>
-            <button
-              type="button"
-              onClick={() => setHelpOpen(false)}
-              aria-label="Cerrar descripción"
-              className="flex size-11 shrink-0 items-center justify-center rounded-lg text-[var(--viz-text-2)] hover:bg-white/5"
-            >
-              <X aria-hidden="true" className="size-4" />
-            </button>
-          </div>
+          <HelpNote id={helpId} label={`Qué muestra «${result.title}»`} onClose={() => setHelpOpen(false)} tone="viz">
+            {description}
+          </HelpNote>
         )}
 
         {result.exploratory && (
@@ -189,6 +186,14 @@ export function ChartCard({ result, description, subtitle, loading, stale }: Cha
       </header>
 
       <div className={cn("mt-4 flex flex-col gap-3 transition-opacity", loading && "opacity-50")} aria-busy={loading}>
+        <GroupLegend
+          result={full}
+          view={view}
+          hidden={hidden}
+          onToggle={(key) => setHidden(toggleGroup(hidden, groups, key))}
+          onShowAll={() => setHidden(new Set())}
+        />
+
         {view === "table" ? (
           <ChartTable result={result} />
         ) : view === "cards" && result.cards ? (
@@ -206,16 +211,16 @@ export function ChartCard({ result, description, subtitle, loading, stale }: Cha
           <BarChart result={result} />
         )}
 
-        {(view === "bars" || view === "lines") && <ChartLegend result={result} view={view} />}
       </div>
 
       <details className="mt-4 text-xs text-[var(--viz-text-2)]">
         <summary className="cursor-pointer select-none py-1 text-[var(--viz-muted)] hover:text-[var(--viz-text-2)]">
-          Cómo se calculó ({result.studentsTotal} {result.studentsTotal === 1 ? "estudiante" : "estudiantes"})
+          Cómo se calculó ({full.studentsTotal} {full.studentsTotal === 1 ? "estudiante" : "estudiantes"}
+          {hidden.size > 0 ? ", contando los grupos ocultos" : ""})
         </summary>
 
         <ul className="mt-2 list-disc space-y-1 pl-4 leading-relaxed">
-          {result.notes.map((note) => (
+          {full.notes.map((note) => (
             <li key={note}>{note}</li>
           ))}
         </ul>

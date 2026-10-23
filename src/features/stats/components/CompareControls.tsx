@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
 
+import { MAX_COLORED_GROUPS, comparedValues, toggleComparedValue } from "../utils/selection";
 import type { Catalog, CatalogChart, GroupBy, Selection } from "../types";
+import { MANY_OPTIONS, OptionChips } from "./OptionChips";
 import { StudentPicker } from "./StudentPicker";
 
 type CompareControlsProps = {
@@ -41,6 +43,18 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
   function setGroupBy(groupBy: GroupBy) {
     onChange({ ...selection, groupBy });
   }
+
+  // Los valores que se pueden comparar de la caracteristica elegida (no aplica a «estudiantes específicos»).
+  const spec =
+    comparing && selection.groupBy !== "student"
+      ? catalog.filters.find((item) => item.id === selection.groupBy)
+      : undefined;
+  const dimension = selection.groupBy === "none" || selection.groupBy === "student" ? null : selection.groupBy;
+  const all = spec ? spec.options.map((option) => option.value) : [];
+  const compared =
+    spec && dimension
+      ? { spec, dimension, all, chosen: comparedValues(selection.filters, dimension, all) }
+      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -100,6 +114,44 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
               value={selection.students}
               onChange={(students) => onChange({ ...selection, students })}
             />
+          )}
+
+          {compared && (
+            <fieldset className="min-w-0">
+              <legend className="mb-1.5 text-xs font-medium text-zinc-300">¿Cuáles comparar?</legend>
+
+              <OptionChips
+                options={compared.spec.options}
+                isOn={(value) => compared.chosen.includes(value)}
+                onToggle={(value) =>
+                  onChange({
+                    ...selection,
+                    filters: toggleComparedValue(selection.filters, compared.dimension, compared.all, value),
+                  })
+                }
+                scroll={compared.all.length > MANY_OPTIONS}
+              />
+
+              <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+                {compared.chosen.length < compared.all.length
+                  ? "Quedan fuera las demás opciones y los estudiantes sin ese dato."
+                  : compared.all.length > MAX_COLORED_GROUPS
+                    ? `Se muestran las ${MAX_COLORED_GROUPS} con más estudiantes y el resto en «Otros». Desmarca las que no quieras comparar.`
+                    : "Desmarca las que no quieras comparar."}
+              </p>
+
+              {compared.chosen.length < compared.all.length && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChange({ ...selection, filters: { ...selection.filters, [compared.dimension]: [] } })
+                  }
+                  className="mt-1 text-xs text-zinc-300 underline underline-offset-2 hover:text-white"
+                >
+                  Marcar todas
+                </button>
+              )}
+            </fieldset>
           )}
         </>
       )}
