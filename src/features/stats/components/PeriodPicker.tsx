@@ -60,7 +60,7 @@ export function PeriodPicker({ catalog, selection, required, onChange }: PeriodP
 
       {required && !selection.periodChosen && (
         <p role="status" className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs leading-relaxed text-amber-200">
-          Con un número de partida, elige el período (o un rango de fechas) para poder mostrar el gráfico.
+          Con una cantidad de partidas, elige el período (o un rango de fechas) para poder mostrar el gráfico.
           «Todo el tiempo» sirve para verla completa.
         </p>
       )}

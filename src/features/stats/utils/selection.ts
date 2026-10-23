@@ -46,7 +46,7 @@ export function rangeProblem(range: DateRangeInput): string | null {
 
 export type PartidaParse = { ok: true; value: number | null } | { ok: false; message: string };
 
-/** Lo escrito en «Partida»: vacio = todas; un numero entero de 1 hasta el maximo. */
+/** Lo escrito en «Cantidad de partidas»: vacio = todas; un numero entero de 1 hasta el maximo. */
 export function parsePartida(text: string, max: number): PartidaParse {
   const trimmed = text.trim();
 
@@ -55,7 +55,7 @@ export function parsePartida(text: string, max: number): PartidaParse {
   const value = /^\d{1,3}$/.test(trimmed) ? Number(trimmed) : NaN;
 
   if (!Number.isInteger(value) || value < 1 || value > max) {
-    return { ok: false, message: `La partida debe ser un número entero de 1 a ${max}.` };
+    return { ok: false, message: `La cantidad de partidas debe ser un número entero de 1 a ${max}.` };
   }
 
   return { ok: true, value };
@@ -97,6 +97,7 @@ export function initialSelection(catalog: Catalog, game: StatGame = "general"): 
     groupBy: "none",
     students: [],
     partida: "",
+    take: "first",
     countBy: "students",
     period: "all",
     periodChosen: false,
@@ -161,6 +162,7 @@ export function selectGame(
       groupBy: selection.groupBy,
       students: selection.students,
       partida: selection.partida,
+      take: selection.take,
       countBy: selection.countBy,
       period: selection.period,
       periodChosen: selection.periodChosen,
@@ -252,8 +254,10 @@ export function buildChartParams(
 
   if (chart.usesPartida) {
     if (partida !== "") params.partida = partida;
-    // Solo viaja lo que cambia el resultado: contar partidas importa sin numero de partida.
-    if (partida === "" && selection.countBy === "attempts") params.countBy = "attempts";
+    // Solo viaja lo que cambia el resultado: primeras o ultimas importa con una cantidad;
+    // contar partidas importa salvo que sea una sola por estudiante.
+    if (partida !== "" && selection.take === "last") params.take = "last";
+    if (selection.countBy === "attempts" && partida !== "1") params.countBy = "attempts";
   }
 
   if (chart.usesPeriod) {
@@ -420,7 +424,7 @@ export function timeProblem(selection: Selection, chart: CatalogChart, maxPartid
     if (!partida.ok) return partida.message;
 
     if (partida.value !== null && groupBy !== "dateRange" && !selection.periodChosen) {
-      return `Elige un período, o un rango de fechas, para ver la partida ${partida.value}.`;
+      return `Elige un período, o un rango de fechas, para ver ${partida.value === 1 ? "esa partida" : `las ${partida.value} partidas`}.`;
     }
   }
 
@@ -452,4 +456,22 @@ export function periodText(catalog: Catalog, selection: Selection): string | nul
   if (selection.period === "all") return null;
 
   return catalog.periods.find((period) => period.value === selection.period)?.label ?? null;
+}
+
+/** Cuantas partidas se miran, para el subtitulo del grafico: «Todas las partidas», «Primeras 4 partidas»... */
+export function partidaText(selection: Selection): string {
+  const text = selection.partida.trim();
+
+  if (text === "") return "Todas las partidas";
+
+  const first = selection.take === "first";
+
+  if (text === "1") return first ? "Primera partida" : "Última partida";
+
+  return `${first ? "Primeras" : "Últimas"} ${text} partidas`;
+}
+
+/** Si «Contar» tiene sentido: con una sola partida por estudiante contar partidas y estudiantes da lo mismo. */
+export function canChooseCount(selection: Selection): boolean {
+  return selection.partida.trim() !== "1";
 }

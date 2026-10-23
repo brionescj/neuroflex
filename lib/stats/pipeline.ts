@@ -20,6 +20,7 @@ import type {
   Filters,
   Partida,
   StudentRow,
+  Take,
 } from "./types";
 
 /** Tope de series en un grafico: pasado esto, los grupos chicos se juntan en "Otros". */
@@ -103,18 +104,41 @@ export function attemptValueOf(
 }
 
 /**
- * La partida numero N de cada estudiante (1 = la primera que jugo), o todas si
- * no se pidio un numero. Quien no llego a jugar la N no aparece. El numero es el
- * de la partida misma: se mira despues de filtrar y de acotar por fechas, de modo
- * que la partida 12 que cae fuera del periodo no cuenta.
+ * Las primeras (o ultimas) N partidas de cada estudiante, o todas si no se pidio
+ * una cantidad. Se cuentan despues de filtrar y de acotar por fechas, y por
+ * separado en cada rango al comparar fechas: las primeras 4 de los ultimos 7 dias
+ * son las 4 mas antiguas que jugo dentro de esos 7 dias. Quien jugo menos entra
+ * con las que jugo. El orden es el numero de partida.
  */
 export function pickPartida(
   attempts: AttemptRow[],
   partida: Partida,
+  take: Take = "first",
 ): AttemptRow[] {
   if (partida === null) return attempts;
 
-  return attempts.filter((attempt) => attempt.attemptNumber === partida);
+  const byStudent = new Map<string, AttemptRow[]>();
+
+  for (const attempt of attempts) {
+    const key = `${attempt.studentRut}|${attempt.range ?? ""}`;
+    const list = byStudent.get(key) ?? [];
+
+    list.push(attempt);
+    byStudent.set(key, list);
+  }
+
+  const chosen = new Set<AttemptRow>();
+
+  for (const list of byStudent.values()) {
+    const ordered = [...list].sort((a, b) => a.attemptNumber - b.attemptNumber);
+
+    for (const attempt of take === "first" ? ordered.slice(0, partida) : ordered.slice(-partida)) {
+      chosen.add(attempt);
+    }
+  }
+
+  // Se conserva el orden en que venian.
+  return attempts.filter((attempt) => chosen.has(attempt));
 }
 
 export type GroupItem<T> = {

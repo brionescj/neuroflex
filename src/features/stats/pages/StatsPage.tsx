@@ -25,6 +25,8 @@ import {
   periodText,
   selectChart,
   selectGame,
+  canChooseCount,
+  partidaText,
   timeProblem,
 } from "../utils/selection";
 import type { Catalog, ChartResult, Selection } from "../types";
@@ -132,8 +134,8 @@ export default function StatsPage() {
       subtitle: [
         gameLabel,
         compareSummary(catalog, selection),
-        chart.usesPartida ? (selection.partida.trim() === "" ? "Todas las partidas" : `Partida ${selection.partida.trim()}`) : null,
-        chart.usesPartida && selection.partida.trim() === "" && selection.countBy === "attempts" ? "Contando partidas" : null,
+        chart.usesPartida ? partidaText(selection) : null,
+        chart.usesPartida && canChooseCount(selection) && selection.countBy === "attempts" ? "Contando partidas" : null,
         chart.usesPeriod && selection.groupBy !== "dateRange" ? periodText(catalog, selection) : null,
         filtersSummary(catalog, selection.filters, selection.age, compareBy),
       ]

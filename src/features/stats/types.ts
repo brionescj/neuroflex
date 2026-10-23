@@ -52,6 +52,9 @@ export type ViewId = "bars" | "lines" | "pie" | "stacked" | "cards";
 /** Un rango de fechas escrito en los campos de fecha (AAAA-MM-DD); vacio mientras no se elige. */
 export type DateRangeInput = { from: string; to: string };
 
+/** Con una cantidad de partidas: las primeras (mas antiguas) o las ultimas (mas recientes) del periodo. */
+export type TakeId = "first" | "last";
+
 /** Que se cuenta al mirar todas las partidas: estudiantes o partidas. */
 export type CountBy = "students" | "attempts";
 
@@ -160,9 +163,11 @@ export type Selection = {
   chart: ChartId;
   groupBy: GroupBy;
   students: string[];
-  /** Lo escrito en «Partida»: un numero (la partida N de cada estudiante) o vacio (todas). */
+  /** Lo escrito en «Cantidad de partidas»: cuantas partidas de cada estudiante se miran, o vacio (todas). */
   partida: string;
-  /** Sin numero de partida: contar estudiantes (lo normal) o partidas. */
+  /** Con una cantidad de partidas: si son las primeras o las ultimas del periodo. */
+  take: TakeId;
+  /** Contar estudiantes (lo normal) o partidas; con una sola partida por estudiante da lo mismo. */
   countBy: CountBy;
   /** Un periodo de la lista o «range»: el rango escrito en `range`. */
   period: PeriodId | "range";

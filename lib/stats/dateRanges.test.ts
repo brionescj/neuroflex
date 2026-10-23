@@ -131,20 +131,31 @@ describe("rango de fechas como período", () => {
   });
 });
 
-describe("partida número N", () => {
-  it("la partida 2 de noviembre la juegan A y B, no C", () => {
-    const chart = run({ partida: "2", range: NOV });
+describe("cantidad de partidas", () => {
+  it("la primera partida de noviembre la juegan A, B y C", () => {
+    const chart = run({ partida: "1", range: NOV });
+
+    expect(chart.series[0]?.n).toBe(3);
+    expect(chart.notes.join(" ")).toMatch(/primera partida de cada estudiante dentro del período elegido/);
+  });
+
+  it("las 2 partidas de octubre: A y B solo jugaron una y entran con ella", () => {
+    const chart = run({ partida: "2", range: OCT });
 
     expect(chart.series[0]?.n).toBe(2);
-    expect(chart.notes.join(" ")).toMatch(/partida número 2 del período elegido/);
+    expect(chart.notes.join(" ")).toMatch(/Quien jugó menos entra con las que jugó/);
   });
 
-  it("la partida 2 dentro de octubre no existe para nadie", () => {
-    expect(run({ partida: "2", range: OCT }).series[0]?.n).toBe(0);
+  it("una cantidad mayor a las partidas jugadas trae lo que hay, sin error", () => {
+    expect(run({ partida: "12" }).series[0]?.n).toBe(3);
   });
 
-  it("la partida 12 sin que nadie la haya jugado deja el gráfico en cero, sin error", () => {
-    expect(run({ partida: "12" }).series[0]?.n).toBe(0);
+  it("primeras y últimas dan distinto resultado: A empezó en nivel 2 y terminó en 3", () => {
+    const first = run({ partida: "1", take: "first", options: '{"as":"count"}' });
+    const last = run({ partida: "1", take: "last", options: '{"as":"count"}' });
+
+    expect(first.series[0]?.values).toEqual([0, 1, 1, 1]);
+    expect(last.series[0]?.values).toEqual([0, 1, 0, 2]);
   });
 });
 
@@ -167,17 +178,26 @@ describe("comparar por rangos de fechas", () => {
     expect(chart.studentsTotal).toBe(3);
   });
 
-  it("con partida 2, cada rango muestra la partida 2 de quienes la jugaron ahí", () => {
+  it("con partida 2, cada rango toma hasta 2 partidas de cada estudiante dentro de él", () => {
     const chart = run({ partida: "2", groupBy: "dateRange", ranges: TWO });
 
-    expect(chart.series.map((s) => s.n)).toEqual([0, 2]);
-    expect(chart.notes.join(" ")).toMatch(/partida número 2 de cada rango/);
+    expect(chart.series.map((s) => s.n)).toEqual([2, 3]);
+    expect(chart.notes.join(" ")).toMatch(/2 partidas más antiguas de cada estudiante dentro de cada rango/);
   });
 
-  it("con partida 1, A y B la juegan en octubre y C en noviembre", () => {
+  it("con partida 1, la primera de cada rango: A y B en octubre; A, B y C en noviembre", () => {
     const chart = run({ partida: "1", groupBy: "dateRange", ranges: TWO });
 
-    expect(chart.series.map((s) => s.n)).toEqual([2, 1]);
+    expect(chart.series.map((s) => s.n)).toEqual([2, 3]);
+  });
+
+  it("con partida 1 y rangos que se cruzan, la primera de cada rango puede ser distinta", () => {
+    // Rango largo: la primera de A es la del 5 oct. Noviembre: la del 10 nov.
+    const overlap = `[{"from":"2026-10-01","to":"2026-11-30"},${NOV}]`;
+    const chart = run({ partida: "1", groupBy: "dateRange", ranges: overlap, options: '{"as":"count"}' });
+
+    expect(chart.series[0]?.values).toEqual([0, 1, 1, 1]);
+    expect(chart.series[1]?.values).toEqual([0, 1, 0, 2]);
   });
 
   it("los valores de cada rango son los de sus propias partidas (nivel máximo)", () => {

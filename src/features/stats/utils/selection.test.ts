@@ -13,6 +13,8 @@ import {
   formatRange,
   parsePartida,
   rangeProblem,
+  canChooseCount,
+  partidaText,
   timeProblem,
   normalizeSearch,
   parseAge,
@@ -183,13 +185,36 @@ describe("buildChartParams", () => {
     });
   });
 
-  it("«Contar partidas» solo viaja sin número de partida", () => {
+  it("«Contar partidas» viaja salvo con una sola partida por estudiante", () => {
     const base = { ...initialSelection(catalog, "color-sequence"), countBy: "attempts" as const };
     const chart = seriation[0]!;
 
-    expect(buildChartParams({ ...base, partida: "3" }, chart, LIMITS).countBy).toBeUndefined();
+    expect(buildChartParams({ ...base, partida: "1" }, chart, LIMITS).countBy).toBeUndefined();
+    expect(buildChartParams({ ...base, partida: "3" }, chart, LIMITS).countBy).toBe("attempts");
     expect(buildChartParams({ ...base, partida: "" }, chart, LIMITS).countBy).toBe("attempts");
     expect(buildChartParams({ ...base, partida: "", countBy: "students" }, chart, LIMITS).countBy).toBeUndefined();
+  });
+
+  it("«take» viaja solo con una cantidad de partidas y solo si son las últimas", () => {
+    const chart = seriation[0]!;
+    const base = initialSelection(catalog, "color-sequence");
+
+    expect(buildChartParams({ ...base, partida: "4" }, chart, LIMITS).take).toBeUndefined();
+    expect(buildChartParams({ ...base, partida: "4", take: "last" }, chart, LIMITS).take).toBe("last");
+    expect(buildChartParams({ ...base, partida: "", take: "last" }, chart, LIMITS).take).toBeUndefined();
+  });
+
+  it("el subtítulo dice cuántas partidas y cuáles", () => {
+    const base = initialSelection(catalog, "color-sequence");
+
+    expect(partidaText(base)).toBe("Todas las partidas");
+    expect(partidaText({ ...base, partida: "1" })).toBe("Primera partida");
+    expect(partidaText({ ...base, partida: "1", take: "last" })).toBe("Última partida");
+    expect(partidaText({ ...base, partida: "4" })).toBe("Primeras 4 partidas");
+    expect(partidaText({ ...base, partida: "4", take: "last" })).toBe("Últimas 4 partidas");
+    expect(canChooseCount({ ...base, partida: "1" })).toBe(false);
+    expect(canChooseCount({ ...base, partida: "4" })).toBe(true);
+    expect(canChooseCount(base)).toBe(true);
   });
 
   it("sin número de partida no viaja «partida»; con número viaja tal cual", () => {
@@ -455,7 +480,7 @@ describe("partida y fechas", () => {
   it("con un número de partida hay que elegir el período, aunque sea «Todo el tiempo»", () => {
     const selection = { ...fresh(), partida: "12" };
 
-    expect(timeProblem(selection, chart, 500)).toMatch(/Elige un período.*partida 12/);
+    expect(timeProblem(selection, chart, 500)).toMatch(/Elige un período.*las 12 partidas/);
     expect(timeProblem({ ...selection, periodChosen: true }, chart, 500)).toBeNull();
     expect(timeProblem({ ...selection, periodChosen: true, period: "7d" }, chart, 500)).toBeNull();
   });

@@ -77,8 +77,11 @@ export type ViewId = "bars" | "lines" | "pie" | "stacked" | "cards";
 /** Como comparar: sin agrupar, por una caracteristica, por estudiantes elegidos o por rangos de fechas. */
 export type GroupBy = "none" | "student" | "dateRange" | DimensionId;
 
-/** El numero de partida de cada estudiante que se mira (1 = la primera). null = todas. */
+/** Cuantas partidas de cada estudiante se miran (dentro del periodo elegido). null = todas. */
 export type Partida = number | null;
+
+/** Cuales de esas partidas: las primeras (mas antiguas) o las ultimas (mas recientes) del periodo. */
+export type Take = "first" | "last";
 
 /** La partida mas alta que se puede pedir. */
 export const MAX_PARTIDA = 500;
@@ -163,6 +166,8 @@ export type ChartRequest = {
   chart: ChartId;
   groupBy: GroupBy;
   partida: Partida;
+  /** Con una cantidad de partidas: si son las primeras o las ultimas del periodo. */
+  take: Take;
   countBy: CountBy;
   period: Period;
   /** Rango de fechas elegido a mano en lugar de un periodo. null = no hay. */

@@ -1,0 +1,689 @@
+diff --git a/lib/stats/charts.test.ts b/lib/stats/charts.test.ts
+index 50240d1..387faf6 100644
+--- a/lib/stats/charts.test.ts
++++ b/lib/stats/charts.test.ts
+@@ -144,14 +144,27 @@ function colorData(): StatsData {
+ describe("pickPartida", () => {
+   const a1 = attempt("1", "color-sequence", 1);
+   const a2 = attempt("1", "color-sequence", 2);
++  const a3 = attempt("1", "color-sequence", 3);
+   const b1 = attempt("2", "color-sequence", 1);
+ 
+-  it("la partida numero N de cada estudiante, o todas si no se pide numero", () => {
+-    expect(pickPartida([a2, a1, b1], 1)).toEqual([a1, b1]);
+-    expect(pickPartida([a1, a2, b1], 2)).toEqual([a2]);
+-    expect(pickPartida([a1, a2, b1], 12)).toEqual([]);
++  it("sin cantidad devuelve todas", () => {
+     expect(pickPartida([a1, a2, b1], null)).toEqual([a1, a2, b1]);
+   });
++
++  it("las primeras N de cada estudiante, en el orden en que venian", () => {
++    expect(pickPartida([a3, a2, a1, b1], 1)).toEqual([a1, b1]);
++    expect(pickPartida([a3, a2, a1, b1], 2)).toEqual([a2, a1, b1]);
++  });
++
++  it("las ultimas N de cada estudiante", () => {
++    expect(pickPartida([a1, a2, a3, b1], 1, "last")).toEqual([a3, b1]);
++    expect(pickPartida([a1, a2, a3, b1], 2, "last")).toEqual([a2, a3, b1]);
++  });
++
++  it("quien jugo menos que N entra con las que jugo", () => {
++    expect(pickPartida([a1, a2, b1], 12)).toEqual([a1, a2, b1]);
++    expect(pickPartida([a1, a2, b1], 12, "last")).toEqual([a1, a2, b1]);
++  });
+ });
+ 
+ describe("passesFilters", () => {
+@@ -263,13 +276,37 @@ describe("Seriacion: nivel maximo superado", () => {
+     expect(chart.unit).toBe("percent");
+   });
+ 
+-  it("con partida 2 solo cuenta a quien la jugo: s1, que llego al nivel 1", () => {
++  it("partida 1 usa la primera partida de cada estudiante: s1 llego al 3", () => {
++    const chart = run(colorData(), { chart: "cs-max-level", partida: "1" });
++
++    expect(seriesOf(chart).n).toBe(3);
++    expect(seriesOf(chart).values).toEqual([0, 1, 1, 1]);
++    expect(chart.notes.join(" ")).toMatch(/primera partida de cada estudiante/);
++  });
++
++  it("partida 1 con «últimas» usa la última de cada estudiante: s1 solo llegó al 1", () => {
++    const chart = run(colorData(), { chart: "cs-max-level", partida: "1", take: "last" });
++
++    expect(seriesOf(chart).n).toBe(3);
++    expect(seriesOf(chart).values).toEqual([0, 2, 1]);
++    expect(chart.notes.join(" ")).toMatch(/última partida de cada estudiante/);
++  });
++
++  it("partida 2 toma hasta 2 partidas por estudiante: quien jugó menos entra con las que jugó", () => {
+     const chart = run(colorData(), { chart: "cs-max-level", partida: "2" });
+ 
+-    expect(seriesOf(chart).n).toBe(1);
+-    expect(seriesOf(chart).values).toEqual([0, 1]);
+-    expect(chart.notes.join(" ")).toMatch(/partida número 2/);
+-    expect(chart.notes.join(" ")).toMatch(/no llegó a jugarla/);
++    // s1 (2 partidas, mejor nivel 3), s2 (1 partida) y s3 (1 partida).
++    expect(seriesOf(chart).n).toBe(3);
++    expect(seriesOf(chart).values).toEqual([0, 1, 1, 1]);
++    expect(chart.notes.join(" ")).toMatch(/2 partidas más antiguas/);
++    expect(chart.notes.join(" ")).toMatch(/Quien jugó menos entra con las que jugó/);
++  });
++
++  it("partida 2 contando partidas cuenta cada una de las que entran", () => {
++    const chart = run(colorData(), { chart: "cs-max-level", partida: "2", countBy: "attempts" });
++
++    expect(seriesOf(chart).values).toEqual([0, 2, 1, 1]);
++    expect(chart.unitLabel).toBe("partidas");
+   });
+ 
+   it("con todas las partidas sigue contando estudiantes: cada uno una vez, con su mejor nivel", () => {
+@@ -487,22 +524,19 @@ describe("Seriacion: nivel maximo superado", () => {
+     expect(count("month")).toBe(3);
+   });
+ 
+-  it("la partida N cuenta solo si cae dentro del período: la partida 1 de s1 es del 10, fuera de los últimos 7 días", () => {
++  it("las primeras N se cuentan dentro del período: la primera de s1 en los últimos 7 días es su segunda partida", () => {
+     const data = colorData();
+ 
+     data.attempts[1] = { ...(data.attempts[1] as AttemptRow), startedAt: new Date("2026-10-20T15:00:00Z") };
+     data.attempts[2] = { ...(data.attempts[2] as AttemptRow), startedAt: new Date("2026-10-19T15:00:00Z") };
+ 
+-    const second = run(data, { chart: "cs-max-level", partida: "2", period: "7d" });
+-
+-    expect(seriesOf(second).n).toBe(1);
+-    expect(seriesOf(second).values).toEqual([0, 1]);
+-    expect(second.notes.join(" ")).toMatch(/Últimos 7 días/i);
+-
+     const first = run(data, { chart: "cs-max-level", partida: "1", period: "7d" });
+ 
+-    // s2 (su partida 1 es del 19 o 20) entra; s1 no, porque su partida 1 es del 10.
+-    expect(seriesOf(first).n).toBe(1);
++    // s1 entra con su partida 2 (nivel 1) porque la 1 es del 10; s2 con la suya (nivel 1).
++    expect(seriesOf(first).n).toBe(2);
++    expect(seriesOf(first).values).toEqual([0, 2]);
++    expect(first.notes.join(" ")).toMatch(/Últimos 7 días/i);
++    expect(first.notes.join(" ")).toMatch(/primera partida de cada estudiante dentro del período elegido/);
+   });
+ 
+   it("el filtro de dispositivo separa celular, tableta y computador, y lo aclara", () => {
+diff --git a/lib/stats/charts.ts b/lib/stats/charts.ts
+index 62c9c38..3a734b9 100644
+--- a/lib/stats/charts.ts
++++ b/lib/stats/charts.ts
+@@ -551,7 +551,7 @@ export function buildChart(
+       `Dispositivo estimado con el tipo de pantalla y el tamaño de la ventana en la primera sesión de cada partida: Celular es táctil con el lado corto de la ventana menor a ${TABLET_MIN_SHORT_SIDE} px; Tableta es táctil de ${TABLET_MIN_SHORT_SIDE} px o más (una tableta no se cuenta como celular); Computador es con mouse, o un notebook táctil de pantalla ancha. Es una estimación, no el modelo real del aparato.`,
+     );
+ 
+-    if (request.groupBy === "device" && request.partida === null && request.countBy === "students") {
++    if (request.groupBy === "device" && request.countBy === "students") {
+       notes.push(
+         "Un estudiante que jugó en más de un tipo de aparato aparece en cada uno, con las partidas que jugó ahí.",
+       );
+diff --git a/lib/stats/dateRanges.test.ts b/lib/stats/dateRanges.test.ts
+index c6bdc9c..eb5c185 100644
+--- a/lib/stats/dateRanges.test.ts
++++ b/lib/stats/dateRanges.test.ts
+@@ -131,20 +131,31 @@ describe("rango de fechas como período", () => {
+   });
+ });
+ 
+-describe("partida número N", () => {
+-  it("la partida 2 de noviembre la juegan A y B, no C", () => {
+-    const chart = run({ partida: "2", range: NOV });
++describe("cantidad de partidas", () => {
++  it("la primera partida de noviembre la juegan A, B y C", () => {
++    const chart = run({ partida: "1", range: NOV });
++
++    expect(chart.series[0]?.n).toBe(3);
++    expect(chart.notes.join(" ")).toMatch(/primera partida de cada estudiante dentro del período elegido/);
++  });
++
++  it("las 2 partidas de octubre: A y B solo jugaron una y entran con ella", () => {
++    const chart = run({ partida: "2", range: OCT });
+ 
+     expect(chart.series[0]?.n).toBe(2);
+-    expect(chart.notes.join(" ")).toMatch(/partida número 2 del período elegido/);
++    expect(chart.notes.join(" ")).toMatch(/Quien jugó menos entra con las que jugó/);
+   });
+ 
+-  it("la partida 2 dentro de octubre no existe para nadie", () => {
+-    expect(run({ partida: "2", range: OCT }).series[0]?.n).toBe(0);
++  it("una cantidad mayor a las partidas jugadas trae lo que hay, sin error", () => {
++    expect(run({ partida: "12" }).series[0]?.n).toBe(3);
+   });
+ 
+-  it("la partida 12 sin que nadie la haya jugado deja el gráfico en cero, sin error", () => {
+-    expect(run({ partida: "12" }).series[0]?.n).toBe(0);
++  it("primeras y últimas dan distinto resultado: A empezó en nivel 2 y terminó en 3", () => {
++    const first = run({ partida: "1", take: "first", options: '{"as":"count"}' });
++    const last = run({ partida: "1", take: "last", options: '{"as":"count"}' });
++
++    expect(first.series[0]?.values).toEqual([0, 1, 1, 1]);
++    expect(last.series[0]?.values).toEqual([0, 1, 0, 2]);
+   });
+ });
+ 
+@@ -167,17 +178,26 @@ describe("comparar por rangos de fechas", () => {
+     expect(chart.studentsTotal).toBe(3);
+   });
+ 
+-  it("con partida 2, cada rango muestra la partida 2 de quienes la jugaron ahí", () => {
++  it("con partida 2, cada rango toma hasta 2 partidas de cada estudiante dentro de él", () => {
+     const chart = run({ partida: "2", groupBy: "dateRange", ranges: TWO });
+ 
+-    expect(chart.series.map((s) => s.n)).toEqual([0, 2]);
+-    expect(chart.notes.join(" ")).toMatch(/partida número 2 de cada rango/);
++    expect(chart.series.map((s) => s.n)).toEqual([2, 3]);
++    expect(chart.notes.join(" ")).toMatch(/2 partidas más antiguas de cada estudiante dentro de cada rango/);
+   });
+ 
+-  it("con partida 1, A y B la juegan en octubre y C en noviembre", () => {
++  it("con partida 1, la primera de cada rango: A y B en octubre; A, B y C en noviembre", () => {
+     const chart = run({ partida: "1", groupBy: "dateRange", ranges: TWO });
+ 
+-    expect(chart.series.map((s) => s.n)).toEqual([2, 1]);
++    expect(chart.series.map((s) => s.n)).toEqual([2, 3]);
++  });
++
++  it("con partida 1 y rangos que se cruzan, la primera de cada rango puede ser distinta", () => {
++    // Rango largo: la primera de A es la del 5 oct. Noviembre: la del 10 nov.
++    const overlap = `[{"from":"2026-10-01","to":"2026-11-30"},${NOV}]`;
++    const chart = run({ partida: "1", groupBy: "dateRange", ranges: overlap, options: '{"as":"count"}' });
++
++    expect(chart.series[0]?.values).toEqual([0, 1, 1, 1]);
++    expect(chart.series[1]?.values).toEqual([0, 1, 0, 2]);
+   });
+ 
+   it("los valores de cada rango son los de sus propias partidas (nivel máximo)", () => {
+diff --git a/lib/stats/engine.ts b/lib/stats/engine.ts
+index c59d90a..acff788 100644
+--- a/lib/stats/engine.ts
++++ b/lib/stats/engine.ts
+@@ -212,7 +212,7 @@ export function gameUnits(ctx: Ctx, gameId: GameId): Unit[] {
+     (attempt) => attempt.gameId === gameId && attemptPasses(request, attempt, students),
+   );
+ 
+-  const chosen = pickPartida(kept, request.partida);
++  const chosen = pickPartida(kept, request.partida, request.take);
+   const resultsBy = new Map<string, ResultRow[]>();
+ 
+   for (const result of data.results) {
+@@ -232,7 +232,7 @@ export function gameUnits(ctx: Ctx, gameId: GameId): Unit[] {
+     }))
+     .filter((unit) => unit.results.length > 0);
+ 
+-  if (!(request.partida === null && request.countBy === "students")) return perAttempt;
++  if (request.countBy !== "students") return perAttempt;
+ 
+   // Todas las partidas de un estudiante juntas: cuenta una vez. Al comparar por
+   // dispositivo se junta por estudiante y aparato: quien jugo en un celular y
+@@ -280,7 +280,7 @@ export function groupUnits(ctx: Ctx, units: Unit[]): Grouped<Unit> {
+ export const unitRut = (unit: Unit) => unit.attempt.studentRut;
+ 
+ export function countsAttempts(ctx: Ctx): boolean {
+-  return ctx.request.partida === null && ctx.request.countBy === "attempts";
++  return ctx.request.countBy === "attempts";
+ }
+ 
+ export function unitLabelOf(ctx: Ctx): string {
+@@ -289,11 +289,20 @@ export function unitLabelOf(ctx: Ctx): string {
+ 
+ /** Como se eligieron las partidas y que se cuenta; los avisos de periodo y dispositivo van aparte. */
+ export function partidaNote(ctx: Ctx): string {
+-  const { partida, groupBy, range } = ctx.request;
+-  const inside = groupBy === "dateRange" ? " de cada rango" : ctx.request.period === "all" && !range ? "" : " del período elegido";
++  const { partida, take, groupBy, range } = ctx.request;
++  const inside =
++    groupBy === "dateRange" ? " dentro de cada rango" : ctx.request.period === "all" && !range ? "" : " dentro del período elegido";
+ 
+   if (partida !== null) {
+-    return `Se usa la partida número ${partida}${inside} de cada estudiante. Quien no llegó a jugarla no cuenta.`;
++    if (partida === 1) {
++      return `Se usa la ${take === "first" ? "primera" : "última"} partida de cada estudiante${inside}. Quien no jugó ninguna no cuenta.`;
++    }
++
++    const counted = countsAttempts(ctx)
++      ? "Se cuenta cada partida por separado: un estudiante con varias partidas pesa más."
++      : "Cada estudiante cuenta una sola vez.";
++
++    return `Se usan las ${partida} partidas ${take === "first" ? "más antiguas" : "más recientes"} de cada estudiante${inside}. Quien jugó menos entra con las que jugó. ${counted}`;
+   }
+ 
+   return countsAttempts(ctx)
+diff --git a/lib/stats/pipeline.ts b/lib/stats/pipeline.ts
+index 80d11b1..e74b178 100644
+--- a/lib/stats/pipeline.ts
++++ b/lib/stats/pipeline.ts
+@@ -20,6 +20,7 @@ import type {
+   Filters,
+   Partida,
+   StudentRow,
++  Take,
+ } from "./types";
+ 
+ /** Tope de series en un grafico: pasado esto, los grupos chicos se juntan en "Otros". */
+@@ -103,18 +104,41 @@ export function attemptValueOf(
+ }
+ 
+ /**
+- * La partida numero N de cada estudiante (1 = la primera que jugo), o todas si
+- * no se pidio un numero. Quien no llego a jugar la N no aparece. El numero es el
+- * de la partida misma: se mira despues de filtrar y de acotar por fechas, de modo
+- * que la partida 12 que cae fuera del periodo no cuenta.
++ * Las primeras (o ultimas) N partidas de cada estudiante, o todas si no se pidio
++ * una cantidad. Se cuentan despues de filtrar y de acotar por fechas, y por
++ * separado en cada rango al comparar fechas: las primeras 4 de los ultimos 7 dias
++ * son las 4 mas antiguas que jugo dentro de esos 7 dias. Quien jugo menos entra
++ * con las que jugo. El orden es el numero de partida.
+  */
+ export function pickPartida(
+   attempts: AttemptRow[],
+   partida: Partida,
++  take: Take = "first",
+ ): AttemptRow[] {
+   if (partida === null) return attempts;
+ 
+-  return attempts.filter((attempt) => attempt.attemptNumber === partida);
++  const byStudent = new Map<string, AttemptRow[]>();
++
++  for (const attempt of attempts) {
++    const key = `${attempt.studentRut}|${attempt.range ?? ""}`;
++    const list = byStudent.get(key) ?? [];
++
++    list.push(attempt);
++    byStudent.set(key, list);
++  }
++
++  const chosen = new Set<AttemptRow>();
++
++  for (const list of byStudent.values()) {
++    const ordered = [...list].sort((a, b) => a.attemptNumber - b.attemptNumber);
++
++    for (const attempt of take === "first" ? ordered.slice(0, partida) : ordered.slice(-partida)) {
++      chosen.add(attempt);
++    }
++  }
++
++  // Se conserva el orden en que venian.
++  return attempts.filter((attempt) => chosen.has(attempt));
+ }
+ 
+ export type GroupItem<T> = {
+diff --git a/lib/stats/request.test.ts b/lib/stats/request.test.ts
+index 55eac2d..29c23b5 100644
+--- a/lib/stats/request.test.ts
++++ b/lib/stats/request.test.ts
+@@ -22,6 +22,7 @@ describe("parseChartRequest", () => {
+       chart: "cs-max-level",
+       groupBy: "none",
+       partida: null,
++      take: "first",
+       countBy: "students",
+       period: "all",
+       range: null,
+@@ -91,6 +92,17 @@ describe("parseChartRequest", () => {
+     expect(ok({ chart: "nc-levels" }).partida).toBeNull();
+   });
+ 
++  it("primeras o últimas: por defecto las primeras, y solo esas dos opciones", () => {
++    expect(ok({ chart: "nc-levels", partida: "4" }).take).toBe("first");
++    expect(ok({ chart: "nc-levels", partida: "4", take: "last" }).take).toBe("last");
++    expect(message({ chart: "nc-levels", partida: "4", take: "middle" })).toMatch(/primeras o las últimas/);
++  });
++
++  it("con una sola partida contar partidas y estudiantes es lo mismo", () => {
++    expect(ok({ chart: "nc-levels", partida: "1", countBy: "attempts" }).countBy).toBe("students");
++    expect(ok({ chart: "nc-levels", partida: "3", countBy: "attempts" }).countBy).toBe("attempts");
++  });
++
+   it("al comparar por estudiante exige entre 1 y 6 estudiantes distintos", () => {
+     expect(message({ chart: "nc-levels", groupBy: "student" })).toMatch(/al menos un estudiante/);
+ 
+diff --git a/lib/stats/request.ts b/lib/stats/request.ts
+index f02aa52..8de9597 100644
+--- a/lib/stats/request.ts
++++ b/lib/stats/request.ts
+@@ -10,6 +10,7 @@ import type {
+   Filters,
+   GroupBy,
+   Partida,
++  Take,
+   Period,
+ } from "./types";
+ import { MAX_PARTIDA } from "./types";
+@@ -181,7 +182,7 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
+     return fail("La forma de comparar no es válida.");
+   }
+ 
+-  // Vacio o ausente = todas las partidas; un numero = esa partida de cada estudiante.
++  // Vacio o ausente = todas las partidas; un numero = cuantas partidas de cada estudiante (las primeras o las ultimas).
+   const partidaRaw = single(query.partida) ?? "";
+   let partida: Partida = null;
+ 
+@@ -195,6 +196,12 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
+     partida = number;
+   }
+ 
++  const takeRaw = single(query.take) ?? "first";
++
++  if (takeRaw !== "first" && takeRaw !== "last") {
++    return fail("Elige si son las primeras o las últimas partidas.");
++  }
++
+   const countByRaw = single(query.countBy) ?? "students";
+ 
+   if (countByRaw !== "students" && countByRaw !== "attempts") {
+@@ -303,7 +310,9 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
+       chart: def.id,
+       groupBy,
+       partida,
+-      countBy: countByRaw as CountBy,
++      take: takeRaw as Take,
++      // Con una sola partida por estudiante, contar partidas y estudiantes es lo mismo.
++      countBy: partida === 1 ? "students" : (countByRaw as CountBy),
+       period: periodRaw as Period,
+       range: range ?? null,
+       ranges: groupBy === "dateRange" ? ranges : [],
+diff --git a/lib/stats/types.ts b/lib/stats/types.ts
+index 1e38d48..e9b9c90 100644
+--- a/lib/stats/types.ts
++++ b/lib/stats/types.ts
+@@ -77,9 +77,12 @@ export type ViewId = "bars" | "lines" | "pie" | "stacked" | "cards";
+ /** Como comparar: sin agrupar, por una caracteristica, por estudiantes elegidos o por rangos de fechas. */
+ export type GroupBy = "none" | "student" | "dateRange" | DimensionId;
+ 
+-/** El numero de partida de cada estudiante que se mira (1 = la primera). null = todas. */
++/** Cuantas partidas de cada estudiante se miran (dentro del periodo elegido). null = todas. */
+ export type Partida = number | null;
+ 
++/** Cuales de esas partidas: las primeras (mas antiguas) o las ultimas (mas recientes) del periodo. */
++export type Take = "first" | "last";
++
+ /** La partida mas alta que se puede pedir. */
+ export const MAX_PARTIDA = 500;
+ 
+@@ -163,6 +166,8 @@ export type ChartRequest = {
+   chart: ChartId;
+   groupBy: GroupBy;
+   partida: Partida;
++  /** Con una cantidad de partidas: si son las primeras o las ultimas del periodo. */
++  take: Take;
+   countBy: CountBy;
+   period: Period;
+   /** Rango de fechas elegido a mano en lugar de un periodo. null = no hay. */
+diff --git a/src/features/stats/components/CompareControls.tsx b/src/features/stats/components/CompareControls.tsx
+index fcd96e2..e7193f8 100644
+--- a/src/features/stats/components/CompareControls.tsx
++++ b/src/features/stats/components/CompareControls.tsx
+@@ -192,7 +192,7 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
+       {chart.usesPartida && (
+         <div className="flex flex-col gap-1.5">
+           <label htmlFor="stats-partida" className="text-xs text-zinc-400">
+-            Partida
++            Cantidad de partidas
+           </label>
+           <input
+             id="stats-partida"
+@@ -208,13 +208,50 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
+           />
+           <p className={cn("text-xs leading-relaxed", partida.ok ? "text-zinc-400" : "text-red-300")} role={partida.ok ? undefined : "alert"}>
+             {partida.ok
+-              ? "Escribe el número de partida que quieres ver de cada estudiante (por ejemplo 12). Vacío, se usan todas."
++              ? "Cuántas partidas de cada estudiante quieres ver (por ejemplo 4). Vacío, se usan todas."
+               : partida.message}
+           </p>
+         </div>
+       )}
+ 
+-      {chart.usesPartida && partida.ok && partida.value === null && (
++      {chart.usesPartida && hasPartida && (
++        <div className="flex flex-col gap-1.5">
++          <span id="stats-take-label" className="text-xs text-zinc-400">
++            ¿Cuáles de esas partidas?
++          </span>
++          <div role="radiogroup" aria-labelledby="stats-take-label" className="grid grid-cols-2 gap-2">
++            {(
++              [
++                { value: "first", label: partida.value === 1 ? "La primera" : "Las primeras" },
++                { value: "last", label: partida.value === 1 ? "La última" : "Las últimas" },
++              ] as const
++            ).map((option) => (
++              <button
++                key={option.value}
++                type="button"
++                role="radio"
++                aria-checked={selection.take === option.value}
++                onClick={() => onChange({ ...selection, take: option.value })}
++                className={cn(
++                  "min-h-11 rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
++                  selection.take === option.value
++                    ? "border-white bg-white text-black"
++                    : "border-zinc-700 text-zinc-200 hover:bg-zinc-800",
++                )}
++              >
++                {option.label}
++              </button>
++            ))}
++          </div>
++          <p className="text-xs leading-relaxed text-zinc-400">
++            {selection.take === "first"
++              ? "Las más antiguas que jugó dentro del período. Quien jugó menos entra con las que jugó."
++              : "Las más recientes que jugó dentro del período. Quien jugó menos entra con las que jugó."}
++          </p>
++        </div>
++      )}
++
++      {chart.usesPartida && partida.ok && partida.value !== 1 && (
+         <SelectField
+           label="Contar"
+           value={selection.countBy}
+diff --git a/src/features/stats/components/PeriodPicker.tsx b/src/features/stats/components/PeriodPicker.tsx
+index 32a66e8..2f0946f 100644
+--- a/src/features/stats/components/PeriodPicker.tsx
++++ b/src/features/stats/components/PeriodPicker.tsx
+@@ -60,7 +60,7 @@ export function PeriodPicker({ catalog, selection, required, onChange }: PeriodP
+ 
+       {required && !selection.periodChosen && (
+         <p role="status" className="mt-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs leading-relaxed text-amber-200">
+-          Con un número de partida, elige el período (o un rango de fechas) para poder mostrar el gráfico.
++          Con una cantidad de partidas, elige el período (o un rango de fechas) para poder mostrar el gráfico.
+           «Todo el tiempo» sirve para verla completa.
+         </p>
+       )}
+diff --git a/src/features/stats/pages/StatsPage.tsx b/src/features/stats/pages/StatsPage.tsx
+index 2074c41..c5ee892 100644
+--- a/src/features/stats/pages/StatsPage.tsx
++++ b/src/features/stats/pages/StatsPage.tsx
+@@ -25,6 +25,8 @@ import {
+   periodText,
+   selectChart,
+   selectGame,
++  canChooseCount,
++  partidaText,
+   timeProblem,
+ } from "../utils/selection";
+ import type { Catalog, ChartResult, Selection } from "../types";
+@@ -132,8 +134,8 @@ export default function StatsPage() {
+       subtitle: [
+         gameLabel,
+         compareSummary(catalog, selection),
+-        chart.usesPartida ? (selection.partida.trim() === "" ? "Todas las partidas" : `Partida ${selection.partida.trim()}`) : null,
+-        chart.usesPartida && selection.partida.trim() === "" && selection.countBy === "attempts" ? "Contando partidas" : null,
++        chart.usesPartida ? partidaText(selection) : null,
++        chart.usesPartida && canChooseCount(selection) && selection.countBy === "attempts" ? "Contando partidas" : null,
+         chart.usesPeriod && selection.groupBy !== "dateRange" ? periodText(catalog, selection) : null,
+         filtersSummary(catalog, selection.filters, selection.age, compareBy),
+       ]
+diff --git a/src/features/stats/types.ts b/src/features/stats/types.ts
+index e2cc2fa..e0d000b 100644
+--- a/src/features/stats/types.ts
++++ b/src/features/stats/types.ts
+@@ -52,6 +52,9 @@ export type ViewId = "bars" | "lines" | "pie" | "stacked" | "cards";
+ /** Un rango de fechas escrito en los campos de fecha (AAAA-MM-DD); vacio mientras no se elige. */
+ export type DateRangeInput = { from: string; to: string };
+ 
++/** Con una cantidad de partidas: las primeras (mas antiguas) o las ultimas (mas recientes) del periodo. */
++export type TakeId = "first" | "last";
++
+ /** Que se cuenta al mirar todas las partidas: estudiantes o partidas. */
+ export type CountBy = "students" | "attempts";
+ 
+@@ -160,9 +163,11 @@ export type Selection = {
+   chart: ChartId;
+   groupBy: GroupBy;
+   students: string[];
+-  /** Lo escrito en «Partida»: un numero (la partida N de cada estudiante) o vacio (todas). */
++  /** Lo escrito en «Cantidad de partidas»: cuantas partidas de cada estudiante se miran, o vacio (todas). */
+   partida: string;
+-  /** Sin numero de partida: contar estudiantes (lo normal) o partidas. */
++  /** Con una cantidad de partidas: si son las primeras o las ultimas del periodo. */
++  take: TakeId;
++  /** Contar estudiantes (lo normal) o partidas; con una sola partida por estudiante da lo mismo. */
+   countBy: CountBy;
+   /** Un periodo de la lista o «range»: el rango escrito en `range`. */
+   period: PeriodId | "range";
+diff --git a/src/features/stats/utils/selection.test.ts b/src/features/stats/utils/selection.test.ts
+index d299e6c..cb0eb52 100644
+--- a/src/features/stats/utils/selection.test.ts
++++ b/src/features/stats/utils/selection.test.ts
+@@ -13,6 +13,8 @@ import {
+   formatRange,
+   parsePartida,
+   rangeProblem,
++  canChooseCount,
++  partidaText,
+   timeProblem,
+   normalizeSearch,
+   parseAge,
+@@ -183,15 +185,38 @@ describe("buildChartParams", () => {
+     });
+   });
+ 
+-  it("«Contar partidas» solo viaja sin número de partida", () => {
++  it("«Contar partidas» viaja salvo con una sola partida por estudiante", () => {
+     const base = { ...initialSelection(catalog, "color-sequence"), countBy: "attempts" as const };
+     const chart = seriation[0]!;
+ 
+-    expect(buildChartParams({ ...base, partida: "3" }, chart, LIMITS).countBy).toBeUndefined();
++    expect(buildChartParams({ ...base, partida: "1" }, chart, LIMITS).countBy).toBeUndefined();
++    expect(buildChartParams({ ...base, partida: "3" }, chart, LIMITS).countBy).toBe("attempts");
+     expect(buildChartParams({ ...base, partida: "" }, chart, LIMITS).countBy).toBe("attempts");
+     expect(buildChartParams({ ...base, partida: "", countBy: "students" }, chart, LIMITS).countBy).toBeUndefined();
+   });
+ 
++  it("«take» viaja solo con una cantidad de partidas y solo si son las últimas", () => {
++    const chart = seriation[0]!;
++    const base = initialSelection(catalog, "color-sequence");
++
++    expect(buildChartParams({ ...base, partida: "4" }, chart, LIMITS).take).toBeUndefined();
++    expect(buildChartParams({ ...base, partida: "4", take: "last" }, chart, LIMITS).take).toBe("last");
++    expect(buildChartParams({ ...base, partida: "", take: "last" }, chart, LIMITS).take).toBeUndefined();
++  });
++
++  it("el subtítulo dice cuántas partidas y cuáles", () => {
++    const base = initialSelection(catalog, "color-sequence");
++
++    expect(partidaText(base)).toBe("Todas las partidas");
++    expect(partidaText({ ...base, partida: "1" })).toBe("Primera partida");
++    expect(partidaText({ ...base, partida: "1", take: "last" })).toBe("Última partida");
++    expect(partidaText({ ...base, partida: "4" })).toBe("Primeras 4 partidas");
++    expect(partidaText({ ...base, partida: "4", take: "last" })).toBe("Últimas 4 partidas");
++    expect(canChooseCount({ ...base, partida: "1" })).toBe(false);
++    expect(canChooseCount({ ...base, partida: "4" })).toBe(true);
++    expect(canChooseCount(base)).toBe(true);
++  });
++
+   it("sin número de partida no viaja «partida»; con número viaja tal cual", () => {
+     const chart = seriation[0]!;
+     const base = initialSelection(catalog, "color-sequence");
+@@ -455,7 +480,7 @@ describe("partida y fechas", () => {
+   it("con un número de partida hay que elegir el período, aunque sea «Todo el tiempo»", () => {
+     const selection = { ...fresh(), partida: "12" };
+ 
+-    expect(timeProblem(selection, chart, 500)).toMatch(/Elige un período.*partida 12/);
++    expect(timeProblem(selection, chart, 500)).toMatch(/Elige un período.*las 12 partidas/);
+     expect(timeProblem({ ...selection, periodChosen: true }, chart, 500)).toBeNull();
+     expect(timeProblem({ ...selection, periodChosen: true, period: "7d" }, chart, 500)).toBeNull();
+   });
+diff --git a/src/features/stats/utils/selection.ts b/src/features/stats/utils/selection.ts
+index a957a89..ad867b7 100644
+--- a/src/features/stats/utils/selection.ts
++++ b/src/features/stats/utils/selection.ts
+@@ -46,7 +46,7 @@ export function rangeProblem(range: DateRangeInput): string | null {
+ 
+ export type PartidaParse = { ok: true; value: number | null } | { ok: false; message: string };
+ 
+-/** Lo escrito en «Partida»: vacio = todas; un numero entero de 1 hasta el maximo. */
++/** Lo escrito en «Cantidad de partidas»: vacio = todas; un numero entero de 1 hasta el maximo. */
+ export function parsePartida(text: string, max: number): PartidaParse {
+   const trimmed = text.trim();
+ 
+@@ -55,7 +55,7 @@ export function parsePartida(text: string, max: number): PartidaParse {
+   const value = /^\d{1,3}$/.test(trimmed) ? Number(trimmed) : NaN;
+ 
+   if (!Number.isInteger(value) || value < 1 || value > max) {
+-    return { ok: false, message: `La partida debe ser un número entero de 1 a ${max}.` };
++    return { ok: false, message: `La cantidad de partidas debe ser un número entero de 1 a ${max}.` };
+   }
+ 
+   return { ok: true, value };
+@@ -97,6 +97,7 @@ export function initialSelection(catalog: Catalog, game: StatGame = "general"):
+     groupBy: "none",
+     students: [],
+     partida: "",
++    take: "first",
+     countBy: "students",
+     period: "all",
+     periodChosen: false,
+@@ -161,6 +162,7 @@ export function selectGame(
+       groupBy: selection.groupBy,
+       students: selection.students,
+       partida: selection.partida,
++      take: selection.take,
+       countBy: selection.countBy,
+       period: selection.period,
+       periodChosen: selection.periodChosen,
+@@ -252,8 +254,10 @@ export function buildChartParams(
+ 
+   if (chart.usesPartida) {
+     if (partida !== "") params.partida = partida;
+-    // Solo viaja lo que cambia el resultado: contar partidas importa sin numero de partida.
+-    if (partida === "" && selection.countBy === "attempts") params.countBy = "attempts";
++    // Solo viaja lo que cambia el resultado: primeras o ultimas importa con una cantidad;
++    // contar partidas importa salvo que sea una sola por estudiante.
++    if (partida !== "" && selection.take === "last") params.take = "last";
++    if (selection.countBy === "attempts" && partida !== "1") params.countBy = "attempts";
+   }
+ 
+   if (chart.usesPeriod) {
+@@ -420,7 +424,7 @@ export function timeProblem(selection: Selection, chart: CatalogChart, maxPartid
+     if (!partida.ok) return partida.message;
+ 
+     if (partida.value !== null && groupBy !== "dateRange" && !selection.periodChosen) {
+-      return `Elige un período, o un rango de fechas, para ver la partida ${partida.value}.`;
++      return `Elige un período, o un rango de fechas, para ver ${partida.value === 1 ? "esa partida" : `las ${partida.value} partidas`}.`;
+     }
+   }
+ 
+@@ -453,3 +457,21 @@ export function periodText(catalog: Catalog, selection: Selection): string | nul
+ 
+   return catalog.periods.find((period) => period.value === selection.period)?.label ?? null;
+ }
++
++/** Cuantas partidas se miran, para el subtitulo del grafico: «Todas las partidas», «Primeras 4 partidas»... */
++export function partidaText(selection: Selection): string {
++  const text = selection.partida.trim();
++
++  if (text === "") return "Todas las partidas";
++
++  const first = selection.take === "first";
++
++  if (text === "1") return first ? "Primera partida" : "Última partida";
++
++  return `${first ? "Primeras" : "Últimas"} ${text} partidas`;
++}
++
++/** Si «Contar» tiene sentido: con una sola partida por estudiante contar partidas y estudiantes da lo mismo. */
++export function canChooseCount(selection: Selection): boolean {
++  return selection.partida.trim() !== "1";
++}

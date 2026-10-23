@@ -144,13 +144,26 @@ function colorData(): StatsData {
 describe("pickPartida", () => {
   const a1 = attempt("1", "color-sequence", 1);
   const a2 = attempt("1", "color-sequence", 2);
+  const a3 = attempt("1", "color-sequence", 3);
   const b1 = attempt("2", "color-sequence", 1);
 
-  it("la partida numero N de cada estudiante, o todas si no se pide numero", () => {
-    expect(pickPartida([a2, a1, b1], 1)).toEqual([a1, b1]);
-    expect(pickPartida([a1, a2, b1], 2)).toEqual([a2]);
-    expect(pickPartida([a1, a2, b1], 12)).toEqual([]);
+  it("sin cantidad devuelve todas", () => {
     expect(pickPartida([a1, a2, b1], null)).toEqual([a1, a2, b1]);
+  });
+
+  it("las primeras N de cada estudiante, en el orden en que venian", () => {
+    expect(pickPartida([a3, a2, a1, b1], 1)).toEqual([a1, b1]);
+    expect(pickPartida([a3, a2, a1, b1], 2)).toEqual([a2, a1, b1]);
+  });
+
+  it("las ultimas N de cada estudiante", () => {
+    expect(pickPartida([a1, a2, a3, b1], 1, "last")).toEqual([a3, b1]);
+    expect(pickPartida([a1, a2, a3, b1], 2, "last")).toEqual([a2, a3, b1]);
+  });
+
+  it("quien jugo menos que N entra con las que jugo", () => {
+    expect(pickPartida([a1, a2, b1], 12)).toEqual([a1, a2, b1]);
+    expect(pickPartida([a1, a2, b1], 12, "last")).toEqual([a1, a2, b1]);
   });
 });
 
@@ -263,13 +276,37 @@ describe("Seriacion: nivel maximo superado", () => {
     expect(chart.unit).toBe("percent");
   });
 
-  it("con partida 2 solo cuenta a quien la jugo: s1, que llego al nivel 1", () => {
+  it("partida 1 usa la primera partida de cada estudiante: s1 llego al 3", () => {
+    const chart = run(colorData(), { chart: "cs-max-level", partida: "1" });
+
+    expect(seriesOf(chart).n).toBe(3);
+    expect(seriesOf(chart).values).toEqual([0, 1, 1, 1]);
+    expect(chart.notes.join(" ")).toMatch(/primera partida de cada estudiante/);
+  });
+
+  it("partida 1 con «últimas» usa la última de cada estudiante: s1 solo llegó al 1", () => {
+    const chart = run(colorData(), { chart: "cs-max-level", partida: "1", take: "last" });
+
+    expect(seriesOf(chart).n).toBe(3);
+    expect(seriesOf(chart).values).toEqual([0, 2, 1]);
+    expect(chart.notes.join(" ")).toMatch(/última partida de cada estudiante/);
+  });
+
+  it("partida 2 toma hasta 2 partidas por estudiante: quien jugó menos entra con las que jugó", () => {
     const chart = run(colorData(), { chart: "cs-max-level", partida: "2" });
 
-    expect(seriesOf(chart).n).toBe(1);
-    expect(seriesOf(chart).values).toEqual([0, 1]);
-    expect(chart.notes.join(" ")).toMatch(/partida número 2/);
-    expect(chart.notes.join(" ")).toMatch(/no llegó a jugarla/);
+    // s1 (2 partidas, mejor nivel 3), s2 (1 partida) y s3 (1 partida).
+    expect(seriesOf(chart).n).toBe(3);
+    expect(seriesOf(chart).values).toEqual([0, 1, 1, 1]);
+    expect(chart.notes.join(" ")).toMatch(/2 partidas más antiguas/);
+    expect(chart.notes.join(" ")).toMatch(/Quien jugó menos entra con las que jugó/);
+  });
+
+  it("partida 2 contando partidas cuenta cada una de las que entran", () => {
+    const chart = run(colorData(), { chart: "cs-max-level", partida: "2", countBy: "attempts" });
+
+    expect(seriesOf(chart).values).toEqual([0, 2, 1, 1]);
+    expect(chart.unitLabel).toBe("partidas");
   });
 
   it("con todas las partidas sigue contando estudiantes: cada uno una vez, con su mejor nivel", () => {
@@ -487,22 +524,19 @@ describe("Seriacion: nivel maximo superado", () => {
     expect(count("month")).toBe(3);
   });
 
-  it("la partida N cuenta solo si cae dentro del período: la partida 1 de s1 es del 10, fuera de los últimos 7 días", () => {
+  it("las primeras N se cuentan dentro del período: la primera de s1 en los últimos 7 días es su segunda partida", () => {
     const data = colorData();
 
     data.attempts[1] = { ...(data.attempts[1] as AttemptRow), startedAt: new Date("2026-10-20T15:00:00Z") };
     data.attempts[2] = { ...(data.attempts[2] as AttemptRow), startedAt: new Date("2026-10-19T15:00:00Z") };
 
-    const second = run(data, { chart: "cs-max-level", partida: "2", period: "7d" });
-
-    expect(seriesOf(second).n).toBe(1);
-    expect(seriesOf(second).values).toEqual([0, 1]);
-    expect(second.notes.join(" ")).toMatch(/Últimos 7 días/i);
-
     const first = run(data, { chart: "cs-max-level", partida: "1", period: "7d" });
 
-    // s2 (su partida 1 es del 19 o 20) entra; s1 no, porque su partida 1 es del 10.
-    expect(seriesOf(first).n).toBe(1);
+    // s1 entra con su partida 2 (nivel 1) porque la 1 es del 10; s2 con la suya (nivel 1).
+    expect(seriesOf(first).n).toBe(2);
+    expect(seriesOf(first).values).toEqual([0, 2]);
+    expect(first.notes.join(" ")).toMatch(/Últimos 7 días/i);
+    expect(first.notes.join(" ")).toMatch(/primera partida de cada estudiante dentro del período elegido/);
   });
 
   it("el filtro de dispositivo separa celular, tableta y computador, y lo aclara", () => {

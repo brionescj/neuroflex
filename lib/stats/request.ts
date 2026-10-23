@@ -10,6 +10,7 @@ import type {
   Filters,
   GroupBy,
   Partida,
+  Take,
   Period,
 } from "./types";
 import { MAX_PARTIDA } from "./types";
@@ -181,7 +182,7 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
     return fail("La forma de comparar no es válida.");
   }
 
-  // Vacio o ausente = todas las partidas; un numero = esa partida de cada estudiante.
+  // Vacio o ausente = todas las partidas; un numero = cuantas partidas de cada estudiante (las primeras o las ultimas).
   const partidaRaw = single(query.partida) ?? "";
   let partida: Partida = null;
 
@@ -193,6 +194,12 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
     }
 
     partida = number;
+  }
+
+  const takeRaw = single(query.take) ?? "first";
+
+  if (takeRaw !== "first" && takeRaw !== "last") {
+    return fail("Elige si son las primeras o las últimas partidas.");
   }
 
   const countByRaw = single(query.countBy) ?? "students";
@@ -303,7 +310,9 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
       chart: def.id,
       groupBy,
       partida,
-      countBy: countByRaw as CountBy,
+      take: takeRaw as Take,
+      // Con una sola partida por estudiante, contar partidas y estudiantes es lo mismo.
+      countBy: partida === 1 ? "students" : (countByRaw as CountBy),
       period: periodRaw as Period,
       range: range ?? null,
       ranges: groupBy === "dateRange" ? ranges : [],

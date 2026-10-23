@@ -192,7 +192,7 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
       {chart.usesPartida && (
         <div className="flex flex-col gap-1.5">
           <label htmlFor="stats-partida" className="text-xs text-zinc-400">
-            Partida
+            Cantidad de partidas
           </label>
           <input
             id="stats-partida"
@@ -208,13 +208,50 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
           />
           <p className={cn("text-xs leading-relaxed", partida.ok ? "text-zinc-400" : "text-red-300")} role={partida.ok ? undefined : "alert"}>
             {partida.ok
-              ? "Escribe el número de partida que quieres ver de cada estudiante (por ejemplo 12). Vacío, se usan todas."
+              ? "Cuántas partidas de cada estudiante quieres ver (por ejemplo 4). Vacío, se usan todas."
               : partida.message}
           </p>
         </div>
       )}
 
-      {chart.usesPartida && partida.ok && partida.value === null && (
+      {chart.usesPartida && hasPartida && (
+        <div className="flex flex-col gap-1.5">
+          <span id="stats-take-label" className="text-xs text-zinc-400">
+            ¿Cuáles de esas partidas?
+          </span>
+          <div role="radiogroup" aria-labelledby="stats-take-label" className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { value: "first", label: partida.value === 1 ? "La primera" : "Las primeras" },
+                { value: "last", label: partida.value === 1 ? "La última" : "Las últimas" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={selection.take === option.value}
+                onClick={() => onChange({ ...selection, take: option.value })}
+                className={cn(
+                  "min-h-11 rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
+                  selection.take === option.value
+                    ? "border-white bg-white text-black"
+                    : "border-zinc-700 text-zinc-200 hover:bg-zinc-800",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs leading-relaxed text-zinc-400">
+            {selection.take === "first"
+              ? "Las más antiguas que jugó dentro del período. Quien jugó menos entra con las que jugó."
+              : "Las más recientes que jugó dentro del período. Quien jugó menos entra con las que jugó."}
+          </p>
+        </div>
+      )}
+
+      {chart.usesPartida && partida.ok && partida.value !== 1 && (
         <SelectField
           label="Contar"
           value={selection.countBy}

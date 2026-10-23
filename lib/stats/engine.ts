@@ -212,7 +212,7 @@ export function gameUnits(ctx: Ctx, gameId: GameId): Unit[] {
     (attempt) => attempt.gameId === gameId && attemptPasses(request, attempt, students),
   );
 
-  const chosen = pickPartida(kept, request.partida);
+  const chosen = pickPartida(kept, request.partida, request.take);
   const resultsBy = new Map<string, ResultRow[]>();
 
   for (const result of data.results) {
@@ -232,7 +232,7 @@ export function gameUnits(ctx: Ctx, gameId: GameId): Unit[] {
     }))
     .filter((unit) => unit.results.length > 0);
 
-  if (!(request.partida === null && request.countBy === "students")) return perAttempt;
+  if (request.countBy !== "students") return perAttempt;
 
   // Todas las partidas de un estudiante juntas: cuenta una vez. Al comparar por
   // dispositivo se junta por estudiante y aparato: quien jugo en un celular y
@@ -280,7 +280,7 @@ export function groupUnits(ctx: Ctx, units: Unit[]): Grouped<Unit> {
 export const unitRut = (unit: Unit) => unit.attempt.studentRut;
 
 export function countsAttempts(ctx: Ctx): boolean {
-  return ctx.request.partida === null && ctx.request.countBy === "attempts";
+  return ctx.request.countBy === "attempts";
 }
 
 export function unitLabelOf(ctx: Ctx): string {
@@ -289,11 +289,20 @@ export function unitLabelOf(ctx: Ctx): string {
 
 /** Como se eligieron las partidas y que se cuenta; los avisos de periodo y dispositivo van aparte. */
 export function partidaNote(ctx: Ctx): string {
-  const { partida, groupBy, range } = ctx.request;
-  const inside = groupBy === "dateRange" ? " de cada rango" : ctx.request.period === "all" && !range ? "" : " del período elegido";
+  const { partida, take, groupBy, range } = ctx.request;
+  const inside =
+    groupBy === "dateRange" ? " dentro de cada rango" : ctx.request.period === "all" && !range ? "" : " dentro del período elegido";
 
   if (partida !== null) {
-    return `Se usa la partida número ${partida}${inside} de cada estudiante. Quien no llegó a jugarla no cuenta.`;
+    if (partida === 1) {
+      return `Se usa la ${take === "first" ? "primera" : "última"} partida de cada estudiante${inside}. Quien no jugó ninguna no cuenta.`;
+    }
+
+    const counted = countsAttempts(ctx)
+      ? "Se cuenta cada partida por separado: un estudiante con varias partidas pesa más."
+      : "Cada estudiante cuenta una sola vez.";
+
+    return `Se usan las ${partida} partidas ${take === "first" ? "más antiguas" : "más recientes"} de cada estudiante${inside}. Quien jugó menos entra con las que jugó. ${counted}`;
   }
 
   return countsAttempts(ctx)

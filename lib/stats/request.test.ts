@@ -22,6 +22,7 @@ describe("parseChartRequest", () => {
       chart: "cs-max-level",
       groupBy: "none",
       partida: null,
+      take: "first",
       countBy: "students",
       period: "all",
       range: null,
@@ -89,6 +90,17 @@ describe("parseChartRequest", () => {
     expect(ok({ chart: "nc-levels", partida: "12" }).partida).toBe(12);
     expect(ok({ chart: "nc-levels", partida: "" }).partida).toBeNull();
     expect(ok({ chart: "nc-levels" }).partida).toBeNull();
+  });
+
+  it("primeras o últimas: por defecto las primeras, y solo esas dos opciones", () => {
+    expect(ok({ chart: "nc-levels", partida: "4" }).take).toBe("first");
+    expect(ok({ chart: "nc-levels", partida: "4", take: "last" }).take).toBe("last");
+    expect(message({ chart: "nc-levels", partida: "4", take: "middle" })).toMatch(/primeras o las últimas/);
+  });
+
+  it("con una sola partida contar partidas y estudiantes es lo mismo", () => {
+    expect(ok({ chart: "nc-levels", partida: "1", countBy: "attempts" }).countBy).toBe("students");
+    expect(ok({ chart: "nc-levels", partida: "3", countBy: "attempts" }).countBy).toBe("attempts");
   });
 
   it("al comparar por estudiante exige entre 1 y 6 estudiantes distintos", () => {
