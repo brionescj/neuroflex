@@ -3,6 +3,7 @@ import type {
   Catalog,
   CatalogChart,
   ChartId,
+  DateRangeInput,
   DimensionId,
   Filters,
   GroupBy,
@@ -11,6 +12,54 @@ import type {
 } from "../types";
 
 export const EMPTY_AGE: AgeInput = { min: "", max: "" };
+
+export const EMPTY_RANGE: DateRangeInput = { from: "", to: "" };
+
+/** Los mismos limites de fecha que exige el servidor. */
+export const MIN_RANGE_DATE = "2020-01-01";
+export const MAX_RANGE_DATE = "2100-12-31";
+
+const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+/** «2026-10-01» -> «1 oct 2026». */
+export function formatDay(key: string): string {
+  const [year, month, day] = key.split("-").map(Number) as [number, number, number];
+
+  return `${day} ${MONTHS[month - 1]} ${year}`;
+}
+
+/** «1 oct 2026 – 31 oct 2026», o un solo dia. */
+export function formatRange(range: DateRangeInput): string {
+  return range.from === range.to ? formatDay(range.from) : `${formatDay(range.from)} – ${formatDay(range.to)}`;
+}
+
+/** Por que un rango escrito no sirve; null si esta completo y bien. */
+export function rangeProblem(range: DateRangeInput): string | null {
+  if (range.from === "" || range.to === "") return "Elige la fecha «desde» y la fecha «hasta».";
+  if (range.from < MIN_RANGE_DATE || range.to > MAX_RANGE_DATE || range.from > MAX_RANGE_DATE || range.to < MIN_RANGE_DATE) {
+    return `Las fechas deben estar entre ${formatDay(MIN_RANGE_DATE)} y ${formatDay(MAX_RANGE_DATE)}.`;
+  }
+  if (range.from > range.to) return "«Desde» no puede ser posterior a «hasta».";
+
+  return null;
+}
+
+export type PartidaParse = { ok: true; value: number | null } | { ok: false; message: string };
+
+/** Lo escrito en «Partida»: vacio = todas; un numero entero de 1 hasta el maximo. */
+export function parsePartida(text: string, max: number): PartidaParse {
+  const trimmed = text.trim();
+
+  if (trimmed === "") return { ok: true, value: null };
+
+  const value = /^\d{1,3}$/.test(trimmed) ? Number(trimmed) : NaN;
+
+  if (!Number.isInteger(value) || value < 1 || value > max) {
+    return { ok: false, message: `La partida debe ser un número entero de 1 a ${max}.` };
+  }
+
+  return { ok: true, value };
+}
 
 /** Cuantos grupos caben con color en un grafico; el resto se junta en «Otros» (igual que en el servidor). */
 export const MAX_COLORED_GROUPS = 7;
@@ -47,13 +96,21 @@ export function initialSelection(catalog: Catalog, game: StatGame = "general"): 
     chart: first.id,
     groupBy: "none",
     students: [],
-    partida: "first",
+    partida: "",
     countBy: "students",
     period: "all",
+    periodChosen: false,
+    range: EMPTY_RANGE,
+    ranges: [],
     filters: {},
     age: EMPTY_AGE,
     options: defaultOptions(first),
   };
+}
+
+/** La caracteristica por la que se compara, o null si se compara otra cosa (estudiantes, fechas) o nada. */
+export function comparedDimension(groupBy: GroupBy): DimensionId | null {
+  return groupBy === "none" || groupBy === "student" || groupBy === "dateRange" ? null : groupBy;
 }
 
 /** Cambia de grafico conservando lo que sigue valiendo (filtros, comparacion). */
@@ -78,7 +135,13 @@ export function fitSelection(selection: Selection, chart: CatalogChart): Selecti
   const filters = chart.supportsDevice ? selection.filters : withoutDevice;
   let groupBy = selection.groupBy;
 
-  if (!chart.canCompare || (groupBy === "device" && !chart.supportsDevice)) groupBy = "none";
+  if (
+    !chart.canCompare ||
+    (groupBy === "device" && !chart.supportsDevice) ||
+    (groupBy === "dateRange" && !chart.usesPeriod)
+  ) {
+    groupBy = "none";
+  }
 
   return { ...selection, filters, groupBy };
 }
@@ -100,6 +163,9 @@ export function selectGame(
       partida: selection.partida,
       countBy: selection.countBy,
       period: selection.period,
+      periodChosen: selection.periodChosen,
+      range: selection.range,
+      ranges: selection.ranges,
       filters: selection.filters,
       age: selection.age,
     },
@@ -180,18 +246,26 @@ export function buildChartParams(
   chart: CatalogChart,
   limits: { min: number; max: number },
 ): Record<string, string> {
-  const params: Record<string, string> = {
-    chart: chart.id,
-    groupBy: fitSelection(selection, chart).groupBy,
-  };
+  const groupBy = fitSelection(selection, chart).groupBy;
+  const params: Record<string, string> = { chart: chart.id, groupBy };
+  const partida = selection.partida.trim();
 
   if (chart.usesPartida) {
-    params.partida = selection.partida;
-    // Solo viaja lo que cambia el resultado: contar partidas importa con "todas".
-    if (selection.partida === "all" && selection.countBy === "attempts") params.countBy = "attempts";
+    if (partida !== "") params.partida = partida;
+    // Solo viaja lo que cambia el resultado: contar partidas importa sin numero de partida.
+    if (partida === "" && selection.countBy === "attempts") params.countBy = "attempts";
   }
 
-  if (chart.usesPeriod && selection.period !== "all") params.period = selection.period;
+  if (chart.usesPeriod) {
+    if (groupBy === "dateRange") {
+      // Al comparar por fechas cada grupo trae su rango: no hay un periodo aparte.
+      params.ranges = JSON.stringify(selection.ranges.map(({ from, to }) => ({ from, to })));
+    } else if (selection.period === "range") {
+      params.range = JSON.stringify({ from: selection.range.from, to: selection.range.to });
+    } else if (selection.period !== "all") {
+      params.period = selection.period;
+    }
+  }
 
   const { device: _device, ...withoutDevice } = selection.filters;
   const filters = cleanFilters(chart.supportsDevice ? selection.filters : withoutDevice);
@@ -225,6 +299,7 @@ export function paramsKey(params: Record<string, string>): string {
 export function groupByLabel(catalog: Catalog, groupBy: GroupBy): string {
   if (groupBy === "none") return "Ver el gráfico completo";
   if (groupBy === "student") return "Comparar estudiantes";
+  if (groupBy === "dateRange") return "Comparar por rango de fechas";
 
   return `Comparar por ${(catalog.dimensions.find((d) => d.id === groupBy)?.label ?? groupBy).toLowerCase()}`;
 }
@@ -261,6 +336,7 @@ export function toggleComparedValue(
 export function compareSummary(catalog: Catalog, selection: Selection): string {
   const base = groupByLabel(catalog, selection.groupBy);
 
+  if (selection.groupBy === "dateRange") return `${base} (${selection.ranges.length} rangos)`;
   if (selection.groupBy === "none" || selection.groupBy === "student") return base;
 
   const spec = catalog.filters.find((item) => item.id === selection.groupBy);
@@ -327,4 +403,53 @@ export function normalizeSearch(text: string): string {
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .trim();
+}
+
+/**
+ * Lo que impide mostrar el grafico por la partida o las fechas; null si todo
+ * esta en orden. Con un numero de partida hay que elegir el periodo (aunque sea
+ * «Todo el tiempo») o un rango de fechas: sin eso se mezclarian partidas de
+ * momentos muy distintos sin que el admin lo haya decidido.
+ */
+export function timeProblem(selection: Selection, chart: CatalogChart, maxPartida: number): string | null {
+  const groupBy = fitSelection(selection, chart).groupBy;
+
+  if (chart.usesPartida) {
+    const partida = parsePartida(selection.partida, maxPartida);
+
+    if (!partida.ok) return partida.message;
+
+    if (partida.value !== null && groupBy !== "dateRange" && !selection.periodChosen) {
+      return `Elige un período, o un rango de fechas, para ver la partida ${partida.value}.`;
+    }
+  }
+
+  if (!chart.usesPeriod) return null;
+
+  if (groupBy === "dateRange") {
+    if (selection.ranges.length < 2) return "Para comparar por fechas hacen falta al menos 2 rangos.";
+
+    for (const [index, range] of selection.ranges.entries()) {
+      const problem = rangeProblem(range);
+
+      if (problem) return `Rango ${index + 1}: ${problem}`;
+    }
+
+    return null;
+  }
+
+  if (selection.period === "range") return rangeProblem(selection.range);
+
+  return null;
+}
+
+/** El periodo elegido, escrito para el subtitulo del grafico; null si no se acota. */
+export function periodText(catalog: Catalog, selection: Selection): string | null {
+  if (selection.period === "range") {
+    return rangeProblem(selection.range) ? null : formatRange(selection.range);
+  }
+
+  if (selection.period === "all") return null;
+
+  return catalog.periods.find((period) => period.value === selection.period)?.label ?? null;
 }

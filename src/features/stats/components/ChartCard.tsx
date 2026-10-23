@@ -14,10 +14,18 @@ import { useId, useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
+import {
+  canHideCategories,
+  categoriesSignature,
+  hiddenCategoriesNote,
+  toggleCategory,
+  withoutCategories,
+} from "../utils/categories";
 import { chartToCsv, csvFileName } from "../utils/csv";
 import { groupsOf, groupsSignature, toggleGroup, withoutGroups } from "../utils/groups";
 import type { ChartResult, ViewId } from "../types";
 import { BarChart } from "./charts/BarChart";
+import { CategoryFilter } from "./CategoryFilter";
 import { CategoryLegend } from "./charts/CategoryLegend";
 import { ChartTable } from "./charts/ChartTable";
 import { GroupLegend } from "./charts/GroupLegend";
@@ -64,6 +72,7 @@ function download(result: ChartResult) {
 }
 
 const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
+const NO_CATEGORIES_HIDDEN: ReadonlySet<number> = new Set();
 
 export function ChartCard({ result: full, description, subtitle, loading, stale }: ChartCardProps) {
   const [chosen, setChosen] = useState<ViewChoice | null>(null);
@@ -72,13 +81,31 @@ export function ChartCard({ result: full, description, subtitle, loading, stale 
     signature: "",
     keys: new Set(),
   });
+  const [hiddenCategoriesState, setHiddenCategoriesState] = useState<{ signature: string; keys: Set<number> }>({
+    signature: "",
+    keys: new Set(),
+  });
   const helpId = useId();
+
+  // Las partes ocultas valen mientras sean las mismas partes del mismo grafico.
+  const categoriesKey = categoriesSignature(full);
+  const hiddenCategories: ReadonlySet<number> =
+    hiddenCategoriesState.signature === categoriesKey ? hiddenCategoriesState.keys : NO_CATEGORIES_HIDDEN;
+
+  function setHiddenCategories(keys: Set<number>) {
+    setHiddenCategoriesState({ signature: categoriesKey, keys });
+  }
 
   // Los grupos ocultos valen mientras sean los mismos grupos: al cambiar la comparacion se olvidan.
   const groups = useMemo(() => groupsOf(full), [full]);
   const signature = groupsSignature(groups);
   const hidden: ReadonlySet<string> = hiddenState.signature === signature ? hiddenState.keys : NOTHING_HIDDEN;
-  const result = useMemo(() => withoutGroups(full, hidden), [full, hidden]);
+  const withoutHiddenGroups = useMemo(() => withoutGroups(full, hidden), [full, hidden]);
+  const result = useMemo(
+    () => withoutCategories(withoutHiddenGroups, hiddenCategories),
+    [withoutHiddenGroups, hiddenCategories],
+  );
+  const categoriesNote = hiddenCategoriesNote(full, hiddenCategories);
 
   function setHidden(keys: Set<string>) {
     setHiddenState({ signature, keys });
@@ -194,6 +221,16 @@ export function ChartCard({ result: full, description, subtitle, loading, stale 
           onShowAll={() => setHidden(new Set())}
         />
 
+        {canHideCategories(full) && (
+          <CategoryFilter
+            result={full}
+            colored={view === "pie" || view === "stacked"}
+            hidden={hiddenCategories}
+            onToggle={(index) => setHiddenCategories(toggleCategory(hiddenCategories, full.categories.length, index))}
+            onShowAll={() => setHiddenCategories(new Set())}
+          />
+        )}
+
         {view === "table" ? (
           <ChartTable result={result} />
         ) : view === "cards" && result.cards ? (
@@ -216,11 +253,11 @@ export function ChartCard({ result: full, description, subtitle, loading, stale 
       <details className="mt-4 text-xs text-[var(--viz-text-2)]">
         <summary className="cursor-pointer select-none py-1 text-[var(--viz-muted)] hover:text-[var(--viz-text-2)]">
           Cómo se calculó ({full.studentsTotal} {full.studentsTotal === 1 ? "estudiante" : "estudiantes"}
-          {hidden.size > 0 ? ", contando los grupos ocultos" : ""})
+          {hidden.size > 0 || hiddenCategories.size > 0 ? ", contando lo que se quitó del gráfico" : ""})
         </summary>
 
         <ul className="mt-2 list-disc space-y-1 pl-4 leading-relaxed">
-          {full.notes.map((note) => (
+          {[...full.notes, ...(categoriesNote ? [categoriesNote] : [])].map((note) => (
             <li key={note}>{note}</li>
           ))}
         </ul>

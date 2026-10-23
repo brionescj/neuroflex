@@ -172,7 +172,7 @@ const csImprovement: ChartDef = {
   build: (ctx) => {
     // Siempre una partida a la vez: aqui lo que importa es el orden de las partidas.
     const perAttempt = gameUnits(
-      { ...ctx, request: { ...ctx.request, partida: "all", countBy: "attempts" } },
+      { ...ctx, request: { ...ctx.request, partida: null, countBy: "attempts" } },
       GAME,
     );
 

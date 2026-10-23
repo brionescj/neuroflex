@@ -30,6 +30,9 @@ function arcPath(from: number, to: number): string {
  * una va la lista con el valor de cada parte, asi no hace falta pasar el cursor.
  */
 export function PieChart({ result }: { result: ChartResult }) {
+  // Al quitar partes, cada una conserva su color original.
+  const slotOf = (index: number) => result.categorySlots?.[index] ?? index;
+
   return (
     <>
     <div className="grid gap-5 sm:grid-cols-2">
@@ -77,7 +80,7 @@ export function PieChart({ result }: { result: ChartResult }) {
                           cy={SIZE / 2}
                           r={RADIUS - THICKNESS / 2}
                           fill="none"
-                          stroke={seriesColor(i)}
+                          stroke={seriesColor(slotOf(i))}
                           strokeWidth={THICKNESS}
                         />
                         <title>{result.categories[i]}: 100 %</title>
@@ -89,7 +92,7 @@ export function PieChart({ result }: { result: ChartResult }) {
                     <path
                       key={result.categories[i]}
                       d={arcPath(from, to)}
-                      fill={seriesColor(i)}
+                      fill={seriesColor(slotOf(i))}
                       stroke="var(--viz-surface)"
                       strokeWidth={2}
                     >
@@ -127,7 +130,7 @@ export function PieChart({ result }: { result: ChartResult }) {
                   <span
                     aria-hidden="true"
                     className="inline-block size-2.5 shrink-0 rounded-sm"
-                    style={{ background: seriesColor(i) }}
+                    style={{ background: seriesColor(slotOf(i)) }}
                   />
                   <span className="min-w-0 flex-1">{category}</span>
                   <span className="tabular-nums text-[var(--viz-text)]">

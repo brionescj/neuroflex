@@ -5,9 +5,9 @@
  * leer la respuesta, no un test.
  */
 
-import type { Period } from "./time";
+import type { DateRange, Period } from "./time";
 
-export type { Period };
+export type { DateRange, Period };
 
 export type GameId = "color-sequence" | "mini-cases" | "node-connection";
 
@@ -74,10 +74,14 @@ export type ChartId =
  */
 export type ViewId = "bars" | "lines" | "pie" | "stacked" | "cards";
 
-/** Como comparar: sin agrupar, por una caracteristica o por estudiantes elegidos. */
-export type GroupBy = "none" | "student" | DimensionId;
+/** Como comparar: sin agrupar, por una caracteristica, por estudiantes elegidos o por rangos de fechas. */
+export type GroupBy = "none" | "student" | "dateRange" | DimensionId;
 
-export type Partida = "first" | "last" | "all";
+/** El numero de partida de cada estudiante que se mira (1 = la primera). null = todas. */
+export type Partida = number | null;
+
+/** La partida mas alta que se puede pedir. */
+export const MAX_PARTIDA = 500;
 
 /** Que se cuenta cuando se miran todas las partidas: estudiantes (por defecto) o partidas. */
 export type CountBy = "students" | "attempts";
@@ -161,6 +165,10 @@ export type ChartRequest = {
   partida: Partida;
   countBy: CountBy;
   period: Period;
+  /** Rango de fechas elegido a mano en lugar de un periodo. null = no hay. */
+  range: DateRange | null;
+  /** Los rangos que se comparan (solo con groupBy "dateRange"). */
+  ranges: DateRange[];
   filters: Filters;
   /** null = sin filtrar por edad. */
   ageRange: AgeRange | null;
@@ -178,6 +186,8 @@ export type AttemptRow = {
   lastActivityAt: Date;
   finishedAt?: Date | null;
   contentVersion: string;
+  /** Al comparar por rangos de fechas: a cual rango (0, 1...) pertenece esta copia de la partida. */
+  range?: number;
   /** Solo se lee el dispositivo de la primera sesion. */
   sessions?: {
     device?: { pointer?: string; viewportWidth?: number; viewportHeight?: number } | null;

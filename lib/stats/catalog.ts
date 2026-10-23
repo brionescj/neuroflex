@@ -7,9 +7,10 @@ import {
 } from "./dimensions";
 import { studentName } from "./pipeline";
 import { MAX_AGE, MAX_COMPARED_STUDENTS, MIN_AGE } from "./request";
-import { PERIOD_LABELS, PERIODS, chileDay } from "./time";
+import { MAX_DATE_RANGES, PERIOD_LABELS, PERIODS, chileDay } from "./time";
 import {
   GAME_LABELS,
+  MAX_PARTIDA,
   STAT_GAMES,
   type ChartOptionDef,
   type DimensionId,
@@ -46,7 +47,10 @@ export type Catalog = {
   /** Solo los filtros con alguna opcion. El rango de edad va aparte (ageLimits). */
   filters: FilterSpec[];
   ageLimits: { min: number; max: number };
-  partidas: OptionChoice[];
+  /** La partida mas alta que se puede pedir (el numero de partida de cada estudiante). */
+  maxPartida: number;
+  /** Cuantos rangos de fechas se pueden comparar a la vez. */
+  maxDateRanges: number;
   /** Que se cuenta al mirar todas las partidas. */
   countBy: OptionChoice[];
   periods: OptionChoice[];
@@ -84,11 +88,8 @@ export function buildCatalog(
       options: options[id] ?? [],
     })).filter((spec) => spec.options.length > 0),
     ageLimits: { min: MIN_AGE, max: MAX_AGE },
-    partidas: [
-      { value: "first", label: "Primera partida de cada estudiante" },
-      { value: "last", label: "Última partida de cada estudiante" },
-      { value: "all", label: "Todas las partidas" },
-    ],
+    maxPartida: MAX_PARTIDA,
+    maxDateRanges: MAX_DATE_RANGES,
     countBy: [
       { value: "students", label: "Estudiantes" },
       { value: "attempts", label: "Contar partidas" },

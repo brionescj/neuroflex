@@ -37,7 +37,7 @@ export function Section({ step, title, summary, open, onToggle, help, children }
             onClick={onToggle}
             aria-expanded={open}
             aria-controls={id}
-            className={cn("flex w-full items-center gap-3 px-4 py-3 text-left", help && "pr-[5.5rem]")}
+            className={cn("flex w-full items-center gap-3 py-3 pl-4 text-left", help ? "pr-[5.5rem]" : "pr-11")}
           >
             <span
               aria-hidden="true"
@@ -51,12 +51,17 @@ export function Section({ step, title, summary, open, onToggle, help, children }
               <span className="block truncate text-xs text-zinc-400">{summary}</span>
             </span>
 
-            <ChevronDown
-              aria-hidden="true"
-              className={cn("size-4 shrink-0 text-zinc-400 transition-transform", open && "rotate-180")}
-            />
           </button>
         </h2>
+
+        {/* La flecha va siempre al extremo derecho; el «?», si lo hay, queda entre el título y ella. */}
+        <ChevronDown
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-zinc-400 transition-transform",
+            open && "rotate-180",
+          )}
+        />
 
         {help && (
           <HelpButton
@@ -64,7 +69,7 @@ export function Section({ step, title, summary, open, onToggle, help, children }
             open={helpOpen}
             controls={helpId}
             onClick={() => setHelpFor(helpOpen ? null : help.text)}
-            className="absolute right-9 top-1/2 -translate-y-1/2"
+            className="absolute right-10 top-1/2 -translate-y-1/2"
           />
         )}
       </div>

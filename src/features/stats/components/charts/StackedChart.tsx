@@ -40,7 +40,7 @@ export function StackedChart({ result }: { result: ChartResult }) {
                       key={result.categories[i]}
                       title={`${result.categories[i]}: ${formatNumber(part * 100)} % (${series.ns[i] ?? 0})`}
                       className="flex min-w-0 items-center justify-center text-[11px] font-semibold text-white"
-                      style={{ width: `${part * 100}%`, background: seriesColor(i) }}
+                      style={{ width: `${part * 100}%`, background: seriesColor(result.categorySlots?.[i] ?? i) }}
                     >
                       {part >= LABEL_MIN_SHARE && (
                         <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">

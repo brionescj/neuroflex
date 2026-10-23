@@ -10,7 +10,7 @@ export function CategoryLegend({ result }: { result: ChartResult }) {
           <span
             aria-hidden="true"
             className="inline-block size-2.5 rounded-sm"
-            style={{ background: seriesColor(i) }}
+            style={{ background: seriesColor(result.categorySlots?.[i] ?? i) }}
           />
           {category}
         </li>

@@ -10,6 +10,10 @@ import {
   groupByLabel,
   initialSelection,
   ageSummary,
+  formatRange,
+  parsePartida,
+  rangeProblem,
+  timeProblem,
   normalizeSearch,
   parseAge,
   paramsKey,
@@ -83,7 +87,8 @@ const catalog: Catalog = {
     { id: "gender", label: "Género", options: [{ value: "female", label: "Femenino" }] },
   ],
   ageLimits: LIMITS,
-  partidas: [],
+  maxPartida: 500,
+  maxDateRanges: 4,
   countBy: [
     { value: "students", label: "Estudiantes" },
     { value: "attempts", label: "Contar partidas" },
@@ -102,9 +107,10 @@ describe("seleccion inicial y cambios", () => {
       game: "general",
       chart: "participation",
       groupBy: "none",
-      partida: "first",
+      partida: "",
       countBy: "students",
       period: "all",
+      periodChosen: false,
       filters: {},
       options: { as: "percent" },
     });
@@ -162,7 +168,7 @@ describe("buildChartParams", () => {
       ...initialSelection(catalog, "color-sequence"),
       groupBy: "student" as const,
       students: ["11111111-1"],
-      partida: "all" as const,
+      partida: "12",
       period: "7d" as const,
       filters: { paralelo: ["1"], gender: [] },
     };
@@ -170,20 +176,65 @@ describe("buildChartParams", () => {
     expect(buildChartParams(selection, seriation[0]!, LIMITS)).toEqual({
       chart: "cs-max-level",
       groupBy: "student",
-      partida: "all",
+      partida: "12",
       period: "7d",
       filters: '{"paralelo":["1"]}',
       students: '["11111111-1"]',
     });
   });
 
-  it("«Contar partidas» solo viaja con todas las partidas", () => {
+  it("«Contar partidas» solo viaja sin número de partida", () => {
     const base = { ...initialSelection(catalog, "color-sequence"), countBy: "attempts" as const };
     const chart = seriation[0]!;
 
-    expect(buildChartParams({ ...base, partida: "first" }, chart, LIMITS).countBy).toBeUndefined();
-    expect(buildChartParams({ ...base, partida: "all" }, chart, LIMITS).countBy).toBe("attempts");
-    expect(buildChartParams({ ...base, partida: "all", countBy: "students" }, chart, LIMITS).countBy).toBeUndefined();
+    expect(buildChartParams({ ...base, partida: "3" }, chart, LIMITS).countBy).toBeUndefined();
+    expect(buildChartParams({ ...base, partida: "" }, chart, LIMITS).countBy).toBe("attempts");
+    expect(buildChartParams({ ...base, partida: "", countBy: "students" }, chart, LIMITS).countBy).toBeUndefined();
+  });
+
+  it("sin número de partida no viaja «partida»; con número viaja tal cual", () => {
+    const chart = seriation[0]!;
+    const base = initialSelection(catalog, "color-sequence");
+
+    expect(buildChartParams(base, chart, LIMITS).partida).toBeUndefined();
+    expect(buildChartParams({ ...base, partida: " 12 " }, chart, LIMITS).partida).toBe("12");
+  });
+
+  it("un rango de fechas viaja como «range» y reemplaza al período", () => {
+    const base = {
+      ...initialSelection(catalog, "color-sequence"),
+      period: "range" as const,
+      range: { from: "2026-10-01", to: "2026-10-31" },
+    };
+    const params = buildChartParams(base, seriation[0]!, LIMITS);
+
+    expect(params.range).toBe('{"from":"2026-10-01","to":"2026-10-31"}');
+    expect(params.period).toBeUndefined();
+  });
+
+  it("al comparar por fechas viajan los rangos y ni el período ni el rango suelto", () => {
+    const base = {
+      ...initialSelection(catalog, "color-sequence"),
+      groupBy: "dateRange" as const,
+      period: "7d" as const,
+      range: { from: "2026-10-01", to: "2026-10-31" },
+      ranges: [
+        { from: "2027-06-24", to: "2027-07-24" },
+        { from: "2026-10-01", to: "2026-10-31" },
+      ],
+    };
+    const params = buildChartParams(base, seriation[0]!, LIMITS);
+
+    expect(params.groupBy).toBe("dateRange");
+    expect(params.ranges).toBe('[{"from":"2027-06-24","to":"2027-07-24"},{"from":"2026-10-01","to":"2026-10-31"}]');
+    expect(params.period).toBeUndefined();
+    expect(params.range).toBeUndefined();
+  });
+
+  it("comparar por fechas se descarta en un gráfico que no mira fechas", () => {
+    const base = { ...initialSelection(catalog, "general"), groupBy: "dateRange" as const };
+
+    expect(buildChartParams(base, catalog.games[0]!.charts[0]!, LIMITS).groupBy).toBe("none");
   });
 
   it("el dispositivo no viaja a un gráfico que no lo distingue, y se limpia al cambiar a él", () => {
@@ -365,5 +416,75 @@ describe("elegir que se compara", () => {
 
     expect(filtersSummary(catalog, filters, undefined, "paralelo")).toBe("Género: Femenino");
     expect(filtersSummary(catalog, { paralelo: ["1"] }, undefined, "paralelo")).toBe("Sin filtros");
+  });
+});
+
+describe("partida y fechas", () => {
+  it("parsePartida: vacío es todas; un número de 1 al máximo; lo demás no", () => {
+    expect(parsePartida("", 500)).toEqual({ ok: true, value: null });
+    expect(parsePartida("  ", 500)).toEqual({ ok: true, value: null });
+    expect(parsePartida("12", 500)).toEqual({ ok: true, value: 12 });
+    expect(parsePartida("500", 500)).toEqual({ ok: true, value: 500 });
+
+    for (const bad of ["0", "501", "-1", "1.5", "abc", "1e2"]) {
+      expect(parsePartida(bad, 500).ok).toBe(false);
+    }
+  });
+
+  it("rangeProblem pide las dos fechas, en orden y dentro de los años aceptados", () => {
+    expect(rangeProblem({ from: "2026-10-01", to: "2026-10-31" })).toBeNull();
+    expect(rangeProblem({ from: "2026-10-05", to: "2026-10-05" })).toBeNull();
+    expect(rangeProblem({ from: "", to: "2026-10-31" })).toMatch(/desde/);
+    expect(rangeProblem({ from: "2026-10-01", to: "" })).toMatch(/hasta/);
+    expect(rangeProblem({ from: "2026-10-31", to: "2026-10-01" })).toMatch(/posterior/);
+    expect(rangeProblem({ from: "2019-01-01", to: "2026-10-01" })).toMatch(/entre/);
+  });
+
+  it("formatRange", () => {
+    expect(formatRange({ from: "2027-06-24", to: "2027-07-24" })).toBe("24 jun 2027 – 24 jul 2027");
+    expect(formatRange({ from: "2026-10-05", to: "2026-10-05" })).toBe("5 oct 2026");
+  });
+
+  const chart = catalog.games[1]!.charts[0]!;
+  const fresh = () => initialSelection(catalog, "color-sequence");
+
+  it("sin partida ni rango no hay nada que bloquear", () => {
+    expect(timeProblem(fresh(), chart, 500)).toBeNull();
+  });
+
+  it("con un número de partida hay que elegir el período, aunque sea «Todo el tiempo»", () => {
+    const selection = { ...fresh(), partida: "12" };
+
+    expect(timeProblem(selection, chart, 500)).toMatch(/Elige un período.*partida 12/);
+    expect(timeProblem({ ...selection, periodChosen: true }, chart, 500)).toBeNull();
+    expect(timeProblem({ ...selection, periodChosen: true, period: "7d" }, chart, 500)).toBeNull();
+  });
+
+  it("con un número de partida, un rango incompleto sigue bloqueando", () => {
+    const selection = { ...fresh(), partida: "12", periodChosen: true, period: "range" as const };
+
+    expect(timeProblem(selection, chart, 500)).toMatch(/desde/);
+    expect(
+      timeProblem({ ...selection, range: { from: "2026-10-01", to: "2026-10-31" } }, chart, 500),
+    ).toBeNull();
+  });
+
+  it("una partida mal escrita bloquea", () => {
+    expect(timeProblem({ ...fresh(), partida: "0" }, chart, 500)).toMatch(/entero/);
+  });
+
+  it("al comparar por fechas los rangos reemplazan la elección del período", () => {
+    const two = [
+      { from: "2027-06-24", to: "2027-07-24" },
+      { from: "2026-10-01", to: "2026-10-31" },
+    ];
+    const selection = { ...fresh(), partida: "12", groupBy: "dateRange" as const, ranges: two };
+
+    expect(timeProblem(selection, chart, 500)).toBeNull();
+    expect(timeProblem({ ...selection, ranges: [two[0]!] }, chart, 500)).toMatch(/al menos 2/);
+    expect(timeProblem({ ...selection, ranges: [two[0]!, { from: "", to: "" }] }, chart, 500)).toMatch(/Rango 2/);
+    expect(timeProblem({ ...selection, ranges: [two[0]!, { from: "2026-11-01", to: "2026-10-01" }] }, chart, 500)).toMatch(
+      /Rango 2.*posterior/,
+    );
   });
 });

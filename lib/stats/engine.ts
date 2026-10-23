@@ -17,7 +17,9 @@ import {
 } from "./pipeline";
 import {
   PERIOD_LABELS,
+  formatDateRange,
   periodStart,
+  rangeWindow,
   type Bucket,
 } from "./time";
 import {
@@ -64,7 +66,7 @@ export type ChartDef = {
   compare?: boolean;
   /** Indicador exploratorio: se muestra con un aviso de que orienta pero no concluye. */
   exploratory?: boolean;
-  /** Si cuenta la eleccion primera / ultima / todas las partidas. */
+  /** Si cuenta la eleccion del numero de partida (o todas). */
   usesPartida: boolean;
   /** Si acepta el periodo sin elegir partida (graficos que cuentan partidas o fechas por si mismos). */
   usesPeriod?: boolean;
@@ -158,21 +160,56 @@ export function totalStudents<T>(grouped: Grouped<T>, rutOf: (item: T) => string
   return all.size;
 }
 
-/** Si la partida empezo dentro del periodo pedido. */
-export function inPeriod(attempt: AttemptRow, from: Date | null): boolean {
-  return from === null || attempt.startedAt >= from;
+/** Una ventana de tiempo: desde (incluido) hasta (excluido); null = sin limite por ese lado. */
+export type Window = { from: Date | null; until: Date | null };
+
+/** Si la partida empezo dentro de la ventana. */
+export function inWindow(attempt: AttemptRow, window: Window): boolean {
+  return (
+    (window.from === null || attempt.startedAt >= window.from) &&
+    (window.until === null || attempt.startedAt < window.until)
+  );
+}
+
+/**
+ * Las ventanas de tiempo del pedido: una sola (el periodo, el rango elegido o
+ * todo el tiempo) o, al comparar por fechas, una por cada rango. `range` dice
+ * a cual rango pertenece lo que cae en esa ventana.
+ */
+export function windowsOf(ctx: Ctx): { window: Window; range?: number }[] {
+  const { request, now } = ctx;
+
+  if (request.groupBy === "dateRange") {
+    return request.ranges.map((range, index) => ({ window: rangeWindow(range), range: index }));
+  }
+
+  if (request.range) return [{ window: rangeWindow(request.range) }];
+
+  return [{ window: { from: periodStart(request.period, now), until: null } }];
+}
+
+/** Las partidas que caen en las ventanas del pedido; con rangos, cada copia lleva su rango. */
+function attemptsInWindows(ctx: Ctx, wanted: (attempt: AttemptRow) => boolean): AttemptRow[] {
+  const kept: AttemptRow[] = [];
+
+  for (const { window, range } of windowsOf(ctx)) {
+    for (const attempt of ctx.data.attempts) {
+      if (!wanted(attempt) || !inWindow(attempt, window)) continue;
+
+      kept.push(range === undefined ? attempt : { ...attempt, range });
+    }
+  }
+
+  return kept;
 }
 
 /** Partidas de un juego que pasan filtros y periodo, ya con la eleccion de partida y la unidad. */
 export function gameUnits(ctx: Ctx, gameId: GameId): Unit[] {
   const { request, data, students } = ctx;
-  const from = periodStart(request.period, ctx.now);
 
-  const kept = data.attempts.filter(
-    (attempt) =>
-      attempt.gameId === gameId &&
-      inPeriod(attempt, from) &&
-      attemptPasses(request, attempt, students),
+  const kept = attemptsInWindows(
+    ctx,
+    (attempt) => attempt.gameId === gameId && attemptPasses(request, attempt, students),
   );
 
   const chosen = pickPartida(kept, request.partida);
@@ -195,13 +232,15 @@ export function gameUnits(ctx: Ctx, gameId: GameId): Unit[] {
     }))
     .filter((unit) => unit.results.length > 0);
 
-  if (!(request.partida === "all" && request.countBy === "students")) return perAttempt;
+  if (!(request.partida === null && request.countBy === "students")) return perAttempt;
 
   // Todas las partidas de un estudiante juntas: cuenta una vez. Al comparar por
   // dispositivo se junta por estudiante y aparato: quien jugo en un celular y
   // en un notebook aparece en ambos grupos, cada uno con lo que jugo ahi (si no,
-  // todo quedaria en el aparato de su ultima partida).
+  // todo quedaria en el aparato de su ultima partida). Con rangos de fechas, por
+  // estudiante y rango.
   const byDevice = request.groupBy === "device";
+  const byRange = request.groupBy === "dateRange";
   const byStudent = new Map<string, Unit>();
 
   for (const unit of [...perAttempt].sort(
@@ -209,7 +248,9 @@ export function gameUnits(ctx: Ctx, gameId: GameId): Unit[] {
   )) {
     const key = byDevice
       ? `${unit.attempt.studentRut}|${deviceOfAttempt(unit.attempt) ?? ""}`
-      : unit.attempt.studentRut;
+      : byRange
+        ? `${unit.attempt.studentRut}|${unit.attempt.range}`
+        : unit.attempt.studentRut;
     const current = byStudent.get(key);
 
     if (!current) {
@@ -229,6 +270,7 @@ export function groupUnits(ctx: Ctx, units: Unit[]): Grouped<Unit> {
   const items: GroupItem<Unit>[] = units.map((unit) => ({
     item: unit,
     rut: unit.attempt.studentRut,
+    range: unit.attempt.range,
     valueOf: attemptValueOf(unit.attempt, ctx.students),
   }));
 
@@ -238,7 +280,7 @@ export function groupUnits(ctx: Ctx, units: Unit[]): Grouped<Unit> {
 export const unitRut = (unit: Unit) => unit.attempt.studentRut;
 
 export function countsAttempts(ctx: Ctx): boolean {
-  return ctx.request.partida === "all" && ctx.request.countBy === "attempts";
+  return ctx.request.partida === null && ctx.request.countBy === "attempts";
 }
 
 export function unitLabelOf(ctx: Ctx): string {
@@ -247,11 +289,12 @@ export function unitLabelOf(ctx: Ctx): string {
 
 /** Como se eligieron las partidas y que se cuenta; los avisos de periodo y dispositivo van aparte. */
 export function partidaNote(ctx: Ctx): string {
-  const { partida } = ctx.request;
-  const inside = ctx.request.period === "all" ? "" : " del período elegido";
+  const { partida, groupBy, range } = ctx.request;
+  const inside = groupBy === "dateRange" ? " de cada rango" : ctx.request.period === "all" && !range ? "" : " del período elegido";
 
-  if (partida === "first") return `Se usa la primera partida${inside} de cada estudiante.`;
-  if (partida === "last") return `Se usa la última partida${inside} de cada estudiante.`;
+  if (partida !== null) {
+    return `Se usa la partida número ${partida}${inside} de cada estudiante. Quien no llegó a jugarla no cuenta.`;
+  }
 
   return countsAttempts(ctx)
     ? "Se cuenta cada partida por separado: un estudiante con varias partidas pesa más."
@@ -259,9 +302,19 @@ export function partidaNote(ctx: Ctx): string {
 }
 
 export function periodNote(ctx: Ctx): string | null {
-  return ctx.request.period === "all"
+  const { groupBy, range, period } = ctx.request;
+
+  if (groupBy === "dateRange") {
+    return "Cada grupo es un rango de fechas, según el día en que empezó cada partida (hora de Chile). Si los rangos se cruzan, una partida aparece en cada uno.";
+  }
+
+  if (range) {
+    return `Período: del ${formatDateRange(range)}, según el día en que empezó cada partida (hora de Chile).`;
+  }
+
+  return period === "all"
     ? null
-    : `Período: ${PERIOD_LABELS[ctx.request.period].toLowerCase()}, según el día en que empezó cada partida (hora de Chile).`;
+    : `Período: ${PERIOD_LABELS[period].toLowerCase()}, según el día en que empezó cada partida (hora de Chile).`;
 }
 
 /** Notas de contexto que comparten los graficos por partida. */
@@ -612,12 +665,10 @@ export const FICHA_NOTE =
 
 /** Partidas que pasan filtros y periodo (sin elegir primera o ultima), opcionalmente de un juego. */
 export function periodAttempts(ctx: Ctx, game: string | undefined): AttemptRow[] {
-  const from = periodStart(ctx.request.period, ctx.now);
-
-  return ctx.data.attempts.filter(
+  return attemptsInWindows(
+    ctx,
     (attempt) =>
       (game === undefined || game === "all" || attempt.gameId === game) &&
-      (from === null || attempt.startedAt >= from) &&
       attemptPasses(ctx.request, attempt, ctx.students),
   );
 }
@@ -627,6 +678,7 @@ export function groupAttempts(ctx: Ctx, attempts: AttemptRow[]): Grouped<Attempt
     attempts.map((attempt) => ({
       item: attempt,
       rut: attempt.studentRut,
+      range: attempt.range,
       valueOf: attemptValueOf(attempt, ctx.students),
     })),
     ctx.request,

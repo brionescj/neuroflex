@@ -70,7 +70,8 @@ function level(
 }
 
 function run(data: StatsData, query: Record<string, unknown>): ChartResult {
-  const parsed = parseChartRequest(query);
+  // Las pruebas parten de la partida 1 de cada estudiante; partida: "" pide todas.
+  const parsed = parseChartRequest({ partida: "1", ...query });
 
   if (!parsed.ok) throw new Error(parsed.message);
 
@@ -120,7 +121,7 @@ function data(): StatsData {
 
 describe("S1: estudiantes que superaron cada nivel", () => {
   it("cuenta quienes superaron cada nivel (nunca sube) y trae vista de lineas y barras", () => {
-    const chart = run(data(), { chart: "cs-reach", partida: "all" });
+    const chart = run(data(), { chart: "cs-reach", partida: "" });
 
     expect(chart.views).toEqual(["lines", "bars"]);
     expect(chart.categories).toHaveLength(12);
@@ -130,7 +131,7 @@ describe("S1: estudiantes que superaron cada nivel", () => {
   });
 
   it("en porcentaje es sobre todos los que jugaron", () => {
-    const chart = run(data(), { chart: "cs-reach", partida: "all", options: '{"as":"percent"}' });
+    const chart = run(data(), { chart: "cs-reach", partida: "", options: '{"as":"percent"}' });
 
     expect(only(chart).values.slice(0, 2)).toEqual([100, 66.7]);
   });
@@ -138,7 +139,7 @@ describe("S1: estudiantes que superaron cada nivel", () => {
 
 describe("S3: tramos de nivel maximo", () => {
   it("reparte en 4 tramos y suma todos los estudiantes; admite torta y apiladas", () => {
-    const chart = run(data(), { chart: "cs-bands", partida: "all" });
+    const chart = run(data(), { chart: "cs-bands", partida: "" });
 
     expect(chart.views).toEqual(["bars", "pie", "stacked"]);
     expect(chart.categories).toEqual(["Hasta el nivel 5", "Niveles 6 a 9", "Niveles 10 a 12", "Nivel 13 o más"]);
@@ -171,7 +172,7 @@ describe("S4: mejora entre partidas", () => {
 
 describe("S5: intentos para superar un nivel", () => {
   it("a la primera, al 2.o, al 3.o o sin superar", () => {
-    const chart = run(data(), { chart: "cs-tries", partida: "all", countBy: "attempts" });
+    const chart = run(data(), { chart: "cs-tries", partida: "", countBy: "attempts" });
 
     expect(chart.unitLabel).toBe("niveles jugados");
     // A la primera: s1a n1,n3; s1b n1; s2a n1; s3a n1..n12 (12) = 16. 2.o: s1a n2. No lo supero: solo s2a n2
@@ -182,7 +183,7 @@ describe("S5: intentos para superar un nivel", () => {
   it("se puede acotar por tramo de niveles", () => {
     const chart = run(data(), {
       chart: "cs-tries",
-      partida: "all",
+      partida: "",
       countBy: "attempts",
       options: '{"as":"auto","levels":"11+"}',
     });
@@ -195,7 +196,7 @@ describe("S5: intentos para superar un nivel", () => {
 
 describe("S6, S7 y S8: indicadores exploratorios", () => {
   it("tipo de error: intercambios y sustituciones, con aviso de exploratorio", () => {
-    const chart = run(data(), { chart: "cs-error-type", partida: "all" });
+    const chart = run(data(), { chart: "cs-error-type", partida: "" });
 
     expect(chart.exploratory).toBe(true);
     expect(chart.views).toEqual(["bars", "pie", "stacked"]);
@@ -205,7 +206,7 @@ describe("S6, S7 y S8: indicadores exploratorios", () => {
   });
 
   it("dónde fallan primero: solo primer intento con error, por tercios de la secuencia", () => {
-    const chart = run(data(), { chart: "cs-first-error", partida: "all" });
+    const chart = run(data(), { chart: "cs-first-error", partida: "" });
 
     expect(chart.exploratory).toBe(true);
     // s1 n2: posicion 1 de 3 -> inicio. s2 n2: posicion 3 de 3 -> final. s3 n13: posicion 14 de 14 -> final.
@@ -213,13 +214,13 @@ describe("S6, S7 y S8: indicadores exploratorios", () => {
   });
 
   it("ritmo: mediana en segundos por nivel, con aviso de exploratorio", () => {
-    const chart = run(data(), { chart: "cs-pace", partida: "all" });
+    const chart = run(data(), { chart: "cs-pace", partida: "" });
 
     expect(chart.exploratory).toBe(true);
     expect(chart.views).toEqual(["lines", "bars"]);
     expect(only(chart).values[0]).toBe(0.8);
 
-    const first = run(data(), { chart: "cs-pace", partida: "all", options: '{"measure":"first"}' });
+    const first = run(data(), { chart: "cs-pace", partida: "", options: '{"measure":"first"}' });
 
     expect(only(first).values[0]).toBe(1.2);
   });
@@ -423,7 +424,7 @@ describe("comparar por dispositivo con todas las partidas juntas", () => {
     const chart = run(base, {
       chart: "cs-reach",
       groupBy: "device",
-      partida: "all",
+      partida: "",
       countBy: "students",
       options: '{"as":"count"}',
     });

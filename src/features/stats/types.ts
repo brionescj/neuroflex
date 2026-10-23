@@ -43,13 +43,14 @@ export type ChartId =
   | "mc-steps"
   | "mc-time";
 
-/** Como comparar: sin agrupar, por una caracteristica o por estudiantes elegidos. */
-export type GroupBy = "none" | "student" | DimensionId;
+/** Como comparar: sin agrupar, por una caracteristica, por estudiantes elegidos o por rangos de fechas. */
+export type GroupBy = "none" | "student" | "dateRange" | DimensionId;
 
 /** Formas de ver un grafico; la tabla siempre esta aparte. */
 export type ViewId = "bars" | "lines" | "pie" | "stacked" | "cards";
 
-export type Partida = "first" | "last" | "all";
+/** Un rango de fechas escrito en los campos de fecha (AAAA-MM-DD); vacio mientras no se elige. */
+export type DateRangeInput = { from: string; to: string };
 
 /** Que se cuenta al mirar todas las partidas: estudiantes o partidas. */
 export type CountBy = "students" | "attempts";
@@ -93,7 +94,10 @@ export type Catalog = {
   dimensions: { id: DimensionId; label: string }[];
   filters: FilterSpec[];
   ageLimits: { min: number; max: number };
-  partidas: OptionChoice[];
+  /** La partida mas alta que se puede pedir. */
+  maxPartida: number;
+  /** Cuantos rangos de fechas se pueden comparar a la vez. */
+  maxDateRanges: number;
   countBy: OptionChoice[];
   periods: { value: PeriodId; label: string }[];
   students: { rut: string; name: string; paralelo: number | null }[];
@@ -138,6 +142,8 @@ export type ChartResult = {
   unit: ChartUnit;
   unitLabel: string;
   categories: string[];
+  /** Al quitar partes del grafico: el puesto original de cada categoria que queda, para que conserve su color. */
+  categorySlots?: number[];
   series: ChartSeries[];
   warnings: string[];
   notes: string[];
@@ -154,10 +160,17 @@ export type Selection = {
   chart: ChartId;
   groupBy: GroupBy;
   students: string[];
-  partida: Partida;
-  /** Con todas las partidas: contar estudiantes (lo normal) o partidas. */
+  /** Lo escrito en «Partida»: un numero (la partida N de cada estudiante) o vacio (todas). */
+  partida: string;
+  /** Sin numero de partida: contar estudiantes (lo normal) o partidas. */
   countBy: CountBy;
-  period: PeriodId;
+  /** Un periodo de la lista o «range»: el rango escrito en `range`. */
+  period: PeriodId | "range";
+  /** El admin ya eligio un periodo (aunque sea «Todo el tiempo»); con un numero de partida es obligatorio. */
+  periodChosen: boolean;
+  range: DateRangeInput;
+  /** Al comparar por fechas: los rangos (de 2 a maxDateRanges). */
+  ranges: DateRangeInput[];
   filters: Filters;
   age: AgeInput;
   options: Record<string, string>;

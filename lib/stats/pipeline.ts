@@ -11,6 +11,7 @@ import {
   deviceOfAttempt,
   fixedValues,
 } from "./dimensions";
+import { formatDateRange } from "./time";
 import type {
   AgeRange,
   AttemptRow,
@@ -102,35 +103,25 @@ export function attemptValueOf(
 }
 
 /**
- * Una partida por estudiante: la primera, la ultima o todas. Se aplica despues
- * de filtrar, de modo que "primera" es la primera de las que quedaron.
+ * La partida numero N de cada estudiante (1 = la primera que jugo), o todas si
+ * no se pidio un numero. Quien no llego a jugar la N no aparece. El numero es el
+ * de la partida misma: se mira despues de filtrar y de acotar por fechas, de modo
+ * que la partida 12 que cae fuera del periodo no cuenta.
  */
 export function pickPartida(
   attempts: AttemptRow[],
   partida: Partida,
 ): AttemptRow[] {
-  if (partida === "all") return attempts;
+  if (partida === null) return attempts;
 
-  const chosen = new Map<string, AttemptRow>();
-
-  for (const attempt of attempts) {
-    const current = chosen.get(attempt.studentRut);
-
-    const better =
-      !current ||
-      (partida === "first"
-        ? attempt.attemptNumber < current.attemptNumber
-        : attempt.attemptNumber > current.attemptNumber);
-
-    if (better) chosen.set(attempt.studentRut, attempt);
-  }
-
-  return attempts.filter((attempt) => chosen.get(attempt.studentRut) === attempt);
+  return attempts.filter((attempt) => attempt.attemptNumber === partida);
 }
 
 export type GroupItem<T> = {
   item: T;
   rut: string;
+  /** Al comparar por rangos de fechas: a cual rango pertenece. */
+  range?: number;
   valueOf: (dimension: DimensionId) => string | null;
 };
 
@@ -141,7 +132,7 @@ export type GroupItem<T> = {
  */
 export function groupItems<T>(
   items: GroupItem<T>[],
-  request: Pick<ChartRequest, "groupBy" | "students">,
+  request: Pick<ChartRequest, "groupBy" | "students"> & Partial<Pick<ChartRequest, "ranges">>,
   students: Map<string, StudentRow>,
 ): Grouped<T> {
   const { groupBy } = request;
@@ -177,6 +168,21 @@ export function groupItems<T>(
       })),
       byGroup,
     };
+  }
+
+  if (groupBy === "dateRange") {
+    const specs: GroupSpec[] = (request.ranges ?? []).map((range, position) => ({
+      key: `range-${position}`,
+      label: formatDateRange(range),
+      slot: position,
+    }));
+    const byGroup = new Map<string, T[]>(specs.map((spec) => [spec.key, []]));
+
+    for (const entry of items) {
+      if (entry.range !== undefined) byGroup.get(`range-${entry.range}`)?.push(entry.item);
+    }
+
+    return { specs, byGroup };
   }
 
   const dimension = groupBy;

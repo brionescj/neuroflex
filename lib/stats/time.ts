@@ -212,6 +212,55 @@ export function periodStart(period: Period, now: Date): Date | null {
   return chileLocalToUtc(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), 0, 0);
 }
 
+/** Un rango de fechas elegido a mano: dias completos (hora de Chile), AAAA-MM-DD, extremos incluidos. */
+export type DateRange = { from: string; to: string };
+
+/** Los rangos que se pueden comparar a la vez. */
+export const MAX_DATE_RANGES = 4;
+
+/** Menor y mayor ano que se acepta en un rango. */
+export const MIN_RANGE_YEAR = 2020;
+export const MAX_RANGE_YEAR = 2100;
+
+/** Una fecha AAAA-MM-DD que existe en el calendario (no el 31 de junio) y esta en los anos aceptados. */
+export function isDateKey(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
+  const [year, month, day] = value.split("-").map(Number) as [number, number, number];
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    year >= MIN_RANGE_YEAR &&
+    year <= MAX_RANGE_YEAR &&
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+/** Desde la medianoche del primer dia hasta la medianoche que sigue al ultimo (excluida). */
+export function rangeWindow(range: DateRange): { from: Date; until: Date } {
+  const [fy, fm, fd] = range.from.split("-").map(Number) as [number, number, number];
+  const [ty, tm, td] = range.to.split("-").map(Number) as [number, number, number];
+  const after = new Date(Date.UTC(ty, tm - 1, td + 1));
+
+  return {
+    from: chileLocalToUtc(fy, fm, fd, 0, 0),
+    until: chileLocalToUtc(after.getUTCFullYear(), after.getUTCMonth() + 1, after.getUTCDate(), 0, 0),
+  };
+}
+
+function dayText(key: string): string {
+  const [year, month, day] = key.split("-").map(Number) as [number, number, number];
+
+  return `${day} ${MONTHS[month - 1]} ${year}`;
+}
+
+/** «1 oct 2026 – 31 oct 2026», o un solo dia si el rango es de un dia. */
+export function formatDateRange(range: DateRange): string {
+  return range.from === range.to ? dayText(range.from) : `${dayText(range.from)} – ${dayText(range.to)}`;
+}
+
 const hourFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: STATS_TIME_ZONE,
   hour: "2-digit",

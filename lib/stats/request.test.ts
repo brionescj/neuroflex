@@ -21,9 +21,11 @@ describe("parseChartRequest", () => {
     expect(ok({ chart: "cs-max-level" })).toEqual({
       chart: "cs-max-level",
       groupBy: "none",
-      partida: "first",
+      partida: null,
       countBy: "students",
       period: "all",
+      range: null,
+      ranges: [],
       filters: {},
       ageRange: null,
       students: [],
@@ -79,7 +81,14 @@ describe("parseChartRequest", () => {
     expect(ok({ chart: "nc-levels", groupBy: "gender" }).groupBy).toBe("gender");
     expect(message({ chart: "nc-levels", groupBy: "color" })).toMatch(/comparar/);
     expect(message({ chart: "nc-levels", partida: "second" })).toMatch(/partida/);
-    expect(ok({ chart: "nc-levels", partida: "all" }).partida).toBe("all");
+    expect(message({ chart: "nc-levels", partida: "first" })).toMatch(/partida/);
+    expect(message({ chart: "nc-levels", partida: "0" })).toMatch(/partida/);
+    expect(message({ chart: "nc-levels", partida: "-3" })).toMatch(/partida/);
+    expect(message({ chart: "nc-levels", partida: "2.5" })).toMatch(/partida/);
+    expect(message({ chart: "nc-levels", partida: "501" })).toMatch(/partida/);
+    expect(ok({ chart: "nc-levels", partida: "12" }).partida).toBe(12);
+    expect(ok({ chart: "nc-levels", partida: "" }).partida).toBeNull();
+    expect(ok({ chart: "nc-levels" }).partida).toBeNull();
   });
 
   it("al comparar por estudiante exige entre 1 y 6 estudiantes distintos", () => {
@@ -131,9 +140,9 @@ describe("parseChartRequest", () => {
   });
 
   it("toma el primer valor si un parametro llega repetido", () => {
-    expect(ok({ chart: ["nc-levels", "cs-time"], partida: ["last", "all"] })).toMatchObject({
+    expect(ok({ chart: ["nc-levels", "cs-time"], partida: ["3", "5"] })).toMatchObject({
       chart: "nc-levels",
-      partida: "last",
+      partida: 3,
     });
   });
 
@@ -153,5 +162,48 @@ describe("parseChartRequest", () => {
     expect(ok({ chart: "activity", filters: '{"device":["mobile"]}' }).filters).toEqual({ device: ["mobile"] });
     expect(message({ chart: "participation", groupBy: "device" })).toMatch(/dispositivo/);
     expect(message({ chart: "participation", filters: '{"device":["mobile"]}' })).toMatch(/dispositivo/);
+  });
+
+  describe("rango de fechas", () => {
+    const RANGE = '{"from":"2026-10-01","to":"2026-10-31"}';
+    const TWO = '[{"from":"2026-06-24","to":"2026-07-24"},{"from":"2026-10-01","to":"2026-10-31"}]';
+
+    it("un rango a mano reemplaza al período y se valida", () => {
+      expect(ok({ chart: "nc-levels", range: RANGE }).range).toEqual({ from: "2026-10-01", to: "2026-10-31" });
+      expect(ok({ chart: "nc-levels", range: '{"from":"2026-10-05","to":"2026-10-05"}' }).range).toEqual({
+        from: "2026-10-05",
+        to: "2026-10-05",
+      });
+      expect(message({ chart: "nc-levels", range: RANGE, period: "7d" })).toMatch(/no los dos/);
+      expect(message({ chart: "nc-levels", range: '{"from":"2026-10-31","to":"2026-10-01"}' })).toMatch(/rango de fechas/);
+      expect(message({ chart: "nc-levels", range: '{"from":"2026-02-30","to":"2026-03-01"}' })).toMatch(/rango de fechas/);
+      expect(message({ chart: "nc-levels", range: '{"from":"2026-10-01"}' })).toMatch(/rango de fechas/);
+      expect(message({ chart: "nc-levels", range: '{"from":"2019-12-31","to":"2026-01-01"}' })).toMatch(/rango de fechas/);
+      expect(message({ chart: "nc-levels", range: "{" })).toMatch(/rango de fechas/);
+    });
+
+    it("un gráfico que no mira partidas ni período no acepta rango", () => {
+      expect(message({ chart: "participation", range: RANGE })).toMatch(/período/);
+    });
+
+    it("comparar por fechas pide de 2 a 4 rangos válidos y no se mezcla con un período", () => {
+      const request = ok({ chart: "nc-levels", groupBy: "dateRange", ranges: TWO });
+
+      expect(request.groupBy).toBe("dateRange");
+      expect(request.ranges).toHaveLength(2);
+
+      expect(message({ chart: "nc-levels", groupBy: "dateRange" })).toMatch(/al menos 2 rangos/);
+      expect(message({ chart: "nc-levels", groupBy: "dateRange", ranges: `[${RANGE}]` })).toMatch(/al menos 2 rangos/);
+      expect(message({ chart: "nc-levels", groupBy: "dateRange", ranges: TWO, period: "7d" })).toMatch(/no se usa un período/);
+      expect(message({ chart: "nc-levels", groupBy: "dateRange", ranges: TWO, range: RANGE })).toMatch(/no se usa un período/);
+      expect(message({ chart: "nc-levels", groupBy: "dateRange", ranges: `[${RANGE},${RANGE},${RANGE},${RANGE},${RANGE}]` })).toMatch(
+        /Los rangos de fechas no son válidos/,
+      );
+      expect(message({ chart: "nc-levels", groupBy: "dateRange", ranges: '[{"from":"x","to":"y"},{"from":"x","to":"y"}]' })).toMatch(
+        /no son válidos/,
+      );
+      expect(message({ chart: "nc-levels", ranges: TWO })).toMatch(/solo se usan al comparar por fechas/);
+      expect(message({ chart: "participation", groupBy: "dateRange", ranges: TWO })).toMatch(/comparar por fechas/);
+    });
   });
 });

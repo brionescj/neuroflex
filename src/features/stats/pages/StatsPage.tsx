@@ -16,13 +16,16 @@ import {
   buildChartParams,
   chartsOf,
   compareSummary,
+  comparedDimension,
   filtersSummary,
   findChartDef,
   initialSelection,
   paramsKey,
   parseAge,
+  periodText,
   selectChart,
   selectGame,
+  timeProblem,
 } from "../utils/selection";
 import type { Catalog, ChartResult, Selection } from "../types";
 
@@ -94,10 +97,11 @@ export default function StatsPage() {
 
   const ageProblem = parseAge(selection.age, catalog.ageLimits);
   const needsStudents = selection.groupBy === "student" && selection.students.length === 0;
+  // Partida y fechas: con un numero de partida hay que elegir el periodo antes de mostrar.
+  const timeIssue = timeProblem(selection, chart, catalog.maxPartida);
   const gameLabel = catalog.games.find((g) => g.id === selection.game)?.label ?? "";
   // La caracteristica que se compara: sus valores se eligen en «Cómo verlo», no en los filtros.
-  const compareBy =
-    chart.canCompare && selection.groupBy !== "none" && selection.groupBy !== "student" ? selection.groupBy : null;
+  const compareBy = chart.canCompare ? comparedDimension(selection.groupBy) : null;
 
   function toggle(step: number) {
     setOpen((current) => ({ ...current, [step]: !current[step] }));
@@ -122,19 +126,15 @@ export default function StatsPage() {
       return;
     }
 
-    const partida = catalog.partidas.find((p) => p.value === selection.partida)?.label;
-
     setShown({
       result: response.data,
       key: paramsKey(params),
       subtitle: [
         gameLabel,
         compareSummary(catalog, selection),
-        chart.usesPartida ? partida : null,
-        chart.usesPartida && selection.partida === "all" && selection.countBy === "attempts" ? "Contando partidas" : null,
-        chart.usesPeriod && selection.period !== "all"
-          ? catalog.periods.find((p) => p.value === selection.period)?.label
-          : null,
+        chart.usesPartida ? (selection.partida.trim() === "" ? "Todas las partidas" : `Partida ${selection.partida.trim()}`) : null,
+        chart.usesPartida && selection.partida.trim() === "" && selection.countBy === "attempts" ? "Contando partidas" : null,
+        chart.usesPeriod && selection.groupBy !== "dateRange" ? periodText(catalog, selection) : null,
         filtersSummary(catalog, selection.filters, selection.age, compareBy),
       ]
         .filter(Boolean)
@@ -226,7 +226,7 @@ export default function StatsPage() {
             />
           </Section>
 
-          <Button onClick={() => void show()} disabled={loading || needsStudents || !ageProblem.ok} size="md" className="w-full">
+          <Button onClick={() => void show()} disabled={loading || needsStudents || !ageProblem.ok || timeIssue !== null} size="md" className="w-full">
             {loading ? (
               <>
                 <LoaderCircle aria-hidden="true" className="mr-2 size-4 animate-spin" />
@@ -240,6 +240,12 @@ export default function StatsPage() {
           {!ageProblem.ok && (
             <p role="alert" className="text-xs text-red-300">
               Corrige la edad en «Filtros» para poder mostrar el gráfico.
+            </p>
+          )}
+
+          {timeIssue !== null && (
+            <p role="status" className="text-xs text-amber-200">
+              {timeIssue} Se completa en «Cómo verlo».
             </p>
           )}
 

@@ -1,7 +1,7 @@
 import { MAX_STUDENT_AGE, MIN_STUDENT_AGE } from "../studentFields";
 import { findChart, type ChartDef } from "./charts";
 import { DIMENSION_IDS, FILTER_DIMENSIONS } from "./dimensions";
-import { PERIODS } from "./time";
+import { MAX_DATE_RANGES, PERIODS, isDateKey, type DateRange } from "./time";
 import type {
   AgeRange,
   ChartRequest,
@@ -12,6 +12,7 @@ import type {
   Partida,
   Period,
 } from "./types";
+import { MAX_PARTIDA } from "./types";
 
 export const MAX_COMPARED_STUDENTS = 6;
 
@@ -106,6 +107,42 @@ function parseAgeRange(raw: unknown): AgeRange | null | undefined {
   return { min: min as number | null, max: max as number | null };
 }
 
+function readRange(value: unknown): DateRange | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+
+  const { from, to } = value as Record<string, unknown>;
+
+  if (!isDateKey(from) || !isDateKey(to) || from > to) return null;
+
+  return { from, to };
+}
+
+/** undefined = no se pidio; null = invalido. */
+function parseRange(raw: unknown): DateRange | null | undefined {
+  const json = readJson(raw);
+
+  if (!json.ok) return null;
+  if (json.value === undefined) return undefined;
+
+  return readRange(json.value);
+}
+
+/** Los rangos que se comparan: de 2 a MAX_DATE_RANGES, cada uno valido. null = invalido. */
+function parseRanges(raw: unknown): DateRange[] | null {
+  const json = readJson(raw);
+
+  if (!json.ok) return null;
+  if (json.value === undefined) return [];
+
+  const list = json.value;
+
+  if (!Array.isArray(list) || list.length > MAX_DATE_RANGES) return null;
+
+  const ranges = list.map(readRange);
+
+  return ranges.every((range): range is DateRange => range !== null) ? ranges : null;
+}
+
 function parseStudents(raw: unknown): string[] | null {
   const json = readJson(raw);
 
@@ -138,15 +175,24 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
   if (
     groupBy !== "none" &&
     groupBy !== "student" &&
+    groupBy !== "dateRange" &&
     !(DIMENSION_IDS as readonly string[]).includes(groupBy)
   ) {
     return fail("La forma de comparar no es válida.");
   }
 
-  const partidaRaw = single(query.partida) ?? "first";
+  // Vacio o ausente = todas las partidas; un numero = esa partida de cada estudiante.
+  const partidaRaw = single(query.partida) ?? "";
+  let partida: Partida = null;
 
-  if (partidaRaw !== "first" && partidaRaw !== "last" && partidaRaw !== "all") {
-    return fail("La partida elegida no es válida.");
+  if (partidaRaw !== "") {
+    const number = typeof partidaRaw === "string" && /^\d{1,3}$/.test(partidaRaw) ? Number(partidaRaw) : NaN;
+
+    if (!Number.isInteger(number) || number < 1 || number > MAX_PARTIDA) {
+      return fail(`La partida debe ser un número entero de 1 a ${MAX_PARTIDA}.`);
+    }
+
+    partida = number;
   }
 
   const countByRaw = single(query.countBy) ?? "students";
@@ -169,8 +215,34 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
     return fail("Este gráfico es una lista: no se compara por grupos.");
   }
 
-  if (periodRaw !== "all" && !def.usesPartida && !def.usesPeriod) {
+  const range = parseRange(query.range);
+
+  if (range === null) return fail("El rango de fechas no es válido: usa fechas que existan, con «desde» menor o igual que «hasta».");
+
+  const ranges = parseRanges(query.ranges);
+
+  if (ranges === null) {
+    return fail(`Los rangos de fechas no son válidos: hasta ${MAX_DATE_RANGES}, cada uno con «desde» menor o igual que «hasta».`);
+  }
+
+  const datable = def.usesPartida || def.usesPeriod;
+
+  if ((periodRaw !== "all" || range) && !datable) {
     return fail("Este gráfico no se puede acotar por período.");
+  }
+
+  if (range && periodRaw !== "all") {
+    return fail("Elige un período o un rango de fechas, no los dos.");
+  }
+
+  if (groupBy === "dateRange") {
+    if (!datable) return fail("Este gráfico no se puede comparar por fechas.");
+    if (ranges.length < 2) return fail("Para comparar por fechas hacen falta al menos 2 rangos.");
+    if (periodRaw !== "all" || range) {
+      return fail("Al comparar por fechas cada grupo trae su rango: no se usa un período aparte.");
+    }
+  } else if (ranges.length > 0) {
+    return fail("Los rangos de fechas solo se usan al comparar por fechas.");
   }
 
   if (!def.supportsDevice) {
@@ -230,9 +302,11 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
     request: {
       chart: def.id,
       groupBy,
-      partida: partidaRaw as Partida,
+      partida,
       countBy: countByRaw as CountBy,
       period: periodRaw as Period,
+      range: range ?? null,
+      ranges: groupBy === "dateRange" ? ranges : [],
       filters,
       ageRange: ageRange ?? null,
       students: groupBy === "student" ? students : [],

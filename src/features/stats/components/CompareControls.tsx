@@ -1,8 +1,10 @@
 import { cn } from "@/lib/utils";
 
-import { MAX_COLORED_GROUPS, comparedValues, toggleComparedValue } from "../utils/selection";
+import { EMPTY_RANGE, MAX_COLORED_GROUPS, comparedDimension, comparedValues, parsePartida, toggleComparedValue } from "../utils/selection";
 import type { Catalog, CatalogChart, GroupBy, Selection } from "../types";
+import { DateRangesEditor } from "./DateRangesEditor";
 import { MANY_OPTIONS, OptionChips } from "./OptionChips";
+import { PeriodPicker } from "./PeriodPicker";
 import { StudentPicker } from "./StudentPicker";
 
 type CompareControlsProps = {
@@ -41,15 +43,19 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
   const comparing = selection.groupBy !== "none" && chart.canCompare;
 
   function setGroupBy(groupBy: GroupBy) {
-    onChange({ ...selection, groupBy });
+    // Al pasar a comparar fechas se parte con dos rangos vacios para llenar.
+    const ranges = groupBy === "dateRange" && selection.ranges.length < 2 ? [EMPTY_RANGE, EMPTY_RANGE] : selection.ranges;
+
+    onChange({ ...selection, groupBy, ranges });
   }
 
+  const partida = parsePartida(selection.partida, catalog.maxPartida);
+  const hasPartida = partida.ok && partida.value !== null;
+  const byDate = comparing && selection.groupBy === "dateRange";
+
   // Los valores que se pueden comparar de la caracteristica elegida (no aplica a «estudiantes específicos»).
-  const spec =
-    comparing && selection.groupBy !== "student"
-      ? catalog.filters.find((item) => item.id === selection.groupBy)
-      : undefined;
-  const dimension = selection.groupBy === "none" || selection.groupBy === "student" ? null : selection.groupBy;
+  const dimension = comparedDimension(selection.groupBy);
+  const spec = comparing && dimension ? catalog.filters.find((item) => item.id === dimension) : undefined;
   const all = spec ? spec.options.map((option) => option.value) : [];
   const compared =
     spec && dimension
@@ -106,7 +112,17 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
               </option>
             ))}
             <option value="student">Estudiantes específicos</option>
+            {chart.usesPeriod && <option value="dateRange">Rango de fechas</option>}
           </SelectField>
+
+          {byDate && (
+            <DateRangesEditor
+              ranges={selection.ranges}
+              min={2}
+              max={catalog.maxDateRanges}
+              onChange={(ranges) => onChange({ ...selection, ranges })}
+            />
+          )}
 
           {selection.groupBy === "student" && (
             <StudentPicker
@@ -174,20 +190,31 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
       ))}
 
       {chart.usesPartida && (
-        <SelectField
-          label="Partida"
-          value={selection.partida}
-          onChange={(value) => onChange({ ...selection, partida: value as Selection["partida"] })}
-        >
-          {catalog.partidas.map((partida) => (
-            <option key={partida.value} value={partida.value}>
-              {partida.label}
-            </option>
-          ))}
-        </SelectField>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="stats-partida" className="text-xs text-zinc-400">
+            Partida
+          </label>
+          <input
+            id="stats-partida"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={3}
+            placeholder="Todas"
+            value={selection.partida}
+            aria-invalid={!partida.ok}
+            onChange={(event) => onChange({ ...selection, partida: event.target.value.replace(/\D/g, "") })}
+            className={cn(SELECT, !partida.ok && "border-red-400")}
+          />
+          <p className={cn("text-xs leading-relaxed", partida.ok ? "text-zinc-400" : "text-red-300")} role={partida.ok ? undefined : "alert"}>
+            {partida.ok
+              ? "Escribe el número de partida que quieres ver de cada estudiante (por ejemplo 12). Vacío, se usan todas."
+              : partida.message}
+          </p>
+        </div>
       )}
 
-      {chart.usesPartida && selection.partida === "all" && (
+      {chart.usesPartida && partida.ok && partida.value === null && (
         <SelectField
           label="Contar"
           value={selection.countBy}
@@ -201,18 +228,14 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
         </SelectField>
       )}
 
-      {chart.usesPeriod && (
-        <SelectField
-          label="Período"
-          value={selection.period}
-          onChange={(value) => onChange({ ...selection, period: value as Selection["period"] })}
-        >
-          {catalog.periods.map((period) => (
-            <option key={period.value} value={period.value}>
-              {period.label}
-            </option>
-          ))}
-        </SelectField>
+      {chart.usesPeriod && !byDate && (
+        <PeriodPicker catalog={catalog} selection={selection} required={hasPartida} onChange={onChange} />
+      )}
+
+      {chart.usesPeriod && byDate && (
+        <p className="rounded-lg bg-white/5 px-3 py-2 text-xs leading-relaxed text-zinc-300">
+          Al comparar por fechas no se usa un período aparte: cada grupo trae su propio rango.
+        </p>
       )}
     </div>
   );
