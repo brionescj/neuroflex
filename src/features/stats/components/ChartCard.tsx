@@ -3,14 +3,16 @@ import {
   ChartColumn,
   ChartLine,
   ChartPie,
+  CircleHelp,
   Download,
   FlaskConical,
   Info,
   LayoutGrid,
+  X,
   Table2,
   TriangleAlert,
 } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -27,6 +29,8 @@ import { StatCards } from "./charts/StatCards";
 
 type ChartCardProps = {
   result: ChartResult;
+  /** Que muestra el grafico, en palabras simples; se abre con el icono «?» junto al titulo. */
+  description: string;
   /** Que se esta mirando: juego, comparacion, filtros. */
   subtitle: string;
   /** Se esta recalculando: se conserva el dibujo anterior, atenuado. */
@@ -59,8 +63,10 @@ function download(result: ChartResult) {
   URL.revokeObjectURL(url);
 }
 
-export function ChartCard({ result, subtitle, loading, stale }: ChartCardProps) {
+export function ChartCard({ result, description, subtitle, loading, stale }: ChartCardProps) {
   const [chosen, setChosen] = useState<ViewChoice | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpId = useId();
 
   const choices: ViewChoice[] = [...result.views, "table"];
   // Si la vista elegida no existe en este grafico, se vuelve a la primera.
@@ -71,7 +77,23 @@ export function ChartCard({ result, subtitle, loading, stale }: ChartCardProps) 
       <header className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-[var(--viz-text)]">{result.title}</h2>
+            <div className="flex items-center gap-1">
+              <h2 className="text-base font-semibold text-[var(--viz-text)]">{result.title}</h2>
+
+              {description && (
+                <button
+                  type="button"
+                  onClick={() => setHelpOpen((open) => !open)}
+                  aria-expanded={helpOpen}
+                  aria-controls={helpId}
+                  aria-label={`Qué muestra «${result.title}»`}
+                  title="Qué muestra este gráfico"
+                  className="-my-2 flex size-11 shrink-0 items-center justify-center rounded-lg text-[var(--viz-text-2)] hover:bg-white/5"
+                >
+                  <CircleHelp aria-hidden="true" className={cn("size-5", helpOpen && "text-[var(--viz-text)]")} />
+                </button>
+              )}
+            </div>
             <p className="mt-0.5 text-xs leading-relaxed text-[var(--viz-text-2)]">{subtitle}</p>
           </div>
 
@@ -87,6 +109,28 @@ export function ChartCard({ result, subtitle, loading, stale }: ChartCardProps) 
             </button>
           </div>
         </div>
+
+        {description && helpOpen && (
+          <div
+            id={helpId}
+            role="region"
+            aria-label={`Qué muestra «${result.title}»`}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setHelpOpen(false);
+            }}
+            className="flex items-start gap-2 rounded-lg border border-white/10 bg-white/5 py-1 pl-3 pr-1 text-xs leading-relaxed text-[var(--viz-text-2)]"
+          >
+            <p className="min-w-0 flex-1 py-2">{description}</p>
+            <button
+              type="button"
+              onClick={() => setHelpOpen(false)}
+              aria-label="Cerrar descripción"
+              className="flex size-11 shrink-0 items-center justify-center rounded-lg text-[var(--viz-text-2)] hover:bg-white/5"
+            >
+              <X aria-hidden="true" className="size-4" />
+            </button>
+          </div>
+        )}
 
         {result.exploratory && (
           <p className="flex items-start gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-[var(--viz-text-2)]">

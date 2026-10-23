@@ -1,5 +1,6 @@
 import {
   ageOf,
+  deviceOfAttempt,
   dimensionValue,
 } from "./dimensions";
 import { mean, median, percentOf, round } from "./numbers";
@@ -197,16 +198,23 @@ export function gameUnits(ctx: Ctx, gameId: GameId): Unit[] {
 
   if (!(request.partida === "all" && request.countBy === "students")) return perAttempt;
 
-  // Todas las partidas de un estudiante juntas: cuenta una vez.
+  // Todas las partidas de un estudiante juntas: cuenta una vez. Al comparar por
+  // dispositivo se junta por estudiante y aparato: quien jugo en un celular y
+  // en un notebook aparece en ambos grupos, cada uno con lo que jugo ahi (si no,
+  // todo quedaria en el aparato de su ultima partida).
+  const byDevice = request.groupBy === "device";
   const byStudent = new Map<string, Unit>();
 
   for (const unit of [...perAttempt].sort(
     (a, b) => a.attempt.attemptNumber - b.attempt.attemptNumber,
   )) {
-    const current = byStudent.get(unit.attempt.studentRut);
+    const key = byDevice
+      ? `${unit.attempt.studentRut}|${deviceOfAttempt(unit.attempt) ?? ""}`
+      : unit.attempt.studentRut;
+    const current = byStudent.get(key);
 
     if (!current) {
-      byStudent.set(unit.attempt.studentRut, { ...unit, attempts: [...unit.attempts] });
+      byStudent.set(key, { ...unit, attempts: [...unit.attempts] });
       continue;
     }
 

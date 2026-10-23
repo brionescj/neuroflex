@@ -244,6 +244,7 @@ export default function StatsPage() {
             <ChartCard
               key={shown.result.chart}
               result={shown.result}
+              description={catalog.games.flatMap((g) => g.charts).find((c) => c.id === shown.result.chart)?.blurb ?? ""}
               subtitle={shown.subtitle}
               loading={loading}
               stale={shown.key !== currentKey}

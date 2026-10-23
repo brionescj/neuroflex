@@ -402,3 +402,35 @@ describe("comparar", () => {
     expect(parseChartRequest({ chart: "gen-no-play" }).ok).toBe(true);
   });
 });
+
+describe("comparar por dispositivo con todas las partidas juntas", () => {
+  const sessionOf = (pointer: string, w: number, h: number) => [
+    { device: { pointer, viewportWidth: w, viewportHeight: h } },
+  ];
+
+  it("quien jugo en dos aparatos aparece en ambos, cada uno con lo que jugo ahi", () => {
+    const base = data();
+    // s1a (nivel 3) en celular, s1b (nivel 1) en computador; s2 celular; s3 computador.
+    const [s1a, s1b, s2a, s3a] = base.attempts as [AttemptRow, AttemptRow, AttemptRow, AttemptRow];
+
+    base.attempts = [
+      { ...s1a, sessions: sessionOf("touch", 390, 844) },
+      { ...s1b, sessions: sessionOf("mouse", 1440, 900) },
+      { ...s2a, sessions: sessionOf("touch", 390, 844) },
+      { ...s3a, sessions: sessionOf("mouse", 1440, 900) },
+    ];
+
+    const chart = run(base, {
+      chart: "cs-reach",
+      groupBy: "device",
+      partida: "all",
+      countBy: "students",
+      options: '{"as":"count"}',
+    });
+
+    // Celular: s1 (niveles 1 a 3) y s2 (nivel 1). Computador: s1 (solo nivel 1) y s3 (hasta el 12).
+    expect(only(chart, "mobile").values.slice(0, 3)).toEqual([2, 1, 1]);
+    expect(only(chart, "desktop").values.slice(0, 3)).toEqual([2, 1, 1]);
+    expect(chart.notes.join(" ")).toMatch(/aparece en cada uno/);
+  });
+});

@@ -557,6 +557,12 @@ export function buildChart(
     notes.push(
       `Dispositivo estimado con el tipo de pantalla y el tamaño de la ventana en la primera sesión de cada partida: Celular es táctil con el lado corto de la ventana menor a ${TABLET_MIN_SHORT_SIDE} px; Tableta es táctil de ${TABLET_MIN_SHORT_SIDE} px o más (una tableta no se cuenta como celular); Computador es con mouse, o un notebook táctil de pantalla ancha. Es una estimación, no el modelo real del aparato.`,
     );
+
+    if (request.groupBy === "device" && request.partida === "all" && request.countBy === "students") {
+      notes.push(
+        "Un estudiante que jugó en más de un tipo de aparato aparece en cada uno, con las partidas que jugó ahí.",
+      );
+    }
   }
 
   if (Object.keys(request.filters).length > 0 || request.ageRange !== null) {
