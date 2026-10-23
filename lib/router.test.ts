@@ -12,6 +12,8 @@ vi.hoisted(() => {
 
 import adminFindRole from "./handlers/admin/findRole";
 import adminMiniCases from "./handlers/admin/miniCases";
+import adminStats from "./handlers/admin/statsChart";
+import adminStatsCatalog from "./handlers/admin/statsCatalog";
 import adminStudentDetails from "./handlers/admin/studentDetails";
 import adminStudents from "./handlers/admin/students";
 import adminStudentStatus from "./handlers/admin/studentStatus";
@@ -32,7 +34,7 @@ import { ROUTES, dispatch, matchRoute, routeSegments, type RouteDef } from "./ro
 
 const seg = (path: string) => path.split("/").filter(Boolean);
 
-// Las 18 rutas de la API, con las URLs que usa el navegador. Si este test falla
+// Las 20 rutas de la API, con las URLs que usa el navegador. Si este test falla
 // al agregar o mover una ruta, la tabla de lib/router.ts no esta al dia.
 const EXPECTED: [string, unknown, Record<string, string>][] = [
   ["auth/login", authLogin, {}],
@@ -41,6 +43,8 @@ const EXPECTED: [string, unknown, Record<string, string>][] = [
   ["auth/register", authRegister, {}],
   ["admin/find-role", adminFindRole, {}],
   ["admin/mini-cases", adminMiniCases, {}],
+  ["admin/stats/catalog", adminStatsCatalog, {}],
+  ["admin/stats/chart", adminStats, {}],
   ["admin/students", adminStudents, {}],
   ["admin/students/12345678-9/details", adminStudentDetails, { rut: "12345678-9" }],
   ["admin/students/12345678-9/status", adminStudentStatus, { rut: "12345678-9" }],

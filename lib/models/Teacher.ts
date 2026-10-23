@@ -19,7 +19,7 @@ const teacherSchema = new Schema<TeacherDocument>({
   paternalLastName: { type: String, required: true },
   maternalLastName: { type: String, required: true },
   enabled: { type: Boolean, required: true, default: true },
-  email: String,
+  email: { type: String, lowercase: true, trim: true },
   avatarId: { type: String, required: true, default: "dog" },
   title: String,
 });

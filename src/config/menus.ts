@@ -41,7 +41,7 @@ export const ROLE_MENUS: Record<UserRole, MenuItem[]> = {
   admin: [
     { label: "Inicio", path: ROUTES.ADMIN, icon: House },
 
-    { label: "Estadísticas", path: ROUTES.ADMIN_STUDENTS, icon: BarChart3 },
+    { label: "Estadísticas", path: ROUTES.ADMIN_STATS, icon: BarChart3 },
 
     { label: "Mi perfil", path: ROUTES.ADMIN_PROFILE, icon: CircleUser },
   ],

@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { connectDB } from "../../db";
 import { verifyToken } from "../../jwt";
 import { readSessionCookie } from "../../cookies";
-import { isValidEmail } from "../../email";
+import { emailProblem, normalizeEmail } from "../../email";
 import { Student } from "../../models/Student";
 import { Teacher } from "../../models/Teacher";
 import { Admin } from "../../models/Admin";
@@ -35,10 +35,13 @@ export default async function handler(
     return res.status(403).json({ success: false, message: "No autorizado." });
   }
 
-  const { email, avatarId } = req.body;
+  const { email: rawEmail, avatarId } = req.body ?? {};
 
-  if (!isValidEmail(email)) {
-    return res.status(400).json({ success: false, message: "Correo invalido." });
+  const email = typeof rawEmail === "string" ? normalizeEmail(rawEmail) : "";
+  const problem = emailProblem(email);
+
+  if (problem) {
+    return res.status(400).json({ success: false, message: problem });
   }
 
   await connectDB();

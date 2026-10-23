@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/Field";
-import { Input } from "@/components/ui/Input";
+import { EmailInput } from "@/components/forms/EmailInput";
 import { AVATARS, type AvatarId } from "@/config/avatars";
 import { useAuth } from "@/context";
 import { cn } from "@/lib/utils";
@@ -158,9 +158,9 @@ export default function ProfilePage() {
               </div>
 
               {isEditingEmail ? (
-                <Input
+                <EmailInput
                   id="email"
-                  type="email"
+                  autoComplete="email"
                   value={field.value}
                   onChange={field.onChange}
                   onBlur={field.onBlur}

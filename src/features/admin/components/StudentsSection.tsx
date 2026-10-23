@@ -1,6 +1,7 @@
 import { Eye, Pencil, Plus, Save } from "lucide-react";
 import { Fragment, useEffect, useState, type FormEvent } from "react";
 
+import { EmailInput } from "@/components/forms/EmailInput";
 import { RutInput } from "@/components/forms/RutInput";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Button } from "@/components/ui/Button";
@@ -8,12 +9,15 @@ import { Field, FieldLabel } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import {
   GENDER_OPTIONS,
+  REGION_OPTIONS,
   UNIVERSITY_OPTIONS,
   genderLabel,
   universityLabel,
 } from "@/config/studentOptions";
 import { cn } from "@/lib/utils";
 import type { Gender, Student, University } from "@/types";
+import { optionalEmailProblem } from "@/utils/email";
+import { normalizeRegion } from "@/utils/region";
 import { isValidRut } from "@/utils/rut";
 
 import {
@@ -22,7 +26,7 @@ import {
   setStudentEnabledAction,
   updateStudentDetailsAction,
 } from "../actions/students.action";
-import { formatBirthDate, toInputDate } from "../utils/birthDate";
+import { birthDateRange, formatBirthDate, toInputDate } from "../utils/birthDate";
 import { matchesQuery } from "../utils/matchesQuery";
 import { sanitizeNameInput } from "../utils/sanitizeInput";
 import { HighlightMatch } from "./HighlightMatch";
@@ -67,14 +71,6 @@ const EMPTY_EDIT_FORM: EditFormState = {
 const SELECT_CLASS =
   "h-10 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white outline-none transition focus:border-white";
 
-function todayInputDate(): string {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-
-  return `${now.getFullYear()}-${month}-${day}`;
-}
-
 type StudentEditFormProps = {
   editForm: EditFormState;
   setEditForm: (form: EditFormState) => void;
@@ -101,12 +97,11 @@ function StudentEditForm({
     >
       <Field className="sm:col-span-3">
         <FieldLabel htmlFor={`edit-email-${studentRut}`}>Correo</FieldLabel>
-        <Input
+        <EmailInput
           id={`edit-email-${studentRut}`}
-          type="email"
           className="h-10"
           value={editForm.email}
-          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+          onChange={(email) => setEditForm({ ...editForm, email })}
         />
       </Field>
 
@@ -123,15 +118,20 @@ function StudentEditForm({
       </Field>
 
       <Field>
-        <FieldLabel htmlFor={`edit-region-${studentRut}`}>Region</FieldLabel>
-        <Input
+        <FieldLabel htmlFor={`edit-region-${studentRut}`}>Región</FieldLabel>
+        <select
           id={`edit-region-${studentRut}`}
-          className="h-10"
+          className={SELECT_CLASS}
           value={editForm.region}
-          onChange={(e) =>
-            setEditForm({ ...editForm, region: sanitizeNameInput(e.target.value) })
-          }
-        />
+          onChange={(e) => setEditForm({ ...editForm, region: e.target.value })}
+        >
+          <option value="">Sin registrar</option>
+          {REGION_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </Field>
 
       <Field>
@@ -199,8 +199,8 @@ function StudentEditForm({
           id={`edit-birthDate-${studentRut}`}
           type="date"
           className="h-10 scheme-dark"
-          min="1920-01-01"
-          max={todayInputDate()}
+          min={birthDateRange().min}
+          max={birthDateRange().max}
           value={editForm.birthDate}
           onChange={(e) => setEditForm({ ...editForm, birthDate: e.target.value })}
         />
@@ -380,6 +380,13 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
       return;
     }
 
+    const emailError = optionalEmailProblem(form.email);
+
+    if (emailError) {
+      setFormError(emailError);
+      return;
+    }
+
     setIsCreating(true);
 
     const result = await createStudentAction({
@@ -437,7 +444,8 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
     setEditForm({
       email: student.email ?? "",
       ciudad: student.ciudad ?? "",
-      region: student.region ?? "",
+      // Las fichas antiguas pueden traerla escrita a mano: se muestra con su nombre oficial.
+      region: normalizeRegion(student.region ?? "") ?? "",
       celular: student.celular ?? "",
       gender: student.gender ?? "",
       university: student.university ?? "",
@@ -457,6 +465,13 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
 
     setEditError(null);
 
+    const emailError = optionalEmailProblem(editForm.email);
+
+    if (emailError) {
+      setEditError(emailError);
+      return;
+    }
+
     const current = students.find((s) => s.rut === editingRut);
 
     // Campo vacio = se borra de la ficha. La fecha solo se manda si el admin la
@@ -465,14 +480,19 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
     const birthDateChanged =
       editForm.birthDate !== toInputDate(current?.birthDate);
 
+    const regionChanged =
+      editForm.region !== (normalizeRegion(current?.region ?? "") ?? "");
+
     const result = await updateStudentDetailsAction(editingRut, {
       email: editForm.email,
       ciudad: editForm.ciudad,
-      region: editForm.region,
       celular: editForm.celular,
       gender: editForm.gender,
       university: editForm.university,
       ...(birthDateChanged && { birthDate: editForm.birthDate }),
+      // Igual que la fecha: una region antigua que la lista no reconoce se veria
+      // vacia y se borraria sin querer al guardar otro dato.
+      ...(regionChanged && { region: editForm.region }),
     });
 
     if (!result.success) {
@@ -578,11 +598,10 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
 
           <Field>
             <FieldLabel htmlFor="email">Correo</FieldLabel>
-            <Input
+            <EmailInput
               id="email"
-              type="email"
               value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              onChange={(email) => setForm({ ...form, email })}
             />
           </Field>
 
@@ -598,14 +617,22 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="region">Region</FieldLabel>
-            <Input
+            <FieldLabel htmlFor="region">Región</FieldLabel>
+            <select
               id="region"
               value={form.region}
-              onChange={(e) =>
-                setForm({ ...form, region: sanitizeNameInput(e.target.value) })
-              }
-            />
+              onChange={(e) => setForm({ ...form, region: e.target.value })}
+              className="h-12 w-full rounded-xl border border-zinc-700 bg-transparent px-4 text-white outline-none transition focus:border-white"
+            >
+              <option value="" className="bg-zinc-900">
+                Sin registrar
+              </option>
+              {REGION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-zinc-900">
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </Field>
 
           <Field>
@@ -675,8 +702,8 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
               id="birthDate"
               type="date"
               className="scheme-dark"
-              min="1920-01-01"
-              max={todayInputDate()}
+              min={birthDateRange().min}
+              max={birthDateRange().max}
               value={form.birthDate}
               onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
             />

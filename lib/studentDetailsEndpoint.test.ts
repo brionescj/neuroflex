@@ -93,7 +93,7 @@ describe("PATCH admin/students/:rut/details", () => {
   });
 
   it("el admin puede cambiar y vaciar el correo, y uno invalido se rechaza", async () => {
-    await run({ email: "nuevo@uvm.cl" });
+    await run({ email: "Nuevo@UVM.cl" });
     await run({ email: "" });
 
     expect(mocks.calls[0]?.update).toEqual({ $set: { email: "nuevo@uvm.cl" } });
@@ -102,7 +102,7 @@ describe("PATCH admin/students/:rut/details", () => {
     const { status, json } = await run({ email: "no-es-correo" });
 
     expect(status).toBe(400);
-    expect(json.message).toBe("El correo ingresado no es válido.");
+    expect(json.message).toBe("Falta el @ en el correo.");
     expect(mocks.calls).toHaveLength(2);
   });
 

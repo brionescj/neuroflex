@@ -11,7 +11,7 @@ describe("parseStudentDetails", () => {
         ciudad: "  Temuco ",
         region: "La Araucanía",
         celular: "12345678",
-        email: " ana@correo.cl ",
+        email: " Ana@Correo.cl ",
         gender: "female",
         university: "santo-tomas",
         birthDate: "2001-03-15",
@@ -31,6 +31,21 @@ describe("parseStudentDetails", () => {
         birthDate: "2001-03-15",
       },
       unset: {},
+    });
+  });
+
+  it("la region se guarda con su nombre oficial y se rechaza si no existe", () => {
+    expect(parseStudentDetails({ region: "region metropolitana" }, { now: NOW })).toEqual({
+      ok: true,
+      set: { region: "Metropolitana de Santiago" },
+      unset: {},
+    });
+    expect(parseStudentDetails({ region: "La Araucania" }, { now: NOW })).toMatchObject({
+      set: { region: "La Araucanía" },
+    });
+    expect(parseStudentDetails({ region: "Narnia" }, { now: NOW })).toEqual({
+      ok: false,
+      message: "La región indicada no es válida.",
     });
   });
 
@@ -93,7 +108,6 @@ describe("parseStudentDetails", () => {
       "2001-13-01",
       "2027-01-01",
       "2026-10-22",
-      "1919-12-31",
       "ayer",
     ]) {
       expect(parseStudentDetails({ birthDate }, { now: NOW }), birthDate).toEqual({
@@ -102,9 +116,20 @@ describe("parseStudentDetails", () => {
       });
     }
 
-    expect(parseStudentDetails({ birthDate: "2026-10-21" }, { now: NOW }).ok).toBe(true);
     expect(parseStudentDetails({ birthDate: "2000-02-29" }, { now: NOW }).ok).toBe(true);
     expect(parseStudentDetails({ birthDate: "2001-02-29" }, { now: NOW }).ok).toBe(false);
+  });
+
+  it("la edad debe estar entre 17 y 80 anos cumplidos", () => {
+    const age = { ok: false, message: "La edad del estudiante debe estar entre 17 y 80 años." };
+
+    // NOW es el 21 de octubre de 2026.
+    expect(parseStudentDetails({ birthDate: "2009-10-21" }, { now: NOW }).ok).toBe(true); // cumple 17 hoy
+    expect(parseStudentDetails({ birthDate: "2009-10-22" }, { now: NOW })).toEqual(age); // 16, cumple mañana
+    expect(parseStudentDetails({ birthDate: "2026-10-21" }, { now: NOW })).toEqual(age); // recien nacido
+    expect(parseStudentDetails({ birthDate: "1945-10-22" }, { now: NOW }).ok).toBe(true); // 80, cumple 81 mañana
+    expect(parseStudentDetails({ birthDate: "1945-10-21" }, { now: NOW })).toEqual(age); // cumple 81 hoy
+    expect(parseStudentDetails({ birthDate: "1919-12-31" }, { now: NOW })).toEqual(age);
   });
 
   it("limita el largo de los textos", () => {
@@ -125,19 +150,30 @@ describe("parseStudentDetails", () => {
     expect(parseStudentDetails({ rut: "1-9" }, { now: NOW }).ok).toBe(false);
   });
 
-  it("valida el correo con la misma regla del perfil y permite vaciarlo", () => {
-    for (const email of ["ana", "ana@", "@correo.cl", "ana@correo", "a na@correo.cl", `${"a".repeat(120)}@x.cl`]) {
-      expect(parseStudentDetails({ email }, { now: NOW }), email).toMatchObject({ ok: false });
-    }
-
-    expect(parseStudentDetails({ email: "ana@correo" }, { now: NOW })).toEqual({
-      ok: false,
-      message: "El correo ingresado no es válido.",
-    });
-    expect(parseStudentDetails({ email: "ana@uvm.cl" }, { now: NOW })).toMatchObject({
+  it("el correo se guarda en minusculas aunque se escriba con mayusculas", () => {
+    expect(parseStudentDetails({ email: "  Ana.Perez@UVM.CL " }, { now: NOW })).toEqual({
       ok: true,
-      set: { email: "ana@uvm.cl" },
+      set: { email: "ana.perez@uvm.cl" },
+      unset: {},
     });
+  });
+
+  it("valida el correo y explica que falta (@, punto del dominio, tildes...)", () => {
+    const problem = (email: string) => parseStudentDetails({ email }, { now: NOW });
+
+    expect(problem("ana")).toEqual({ ok: false, message: "Falta el @ en el correo." });
+    expect(problem("ana@")).toEqual({ ok: false, message: "Falta el dominio después del @." });
+    expect(problem("ana@correo")).toEqual({
+      ok: false,
+      message: "Falta el punto del dominio después del @ (por ejemplo, .cl o .com).",
+    });
+    expect(problem("josé@uvm.cl")).toMatchObject({ ok: false });
+    expect(problem("Muñoz@UVM.cl")).toMatchObject({ ok: true, set: { email: "muñoz@uvm.cl" } });
+    expect(problem(`${"a".repeat(120)}@x.cl`)).toEqual({ ok: false, message: "El correo es demasiado largo." });
+    expect(problem("ana@uvm.cl")).toMatchObject({ ok: true, set: { email: "ana@uvm.cl" } });
+  });
+
+  it("un correo vacio se borra de la ficha", () => {
     expect(parseStudentDetails({ email: "" }, { now: NOW })).toMatchObject({
       ok: true,
       set: {},

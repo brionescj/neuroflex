@@ -13,6 +13,7 @@ import { ColorSequenceGame } from "@/features/games/components/ColorSequenceGame
 import { RequireGameAccess } from "@/features/games/components/RequireGameAccess";
 import { MiniCasesGame } from "@/features/games/mini-cases/components/MiniCasesGame";
 import { NodeConnectionGame } from "@/features/games/node-connection/components/NodeConnectionGame";
+import StatsPage from "@/features/stats/pages/StatsPage";
 import StudentDashboard from "@/features/student/pages/StudentDashboard";
 import TeacherDashboard from "@/features/teacher/pages/TeacherDashboard";
 
@@ -79,7 +80,7 @@ export default function App() {
         }
       >
         <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
-        <Route path={ROUTES.ADMIN_STUDENTS} element={<ComingSoon />} />
+        <Route path={ROUTES.ADMIN_STATS} element={<StatsPage />} />
         <Route path={ROUTES.ADMIN_PROFILE} element={<ProfilePage />} />
       </Route>
 

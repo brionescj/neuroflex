@@ -27,7 +27,7 @@ export const ROUTES = {
 
   ADMIN: "/administracion",
 
-  ADMIN_STUDENTS: "/administracion/estudiantes",
+  ADMIN_STATS: "/administracion/estadisticas",
 
   ADMIN_PROFILE: "/administracion/perfil",
 } as const;

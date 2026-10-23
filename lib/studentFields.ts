@@ -1,4 +1,5 @@
-import { isValidEmail } from "./email";
+import { emailProblem, normalizeEmail } from "./email";
+import { normalizeRegion } from "./region";
 
 /**
  * Datos del estudiante que el admin puede cargar al darlo de alta o corregir
@@ -41,7 +42,15 @@ const MAX_LENGTH: Partial<Record<Field, number>> = {
   email: 120,
 };
 
-const MIN_BIRTH_YEAR = 1920;
+/**
+ * Edad permitida al ingresar un estudiante (anos cumplidos hoy). Copia de
+ * src/config/studentOptions.ts: studentOptionsParity.test.ts comprueba que
+ * coincidan. Tambien son los limites del filtro de edad de las estadisticas.
+ */
+export const MIN_STUDENT_AGE = 17;
+export const MAX_STUDENT_AGE = 80;
+
+export const AGE_PROBLEM = `La edad del estudiante debe estar entre ${MIN_STUDENT_AGE} y ${MAX_STUDENT_AGE} años.`;
 
 export type StudentDetailsChanges = {
   /** Campos con valor nuevo. */
@@ -54,10 +63,20 @@ export type ParsedStudentDetails =
   | ({ ok: true } & StudentDetailsChanges)
   | { ok: false; message: string };
 
-function isValidBirthDate(value: string, now: Date): boolean {
+/** Anos cumplidos en la fecha `now` (UTC). */
+function wholeYears(year: number, month: number, day: number, now: Date): number {
+  const monthNow = now.getUTCMonth() + 1;
+  const birthdayPassed =
+    monthNow > month || (monthNow === month && now.getUTCDate() >= day);
+
+  return now.getUTCFullYear() - year - (birthdayPassed ? 0 : 1);
+}
+
+/** "invalid": no es una fecha real o es futura; "age": real pero fuera de 17 a 80 anos. */
+function birthDateStatus(value: string, now: Date): "ok" | "invalid" | "age" {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
 
-  if (!match) return false;
+  if (!match) return "invalid";
 
   const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
   const date = new Date(Date.UTC(year, month - 1, day));
@@ -70,7 +89,11 @@ function isValidBirthDate(value: string, now: Date): boolean {
 
   const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 
-  return isRealDate && year >= MIN_BIRTH_YEAR && date.getTime() <= today;
+  if (!isRealDate || date.getTime() > today) return "invalid";
+
+  const age = wholeYears(year, month, day, now);
+
+  return age >= MIN_STUDENT_AGE && age <= MAX_STUDENT_AGE ? "ok" : "age";
 }
 
 function invalidReason(field: Field, value: string, now: Date): string | null {
@@ -80,8 +103,10 @@ function invalidReason(field: Field, value: string, now: Date): string | null {
     return `${LABELS[field]} es demasiado largo.`;
   }
 
-  if (field === "email" && !isValidEmail(value)) {
-    return "El correo ingresado no es válido.";
+  if (field === "email") return emailProblem(value);
+
+  if (field === "region" && normalizeRegion(value) === null) {
+    return "La región indicada no es válida.";
   }
 
   if (field === "gender" && !(GENDERS as readonly string[]).includes(value)) {
@@ -92,8 +117,11 @@ function invalidReason(field: Field, value: string, now: Date): string | null {
     return "La universidad indicada no es válida.";
   }
 
-  if (field === "birthDate" && !isValidBirthDate(value, now)) {
-    return "La fecha de nacimiento no es válida.";
+  if (field === "birthDate") {
+    const status = birthDateStatus(value, now);
+
+    if (status === "invalid") return "La fecha de nacimiento no es válida.";
+    if (status === "age") return AGE_PROBLEM;
   }
 
   return null;
@@ -134,7 +162,8 @@ export function parseStudentDetails(
       return { ok: false, message: `${LABELS[field]} no es válido.` };
     }
 
-    const value = raw.trim();
+    // El correo se guarda siempre en minusculas, como se haya escrito.
+    const value = field === "email" ? normalizeEmail(raw) : raw.trim();
 
     if (value === "") {
       unset[field] = 1;
@@ -145,7 +174,8 @@ export function parseStudentDetails(
 
     if (reason) return { ok: false, message: reason };
 
-    set[field] = value;
+    // La region se guarda con su nombre oficial aunque se haya escrito distinto.
+    set[field] = field === "region" ? (normalizeRegion(value) as string) : value;
   }
 
   if (

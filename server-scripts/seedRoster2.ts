@@ -40,6 +40,7 @@ async function seed(adminSessionCookie: string) {
         ciudad: titleCase(row.ciudad),
         region: row.region,
         celular: row.celular,
+        email: row.email,
       }),
     });
 

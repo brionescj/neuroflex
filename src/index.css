@@ -10,3 +10,29 @@ body,
 body {
   margin: 0;
 }
+
+/*
+ * Colores de los graficos de estadisticas (paleta categorica de 8 puestos,
+ * validada contra la superficie oscura #1a1a19: contraste, separacion para
+ * daltonismo y orden fijo). La app es solo oscura. "Otros" y "Sin dato" son
+ * grises; el texto de un grafico nunca usa el color de su serie.
+ */
+.viz-root {
+  color-scheme: dark;
+  --viz-surface: #1a1a19;
+  --viz-text: #f0efec;
+  --viz-text-2: #c3c2b7;
+  --viz-muted: #898781;
+  --viz-grid: #2c2c2a;
+  --viz-axis: #383835;
+  --viz-s1: #3987e5;
+  --viz-s2: #d95926;
+  --viz-s3: #199e70;
+  --viz-s4: #c98500;
+  --viz-s5: #d55181;
+  --viz-s6: #008300;
+  --viz-s7: #9085e9;
+  --viz-s8: #e66767;
+  --viz-other: #7b7a74;
+  --viz-nodata: #b3b2aa;
+}

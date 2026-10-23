@@ -46,7 +46,7 @@ const studentSchema = new Schema<StudentDocument>({
   university: { type: String, enum: UNIVERSITIES },
   enabled: { type: Boolean, required: true, default: true },
   registered: { type: Boolean, required: true, default: false },
-  email: String,
+  email: { type: String, lowercase: true, trim: true },
   celular: String,
   ciudad: String,
   region: String,

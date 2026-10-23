@@ -1,9 +1,13 @@
 import { z } from "zod";
 
+import { emailProblem, normalizeEmail } from "@/utils/email";
+
 /**
- * Unica fuente de verdad para validar el correo de contacto.
- *
- * La reusan profile.service.ts (revalidacion en el servidor) y el schema
- * del formulario de perfil, para que no existan dos reglas distintas.
+ * Validacion del correo de contacto en el formulario de perfil. La regla (y
+ * sus mensajes) vive en src/utils/email.ts y es la misma que aplica el servidor.
  */
-export const EmailSchema = z.string().min(1).email();
+export const EmailSchema = z.string().superRefine((value, ctx) => {
+  const problem = emailProblem(normalizeEmail(value));
+
+  if (problem) ctx.addIssue({ code: "custom", message: problem });
+});

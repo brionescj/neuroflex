@@ -94,7 +94,7 @@ describe("POST admin/students (alta manual)", () => {
       ciudad: " Temuco ",
       region: "La Araucanía",
       celular: "12345678",
-      email: "ana@uvm.cl",
+      email: "Ana@UVM.cl",
       gender: "female",
       university: "uvm",
       birthDate: "2001-03-15",
@@ -140,7 +140,8 @@ describe("POST admin/students (alta manual)", () => {
       [{ university: "Otra" }, "La universidad indicada no es válida."],
       [{ birthDate: "2999-01-01" }, "La fecha de nacimiento no es válida."],
       [{ birthDate: "15-03-2001" }, "La fecha de nacimiento no es válida."],
-      [{ email: "ana@" }, "El correo ingresado no es válido."],
+      [{ email: "ana@" }, "Falta el dominio después del @."],
+      [{ email: "ana@uvm" }, "Falta el punto del dominio después del @ (por ejemplo, .cl o .com)."],
     ] as const) {
       const { status, json } = await run({ ...BASE, ...extra });
 

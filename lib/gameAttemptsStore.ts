@@ -39,7 +39,7 @@ function isDuplicateKeyError(error: unknown): boolean {
  * Los casos del banco cambian con el tiempo: la version identifica con que
  * redaccion jugo cada estudiante, para no mezclar partidas no comparables.
  */
-async function miniCasesContentVersion(): Promise<string> {
+export async function miniCasesContentVersion(): Promise<string> {
   const cases = await MiniCase.find({ enabled: true })
     .sort({ caseKey: 1 })
     .lean();
