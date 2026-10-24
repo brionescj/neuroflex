@@ -5,6 +5,7 @@ import adminAdminStatus from "./handlers/admin/adminStatus";
 import adminMiniCases from "./handlers/admin/miniCases";
 import adminStats from "./handlers/admin/statsChart";
 import adminStatsCatalog from "./handlers/admin/statsCatalog";
+import adminStatsStudent from "./handlers/admin/statsStudent";
 import adminStudentDetails from "./handlers/admin/studentDetails";
 import adminStudents from "./handlers/admin/students";
 import adminStudentStatus from "./handlers/admin/studentStatus";
@@ -51,6 +52,7 @@ export const ROUTES: RouteDef[] = [
   { pattern: "admin/mini-cases", handler: adminMiniCases },
   { pattern: "admin/stats/catalog", handler: adminStatsCatalog },
   { pattern: "admin/stats/chart", handler: adminStats },
+  { pattern: "admin/stats/students/:rut", handler: adminStatsStudent },
   { pattern: "admin/students", handler: adminStudents },
   { pattern: "admin/students/:rut/details", handler: adminStudentDetails },
   { pattern: "admin/students/:rut/status", handler: adminStudentStatus },

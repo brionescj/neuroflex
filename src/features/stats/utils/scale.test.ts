@@ -33,6 +33,13 @@ describe("valueScale", () => {
     expect(valueScale("steps", 1).max).toBe(4);
   });
 
+  it("veces (reinicios): el eje llega al maximo aunque pase de 4", () => {
+    const scale = valueScale("count", 18);
+
+    expect(scale.ticks[0]).toBe(0);
+    expect(scale.max).toBeGreaterThanOrEqual(18);
+  });
+
   it("cantidades: parte de 0 y cubre el maximo", () => {
     const scale = valueScale("students", 37);
 

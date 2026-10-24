@@ -1,6 +1,15 @@
+import { Link } from "react-router-dom";
+
+import { ROUTES } from "@/config/routes";
+
 import { seriesColor } from "../../utils/colors";
 import { formatNumber, formatValue } from "../../utils/format";
 import type { ChartResult } from "../../types";
+
+/** Donde se ve el desempeño de un estudiante, abierto desde su RUT. */
+function profileLink(rut: string) {
+  return `${ROUTES.ADMIN_STUDENT_STATS}?rut=${encodeURIComponent(rut)}`;
+}
 
 /** Una tabla de filas (listas de estudiantes, indicadores por grupo): se desplaza si no cabe. */
 export function RowsTable({
@@ -47,7 +56,21 @@ export function RowsTable({
                       : "px-3 py-1.5 tabular-nums"
                   }
                 >
-                  {value === null || value === "" ? "—" : typeof value === "number" ? formatNumber(value) : value}
+                  {columns[c] === "RUT" && typeof value === "string" && value !== "" ? (
+                    <Link
+                      to={profileLink(value)}
+                      aria-label={`Ver el desempeño de ${value}`}
+                      className="underline decoration-white/30 underline-offset-2 hover:decoration-white"
+                    >
+                      {value}
+                    </Link>
+                  ) : value === null || value === "" ? (
+                    "—"
+                  ) : typeof value === "number" ? (
+                    formatNumber(value)
+                  ) : (
+                    value
+                  )}
                 </td>
               ))}
             </tr>

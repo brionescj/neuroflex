@@ -20,7 +20,7 @@ export const MAX_COMPARED_STUDENTS = 6;
 const MAX_PARAM_LENGTH = 6_000;
 const MAX_FILTER_VALUES = 60;
 const MAX_VALUE_LENGTH = 80;
-const RUT_LIKE = /^[0-9kK.-]{3,12}$/;
+export const RUT_LIKE = /^[0-9kK.-]{3,12}$/;
 
 export type ParsedRequest =
   | { ok: true; request: ChartRequest; def: ChartDef }

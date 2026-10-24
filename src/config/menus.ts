@@ -3,6 +3,7 @@ import {
   CircleUser,
   House,
   Trophy,
+  UserSearch,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -30,6 +31,8 @@ export const ROLE_MENUS: Record<UserRole, MenuItem[]> = {
     { label: "Inicio", path: ROUTES.ADMIN, icon: House },
 
     { label: "Estadísticas", path: ROUTES.ADMIN_STATS, icon: BarChart3 },
+
+    { label: "Desempeño", path: ROUTES.ADMIN_STUDENT_STATS, icon: UserSearch },
 
     { label: "Mi perfil", path: ROUTES.ADMIN_PROFILE, icon: CircleUser },
   ],

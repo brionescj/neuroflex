@@ -4,7 +4,7 @@ import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
 import { fail, type ApiResponse } from "@/types";
 
-import type { Catalog, ChartResult } from "../types";
+import type { Catalog, ChartResult, StudentProfile } from "../types";
 
 /** Los calculos leen toda la coleccion de partidas: se les da mas tiempo que al resto. */
 const STATS_TIMEOUT_MS = 30_000;
@@ -38,4 +38,9 @@ export function getStatsChart(
   params: Record<string, string>,
 ): Promise<ApiResponse<ChartResult>> {
   return get<ChartResult>("/admin/stats/chart", params);
+}
+
+/** Todo lo de un estudiante: resumen, partida a partida y graficos de cada juego. */
+export function getStudentProfile(rut: string): Promise<ApiResponse<StudentProfile>> {
+  return get<StudentProfile>(`/admin/stats/students/${encodeURIComponent(rut)}`);
 }

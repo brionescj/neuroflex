@@ -36,7 +36,7 @@ const METRICS_BY_GAME: Record<GameId, string[]> = {
     "meanInterTapMs",
     "maxPauseMs",
   ],
-  "node-connection": [],
+  "node-connection": ["undoCount", "resetCount", "routeRestarts"],
   "mini-cases": ["correctSteps", "isFullyCorrect"],
 };
 
@@ -108,6 +108,51 @@ export async function loadChartData(def: ChartDef): Promise<StatsData> {
   for (const result of results) {
     if (!result.metrics) result.metrics = {};
   }
+
+  return { students, attempts, results, unlocks, caseTitles };
+}
+
+/**
+ * Lo necesario para la ficha de un estudiante: todas las partidas (para medir
+ * a su grupo), todo lo que guardo ese estudiante, y de los demas solo lo justo
+ * para comparar nivel y tiempo en Seriacion y Nodos.
+ */
+export async function loadStudentProfileData(rut: string): Promise<StatsData> {
+  const ownProjection: Record<string, 1> = {
+    attemptId: 1,
+    studentRut: 1,
+    gameId: 1,
+    key: 1,
+    index: 1,
+    tryNumber: 1,
+    activeMsNet: 1,
+    completedAt: 1,
+  };
+
+  for (const game of Object.keys(METRICS_BY_GAME) as GameId[]) {
+    for (const name of METRICS_BY_GAME[game]) ownProjection[`metrics.${name}`] = 1;
+  }
+
+  const [students, attempts, own, others, unlocks, cases] = await Promise.all([
+    loadStudents(),
+    GameAttempt.find().select(ATTEMPT_FIELDS).lean() as Promise<AttemptRow[]>,
+    GameLevelResult.find({ studentRut: rut }).select(ownProjection).lean() as Promise<ResultRow[]>,
+    GameLevelResult.find({ studentRut: { $ne: rut }, gameId: { $in: ["color-sequence", "node-connection"] } })
+      .select("attemptId studentRut gameId index tryNumber activeMsNet metrics.passed metrics.correctCount metrics.sequenceLength")
+      .lean() as Promise<ResultRow[]>,
+    GameUnlock.find().select("studentRut gameId unlockedAt").lean() as Promise<UnlockRow[]>,
+    MiniCase.find().select("caseKey title").lean() as Promise<{ caseKey: string; title: string }[]>,
+  ]);
+
+  const results = [...own, ...others];
+
+  for (const result of results) {
+    if (!result.metrics) result.metrics = {};
+  }
+
+  const caseTitles: Record<string, string> = {};
+
+  for (const item of cases) caseTitles[item.caseKey] = item.title;
 
   return { students, attempts, results, unlocks, caseTitles };
 }

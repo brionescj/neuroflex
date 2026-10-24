@@ -443,7 +443,7 @@ export function miniCasesProgress(students: StudentRow[], results: ResultRow[]):
       seriation: cs,
       nodes: nc,
       missing: csMissing + ncMissing,
-      text: parts.length === 0 ? "Ya cumple la regla: el desbloqueo se registra cuando entre a su panel" : `Le faltan ${parts.join(" · ")}`,
+      text: parts.length === 0 ? "Ya cumple la regla: el desbloqueo se registra cuando entre a su panel" : `Le falta: ${parts.join(" · ")}`,
     };
   });
 }

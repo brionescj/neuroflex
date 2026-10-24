@@ -263,8 +263,8 @@ describe("Mini casos sin desbloquear", () => {
 
     expect(rows.map((row) => row[1])).toEqual(["1", "2", "4"]);
     expect(rows[0]?.slice(4)).toEqual([10, 10, "Ya cumple la regla: el desbloqueo se registra cuando entre a su panel"]);
-    expect(rows[1]?.slice(4)).toEqual([7, 10, "Le faltan Seriación: 3 niveles"]);
-    expect(rows[2]?.slice(4)).toEqual([0, 0, "Le faltan Seriación: 10 niveles · Nodos: 10 niveles"]);
+    expect(rows[1]?.slice(4)).toEqual([7, 10, "Le falta: Seriación: 3 niveles"]);
+    expect(rows[2]?.slice(4)).toEqual([0, 0, "Le falta: Seriación: 10 niveles · Nodos: 10 niveles"]);
   });
 
   it("se puede acotar por cuánto le falta", () => {

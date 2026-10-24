@@ -72,7 +72,7 @@ export function GroupLegend({ result, view, hidden, onToggle, onShowAll }: Group
                 <span className="min-w-0">
                   <span className={cn("block break-words leading-snug", isHidden && "line-through")}>{group.label}</span>
 
-                  {series && (
+                  {series && result.studentsTotal !== 1 && (
                     <span className="block text-[11px] leading-snug text-[var(--viz-muted)]">
                       {/* El numero va pegado a la palabra anterior: si hay que partir la linea, no queda suelto. */}
                       Total de estudiantes:&nbsp;{formatNumber(series.n)}

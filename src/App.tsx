@@ -14,6 +14,7 @@ import { RequireGameAccess } from "@/features/games/components/RequireGameAccess
 import { MiniCasesGame } from "@/features/games/mini-cases/components/MiniCasesGame";
 import { NodeConnectionGame } from "@/features/games/node-connection/components/NodeConnectionGame";
 import StatsPage from "@/features/stats/pages/StatsPage";
+import StudentStatsPage from "@/features/stats/pages/StudentStatsPage";
 import StudentDashboard from "@/features/student/pages/StudentDashboard";
 
 export default function App() {
@@ -67,6 +68,7 @@ export default function App() {
       >
         <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
         <Route path={ROUTES.ADMIN_STATS} element={<StatsPage />} />
+        <Route path={ROUTES.ADMIN_STUDENT_STATS} element={<StudentStatsPage />} />
         <Route path={ROUTES.ADMIN_PROFILE} element={<ProfilePage />} />
       </Route>
 

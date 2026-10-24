@@ -71,7 +71,10 @@ export type ChartId =
   | "nc-levels"
   | "nc-time"
   | "mc-steps"
-  | "mc-time";
+  | "mc-time"
+  /** Solo en la ficha de un estudiante (no estan en el catalogo). */
+  | "st-time"
+  | "st-restarts";
 
 /**
  * Formas de ver un grafico. La tabla siempre esta disponible aparte. Torta y
@@ -109,7 +112,7 @@ export type ChartOptionDef = {
   default: string;
 };
 
-export type ChartUnit = "students" | "percent" | "seconds" | "steps" | "level";
+export type ChartUnit = "students" | "percent" | "seconds" | "steps" | "level" | "count";
 
 /** Una serie por grupo comparado. */
 export type ChartSeries = {
@@ -262,4 +265,34 @@ export type StatsData = {
   unlocks?: UnlockRow[];
   /** caseKey -> titulo, para rotular los mini casos. */
   caseTitles: Record<string, string>;
+};
+
+/** Un grafico de la ficha de un estudiante, con su explicacion. */
+export type StudentProfileChart = {
+  id: ChartId;
+  title: string;
+  description: string;
+  result: ChartResult;
+};
+
+/** Todo lo que se sabe de un estudiante en las estadisticas del admin. */
+export type StudentProfile = {
+  student: {
+    rut: string;
+    name: string;
+    paralelo: number | null;
+    university: string;
+    shift: string;
+    ciudad: string;
+    enabled: boolean;
+  };
+  /** Resumen en tarjetas (un solo bloque). */
+  cards: ChartCards;
+  /** Cada partida, de la mas reciente a la mas antigua. */
+  history: { columns: string[]; rows: (string | number | null)[][] };
+  /** Los graficos de cada juego; `played` dice si el estudiante ya lo jugo. */
+  games: { game: GameId; label: string; played: boolean; charts: StudentProfileChart[] }[];
+  /** Como se comparo con su grupo y otras aclaraciones. */
+  notes: string[];
+  generatedAt: string;
 };
