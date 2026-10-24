@@ -152,6 +152,36 @@ describe("buildEvolution por semana", () => {
   });
 });
 
+describe("advertencia del tiempo por nivel", () => {
+  const { attempts, results } = fixture();
+  const nodes = attempt("node-connection", "2026-10-14T15:00:00Z");
+  const evolution = buildEvolution(RUT, [...attempts, nodes], [...results, level(nodes, 1, 50)], "week", "1", NOW);
+  const caution = /Cuidado: al llegar a niveles más altos/;
+
+  it("Seriación la lleva: cada nivel pide recordar más colores", () => {
+    const chart = chartOf(evolution, "color-sequence", "ev-time");
+
+    expect(chart?.deduction).toMatch(caution);
+    expect(chart?.notes.join(" ")).toMatch(/Los niveles más altos piden más/);
+  });
+
+  it("Conexión de nodos no la lleva, ni en la leyenda ni en las notas", () => {
+    const chart = chartOf(evolution, "node-connection", "ev-time");
+
+    expect(chart?.deduction).toBeTruthy();
+    expect(chart?.deduction).not.toMatch(caution);
+    expect(chart?.notes.join(" ")).not.toMatch(/niveles más altos piden más/);
+  });
+
+  it("Mini casos, que no tiene niveles, tampoco", () => {
+    const chart = chartOf(buildEvolution(RUT, attempts, results, "month", "3", NOW), "mini-cases", "ev-time");
+
+    expect(chart?.deduction).toBeTruthy();
+    expect(chart?.deduction).not.toMatch(caution);
+    expect(chart?.notes.join(" ")).not.toMatch(/niveles más altos piden más/);
+  });
+});
+
 describe("buildEvolution por mes", () => {
   const { attempts, results } = fixture();
 

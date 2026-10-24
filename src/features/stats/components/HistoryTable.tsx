@@ -6,11 +6,14 @@ import { cn } from "@/lib/utils";
 
 import { getStudentHistoryAction } from "../actions/stats.action";
 import type { DateRangeInput, HistoryPage } from "../types";
+import { pageItems } from "../utils/pageList";
 import { rangeProblem } from "../utils/selection";
 import { RowsTable } from "./charts/ChartTable";
 import { DateRangeFields } from "./DateRangeFields";
 
 type Filter = DateRangeInput;
+
+const PAGE_BUTTON = "flex size-10 items-center justify-center rounded-lg transition-colors";
 
 const NO_FILTER: Filter = { from: "", to: "" };
 
@@ -56,7 +59,6 @@ export function HistoryTable({ rut }: { rut: string }) {
     void load(page, applied);
   }, [load, page, applied]);
 
-  const pages = data?.pages ?? 1;
   const hasFilter = applied.from !== "" || applied.to !== "";
 
   function apply() {
@@ -149,33 +151,51 @@ export function HistoryTable({ rut }: { rut: string }) {
         </div>
       )}
 
-      {data && data.total > data.pageSize && (
-        <nav aria-label="Páginas del partida a partida" className="flex items-center justify-between gap-2">
-          <Button
-            variant="outline"
-            size="sm"
+      {data && data.pages > 1 && (
+        <nav aria-label="Páginas del partida a partida" className="flex flex-wrap items-center justify-center gap-1">
+          <button
+            type="button"
             disabled={page <= 1 || loading}
-            onClick={() => setPage((value) => Math.max(1, value - 1))}
+            onClick={() => setPage(page - 1)}
             aria-label="Página anterior"
+            className={cn(PAGE_BUTTON, "border border-white/10 text-[var(--viz-text-2)] enabled:hover:bg-white/5 disabled:opacity-40")}
           >
             <ChevronLeft aria-hidden="true" className="size-4" />
-            Más recientes
-          </Button>
+          </button>
 
-          <span className="text-xs tabular-nums text-[var(--viz-text-2)]">
-            Página {page} de {pages}
-          </span>
+          {pageItems(page, data.pages).map((item) =>
+            typeof item === "number" ? (
+              <button
+                key={item}
+                type="button"
+                disabled={loading}
+                onClick={() => setPage(item)}
+                aria-label={`Página ${item}`}
+                aria-current={item === page ? "page" : undefined}
+                className={cn(
+                  PAGE_BUTTON,
+                  "text-sm font-medium tabular-nums",
+                  item === page ? "bg-white text-black" : "text-[var(--viz-text-2)] enabled:hover:bg-white/5",
+                )}
+              >
+                {item}
+              </button>
+            ) : (
+              <span key={item} aria-hidden="true" className={cn(PAGE_BUTTON, "text-[var(--viz-muted)]")}>
+                …
+              </span>
+            ),
+          )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= pages || loading}
-            onClick={() => setPage((value) => Math.min(pages, value + 1))}
+          <button
+            type="button"
+            disabled={page >= data.pages || loading}
+            onClick={() => setPage(page + 1)}
             aria-label="Página siguiente"
+            className={cn(PAGE_BUTTON, "border border-white/10 text-[var(--viz-text-2)] enabled:hover:bg-white/5 disabled:opacity-40")}
           >
-            Más antiguas
             <ChevronRight aria-hidden="true" className="size-4" />
-          </Button>
+          </button>
         </nav>
       )}
     </div>

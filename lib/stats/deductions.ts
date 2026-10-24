@@ -89,11 +89,17 @@ const SINGLE: Partial<Record<ChartId, string>> = {
     "Muestra cuánto jugó en cada período. Un período en cero es un período sin partidas: los promedios de los otros gráficos quedan sin dato ahí.",
   "ev-level":
     "Si la línea sube de un período a otro, sus partidas llegan cada vez más lejos. Cada punto es el promedio del mejor nivel de las partidas de ese período.",
-  "ev-time":
-    "Si la línea baja, resuelve más rápido que antes. Cuidado: al llegar a niveles más altos cada nivel pide más, así que un tiempo mayor también puede venir de haber llegado más lejos.",
+  "ev-time": "Si la línea baja, resuelve más rápido que antes. Si sube, tarda más que antes.",
   "ev-steps":
     "Si la línea sube, ordena más pasos en su lugar correcto en promedio. El máximo es 4 por caso.",
 };
+
+/**
+ * Solo en Seriacion: cada nivel pide recordar una secuencia mas larga, asi que un tiempo mayor
+ * tambien puede venir de haber llegado mas lejos. En Nodos y Mini casos no se agrega.
+ */
+export const SERIATION_TIME_CAUTION =
+  "Cuidado: al llegar a niveles más altos cada nivel pide más, así que un tiempo mayor también puede venir de haber llegado más lejos.";
 
 /** La leyenda de un grafico; undefined si no lleva (el resumen del grupo). */
 export function deductionOf(id: ChartId, single: boolean): string | undefined {

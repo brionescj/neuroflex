@@ -1,4 +1,4 @@
-import { deductionOf } from "./deductions";
+import { SERIATION_TIME_CAUTION, deductionOf } from "./deductions";
 import { mean, round } from "./numbers";
 import { emptyResult, num } from "./profileCommon";
 import { bestLevelOf } from "./studentHistory";
@@ -194,7 +194,9 @@ function metricsOf(game: GameId): Metric[] {
       of: (_, own) => mean(own.filter((r) => r.tryNumber === 1).map((r) => r.activeMsNet / 1000)),
       notes: [
         "Para cada partida se promedia el tiempo activo del primer intento de sus niveles (sin pausas largas); el punto es el promedio de esas partidas.",
-        "Los niveles más altos piden más, así que una partida que llega más lejos tiende a promediar más segundos.",
+        ...(game === "color-sequence"
+          ? ["Los niveles más altos piden más, así que una partida que llega más lejos tiende a promediar más segundos."]
+          : []),
         "Entran las partidas que guardaron al menos un resultado. " + SERIES_NOTE,
       ],
     },
@@ -274,7 +276,9 @@ export function buildEvolution(
               ? "El último período está en curso."
               : `Un ${periodWord} sin partidas con datos queda sin punto: no se cuenta como cero. El último período está en curso.`,
           ],
-          ...(deductionOf(metric.id, true) ? { deduction: deductionOf(metric.id, true) } : {}),
+          deduction: [deductionOf(metric.id, true), metric.id === "ev-time" && game === "color-sequence" ? SERIATION_TIME_CAUTION : null]
+            .filter((text): text is string => typeof text === "string")
+            .join(" "),
         };
 
         charts.push({ id: metric.id, title: metric.title, description: metric.description, result });

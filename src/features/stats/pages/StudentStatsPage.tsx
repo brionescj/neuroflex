@@ -6,16 +6,13 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 import { getStatsCatalogAction, getStudentProfileAction } from "../actions/stats.action";
-import { ChartCard } from "../components/ChartCard";
 import { StatCards } from "../components/charts/StatCards";
-import { EvolutionSection } from "../components/EvolutionSection";
+import { ChartViews } from "../components/ChartViews";
 import { GameSection } from "../components/GameSection";
-import { GameStateFilter } from "../components/GameStateFilter";
 import { HistoryTable } from "../components/HistoryTable";
 import { StudentTable } from "../components/StudentTable";
 import type { StatesByGame } from "../services/stats.service";
 import type { AttemptState, Catalog, GameId, StudentProfile } from "../types";
-import { breakdownText } from "../utils/breakdown";
 
 const PANEL = "viz-root rounded-2xl border border-white/10 bg-[var(--viz-surface)] p-4 text-[var(--viz-text)]";
 
@@ -106,6 +103,7 @@ export default function StudentStatsPage() {
   const profile = loaded && loaded.rut === rut ? loaded.profile : null;
   const failure = error && error.rut === rut ? error.message : null;
   const showTable = rut === "" || choosing;
+  const totalPartidas = profile ? profile.games.reduce((sum, game) => sum + game.attempts, 0) : 0;
   const chosen = catalog?.studentTable.find((student) => student.rut === rut);
 
   return (
@@ -207,48 +205,21 @@ export default function StudentStatsPage() {
             )}
           </section>
 
-          <section aria-label="Partida a partida" className={PANEL}>
-            <h2 className="text-base font-semibold">Partida a partida</h2>
-            <p className="mb-3 mt-0.5 text-xs text-[var(--viz-text-2)]">
-              Cada vez que jugó, de la más reciente a la más antigua.
-            </p>
-            <HistoryTable key={rut} rut={rut} />
-          </section>
+          <GameSection
+            title="Partida a partida"
+            empty={totalPartidas === 0}
+            summary={
+              totalPartidas === 0
+                ? "Aún no ha jugado"
+                : `${totalPartidas} ${totalPartidas === 1 ? "partida" : "partidas"} · de la más reciente a la más antigua`
+            }
+          >
+            <div className="viz-root rounded-xl bg-[var(--viz-surface)] p-3 text-[var(--viz-text)]">
+              <HistoryTable key={rut} rut={rut} />
+            </div>
+          </GameSection>
 
-          <EvolutionSection key={`evolucion-${rut}`} rut={rut} />
-
-          {profile.games.map((game) => (
-            <GameSection
-              key={game.game}
-              title={game.label}
-              empty={!game.played}
-              summary={
-                game.played
-                  ? `${breakdownText(game.breakdown)} · ${game.charts.length} ${game.charts.length === 1 ? "gráfico" : "gráficos"}`
-                  : "Aún no ha jugado"
-              }
-            >
-              <GameStateFilter breakdown={game.breakdown} onChange={(next) => chooseStates(game.game, next)} />
-
-              {game.charts.length === 0 && (
-                <p className="rounded-xl border border-dashed border-zinc-800 px-4 py-6 text-center text-xs text-zinc-500">
-                  Con estas partidas no hay nada que graficar. Elige otras arriba.
-                </p>
-              )}
-
-              {game.charts.map((chart) => (
-                <ChartCard
-                  key={chart.id}
-                  result={chart.result}
-                  description={chart.description}
-                  subtitle=""
-                  loading={false}
-                  stale={false}
-                  single
-                />
-              ))}
-            </GameSection>
-          ))}
+          <ChartViews key={`graficos-${rut}`} rut={rut} profile={profile} onChooseStates={chooseStates} />
         </div>
       )}
     </div>

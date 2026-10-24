@@ -78,12 +78,7 @@ export function EvolutionSection({ rut }: { rut: string }) {
 
   return (
     <>
-      <section aria-label="Evolución" className={PANEL}>
-        <h2 className="text-base font-semibold">Evolución</h2>
-        <p className="mb-3 mt-0.5 text-xs text-[var(--viz-text-2)]">
-          Promedio de sus partidas en cada semana (de lunes a domingo) o en cada mes, juego por juego, para ver cómo ha ido cambiando.
-        </p>
-
+      <section aria-label="Lectura en el tiempo" className={PANEL}>
         <label htmlFor={selectId} className="mb-1.5 block text-xs text-[var(--viz-text-2)]">
           Tipo de lectura
         </label>
@@ -139,7 +134,7 @@ export function EvolutionSection({ rut }: { rut: string }) {
           {data.games.map((game) => (
             <GameSection
               key={game.game}
-              title={`Evolución · ${game.label}`}
+              title={game.label}
               empty={game.charts.length === 0}
               summary={
                 !game.played
