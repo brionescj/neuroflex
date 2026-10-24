@@ -200,7 +200,7 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
             inputMode="numeric"
             autoComplete="off"
             maxLength={3}
-            placeholder="Todas"
+            placeholder="Escribe un número"
             value={selection.partida}
             aria-invalid={!partida.ok}
             onChange={(event) => onChange({ ...selection, partida: event.target.value.replace(/\D/g, "") })}
@@ -208,7 +208,7 @@ export function CompareControls({ catalog, chart, selection, onChange }: Compare
           />
           <p className={cn("text-xs leading-relaxed", partida.ok ? "text-zinc-400" : "text-red-300")} role={partida.ok ? undefined : "alert"}>
             {partida.ok
-              ? "Cuántas partidas de cada estudiante quieres ver (por ejemplo 4). Vacío, se usan todas."
+              ? "Cuántas partidas de cada estudiante quieres ver (por ejemplo 4). Si lo dejas vacío, se usan todas."
               : partida.message}
           </p>
         </div>

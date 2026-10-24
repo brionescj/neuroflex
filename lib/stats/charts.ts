@@ -25,7 +25,14 @@ import {
   type ChartDef,
   type Ctx,
 } from "./engine";
-import { NO_DATA_KEY, TABLET_MIN_SHORT_SIDE, ageOf, dimensionValue } from "./dimensions";
+import {
+  DIMENSION_LABELS,
+  FILTER_DIMENSIONS,
+  NO_DATA_KEY,
+  TABLET_MIN_SHORT_SIDE,
+  ageOf,
+  dimensionValue,
+} from "./dimensions";
 import { mean, median, percentOf } from "./numbers";
 import {
   groupItems,
@@ -511,6 +518,41 @@ export function findChart(id: string): ChartDef | undefined {
 }
 
 /**
+ * Cuantos estudiantes habilitados quedan fuera por no tener en su ficha el dato
+ * por el que se filtro. Se mira la ficha actual: la edad sale de la fecha de
+ * nacimiento. El dispositivo no es un dato de la ficha, asi que no cuenta.
+ */
+export function missingDataNote(
+  request: Pick<ChartRequest, "filters" | "ageRange">,
+  students: StatsData["students"],
+  now: Date,
+): string {
+  const parts: string[] = [];
+
+  for (const dimension of FILTER_DIMENSIONS) {
+    if (dimension === "device" || !request.filters[dimension]?.length) continue;
+
+    // Filtrar por tramo de edad usa la edad, que sale de la fecha de nacimiento.
+    const label = dimension === "ageBand" ? "fecha de nacimiento" : DIMENSION_LABELS[dimension].toLowerCase();
+    const missing = students.filter(
+      (student) => dimensionValue(dimension, student, null, now) === null,
+    ).length;
+
+    if (missing > 0) parts.push(`${missing} sin ${label}`);
+  }
+
+  if (request.ageRange !== null) {
+    const missing = students.filter((student) => ageOf(student, null, now) === null).length;
+
+    if (missing > 0) parts.push(`${missing} sin fecha de nacimiento`);
+  }
+
+  return parts.length === 0
+    ? "Ningún estudiante habilitado quedó fuera por datos que falten en su ficha."
+    : `Al filtrar quedan fuera estudiantes habilitados a los que les falta el dato en su ficha: ${[...new Set(parts)].join(", ")}.`;
+}
+
+/**
  * Calcula un grafico. `options` ya viene validado y completado con los valores
  * por defecto (ver request.ts).
  */
@@ -559,9 +601,7 @@ export function buildChart(
   }
 
   if (Object.keys(request.filters).length > 0 || request.ageRange !== null) {
-    notes.push(
-      "Al filtrar quedan fuera los estudiantes a los que les falta ese dato en su ficha.",
-    );
+    notes.push(missingDataNote(request, enabledStudents, now));
   }
 
   const warnings: string[] = [];

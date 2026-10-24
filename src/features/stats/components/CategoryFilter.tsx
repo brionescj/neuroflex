@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
 import { useId, useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -17,9 +17,10 @@ type CategoryFilterProps = {
 };
 
 /**
- * «Qué partes mostrar»: cada parte del grafico (un nivel, una porcion) es un
- * boton que se quita y se vuelve a poner. Plegado por defecto para ahorrar
- * espacio; su resumen dice cuantas partes se ven.
+ * «Quitar elementos del gráfico»: cada parte del grafico (un nivel, una porcion)
+ * es un boton que se quita y se vuelve a poner. Verde (con ✓) es una parte que se
+ * ve y rojo (con ✕) una quitada, los mismos colores de habilitado e inhabilitado.
+ * Plegado por defecto para ahorrar espacio; su resumen dice cuantas se ven.
  */
 export function CategoryFilter({ result, colored, hidden, onToggle, onShowAll }: CategoryFilterProps) {
   const [open, setOpen] = useState(false);
@@ -37,9 +38,9 @@ export function CategoryFilter({ result, colored, hidden, onToggle, onShowAll }:
         className="flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border border-white/10 px-3 text-left text-xs text-[var(--viz-text-2)] hover:bg-white/5"
       >
         <span>
-          Elegir qué partes mostrar{" "}
-          <span className="text-[var(--viz-muted)]">
-            ({visible} de {total})
+          Quitar elementos del gráfico{" "}
+          <span className={hidden.size > 0 ? "text-rose-400" : "text-emerald-400"}>
+            ({visible} de {total} se ven)
           </span>
         </span>
         <ChevronDown aria-hidden="true" className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")} />
@@ -68,11 +69,16 @@ export function CategoryFilter({ result, colored, hidden, onToggle, onShowAll }:
                     className={cn(
                       "flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-1 transition-colors",
                       isHidden
-                        ? "border-dashed border-white/15 text-[var(--viz-muted)] line-through hover:bg-white/5"
-                        : "border-white/10 hover:bg-white/5",
+                        ? "border-rose-400/50 bg-rose-400/10 text-rose-300 line-through hover:bg-rose-400/20"
+                        : "border-emerald-400/50 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20",
                       locked && "cursor-not-allowed",
                     )}
                   >
+                    {isHidden ? (
+                      <X aria-hidden="true" className="size-3.5 shrink-0" />
+                    ) : (
+                      <Check aria-hidden="true" className="size-3.5 shrink-0" />
+                    )}
                     {colored && (
                       <span
                         aria-hidden="true"
@@ -81,6 +87,7 @@ export function CategoryFilter({ result, colored, hidden, onToggle, onShowAll }:
                       />
                     )}
                     {category}
+                    <span className="sr-only">{isHidden ? " (quitado)" : " (se ve)"}</span>
                   </button>
                 </li>
               );
@@ -88,7 +95,10 @@ export function CategoryFilter({ result, colored, hidden, onToggle, onShowAll }:
           </ul>
 
           <p className="flex flex-wrap items-center gap-x-3 text-[11px] leading-snug text-[var(--viz-muted)]">
-            <span>Toca una parte para quitarla del gráfico o volver a ponerla.</span>
+            <span>
+              <span className="text-emerald-400">Verde</span>: se ve en el gráfico. <span className="text-rose-400">Rojo</span>:
+              quitado. Toca una parte para cambiarla.
+            </span>
 
             {hidden.size > 0 && (
               <button type="button" onClick={onShowAll} className="underline underline-offset-2 hover:text-[var(--viz-text-2)]">

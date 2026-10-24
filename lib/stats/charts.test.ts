@@ -167,6 +167,41 @@ describe("pickPartida", () => {
   });
 });
 
+describe("nota de datos que faltan en la ficha", () => {
+  const note = (query: Record<string, string>) =>
+    run(colorData(), { chart: "cs-max-level", partida: "", ...query }).notes.join(" ");
+
+  it("sin filtros no hay nota", () => {
+    expect(note({})).not.toMatch(/ficha/);
+  });
+
+  it("dice cuántos estudiantes quedan fuera y por qué dato", () => {
+    // El estudiante 4 no tiene universidad ni género; el resto sí.
+    expect(note({ filters: '{"university":["uvm"]}' })).toMatch(/1 sin universidad/);
+  });
+
+  it("junta varios datos en una sola frase", () => {
+    const text = note({ filters: '{"university":["uvm"],"gender":["female"]}' });
+
+    expect(text).toMatch(/1 sin universidad/);
+    expect(text).toMatch(/1 sin género/);
+  });
+
+  it("si nadie falta, lo dice", () => {
+    expect(note({ filters: '{"paralelo":["1"]}' })).toMatch(/Ningún estudiante habilitado quedó fuera/);
+  });
+
+  it("los deshabilitados no cuentan", () => {
+    const data = colorData();
+
+    data.students[3] = { ...(data.students[3] as StudentRow), enabled: false };
+
+    const text = run(data, { chart: "cs-max-level", partida: "", filters: '{"university":["uvm"]}' }).notes.join(" ");
+
+    expect(text).toMatch(/Ningún estudiante habilitado quedó fuera/);
+  });
+});
+
 describe("passesFilters", () => {
   const valueOf = (values: Record<string, string | null>) => (d: string) => values[d] ?? null;
 
