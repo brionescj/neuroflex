@@ -74,7 +74,7 @@ export function StatCards({ cards }: { cards: ChartCards }) {
                     <dt className="text-[11px] leading-snug text-[var(--viz-text-2)]">{item.label}</dt>
                     <dd className="text-xl font-semibold tabular-nums text-[var(--viz-text)]">{item.value}</dd>
                   </dl>
-                  {item.hint && <p className="text-[11px] leading-snug text-[var(--viz-muted)]">{item.hint}</p>}
+                  {item.hint && <p className="whitespace-pre-line text-[11px] leading-snug text-[var(--viz-muted)]">{item.hint}</p>}
 
                   {item.lists && item.lists.length > 0 && (
                     <div className="mt-1 flex flex-col gap-1">

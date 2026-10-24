@@ -1,4 +1,5 @@
 import { isColorSequenceResultPassed } from "../gameAttempts";
+import { deductionOf } from "./deductions";
 import { chartsGeneral } from "./chartsGeneral";
 import { chartsSeriation } from "./chartsSeriation";
 import {
@@ -634,6 +635,7 @@ export function buildChart(
     title: def.title,
     views: typeof def.views === "function" ? def.views(request.options) : def.views,
     exploratory: def.exploratory ?? false,
+    ...(deductionOf(def.id, false) ? { deduction: deductionOf(def.id, false) } : {}),
     ...built,
     series,
     notes,

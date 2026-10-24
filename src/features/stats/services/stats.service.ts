@@ -4,7 +4,17 @@ import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
 import { fail, type ApiResponse } from "@/types";
 
-import type { Catalog, ChartResult, StudentProfile } from "../types";
+import type {
+  AttemptState,
+  Catalog,
+  ChartResult,
+  EvolutionBy,
+  EvolutionSpan,
+  GameId,
+  HistoryPage,
+  StudentEvolution,
+  StudentProfile,
+} from "../types";
 
 /** Los calculos leen toda la coleccion de partidas: se les da mas tiempo que al resto. */
 const STATS_TIMEOUT_MS = 30_000;
@@ -40,7 +50,38 @@ export function getStatsChart(
   return get<ChartResult>("/admin/stats/chart", params);
 }
 
-/** Todo lo de un estudiante: resumen, partida a partida y graficos de cada juego. */
-export function getStudentProfile(rut: string): Promise<ApiResponse<StudentProfile>> {
-  return get<StudentProfile>(`/admin/stats/students/${encodeURIComponent(rut)}`);
+/** Los estados que entran en los graficos de cada juego; lo que no se indica, entra completo. */
+export type StatesByGame = Partial<Record<GameId, AttemptState[]>>;
+
+/** Resumen y graficos de cada juego de un estudiante (el partida a partida y la evolucion se piden aparte). */
+export function getStudentProfile(rut: string, states: StatesByGame = {}): Promise<ApiResponse<StudentProfile>> {
+  const params: Record<string, string> = {};
+
+  for (const [game, list] of Object.entries(states)) {
+    if (list && list.length > 0) params[game] = list.join(",");
+  }
+
+  return get<StudentProfile>(`/admin/stats/students/${encodeURIComponent(rut)}`, params);
+}
+
+/** Una pagina del partida a partida; `from` y `to` (AAAA-MM-DD) filtran por la fecha en que empezó la partida. */
+export function getStudentHistory(
+  rut: string,
+  query: { page: number; from: string; to: string },
+): Promise<ApiResponse<HistoryPage>> {
+  const params: Record<string, string> = { page: String(query.page) };
+
+  if (query.from !== "") params.from = query.from;
+  if (query.to !== "") params.to = query.to;
+
+  return get<HistoryPage>(`/admin/stats/students/${encodeURIComponent(rut)}/history`, params);
+}
+
+/** Los promedios del estudiante por semana o por mes. */
+export function getStudentEvolution(
+  rut: string,
+  by: EvolutionBy,
+  span: EvolutionSpan,
+): Promise<ApiResponse<StudentEvolution>> {
+  return get<StudentEvolution>(`/admin/stats/students/${encodeURIComponent(rut)}/evolution`, { by, span });
 }

@@ -50,7 +50,12 @@ export type ChartId =
   /** Solo en la ficha de un estudiante (no estan en el catalogo). */
   | "st-time"
   | "st-levels"
-  | "st-restarts";
+  | "st-restarts"
+  /** Solo en la evolucion de un estudiante (promedios por semana o por mes). */
+  | "ev-count"
+  | "ev-level"
+  | "ev-time"
+  | "ev-steps";
 
 /** Como comparar: sin agrupar, por una caracteristica, por estudiantes elegidos o por rangos de fechas. */
 export type GroupBy = "none" | "student" | "dateRange" | DimensionId;
@@ -158,6 +163,8 @@ export type ChartResult = {
   basis?: string;
   /** Aclaracion bajo la leyenda, para entender que es cada serie. */
   legendNote?: string;
+  /** Leyenda de lectura: que se puede deducir del grafico; va antes de «Como se calculo». */
+  deduction?: string;
   exploratory: boolean;
   table?: ChartTable;
   cards?: ChartCards;
@@ -223,11 +230,58 @@ export type StudentProfile = {
   };
   /** Resumen en tarjetas (un solo bloque). */
   cards: ChartCards;
-  /** Cada partida, de la mas reciente a la mas antigua. */
-  history: { columns: string[]; rows: (string | number | null)[][] };
   /** Los graficos de cada juego; `played` dice si el estudiante ya lo jugo. */
-  games: { game: GameId; label: string; played: boolean; attempts: number; charts: StudentProfileChart[] }[];
-  /** Como se comparo con su grupo y otras aclaraciones. */
+  games: {
+    game: GameId;
+    label: string;
+    played: boolean;
+    attempts: number;
+    breakdown: GameBreakdown;
+    charts: StudentProfileChart[];
+  }[];
+  /** Como se calcularon las tarjetas del resumen y con quien se compararon. */
+  notes: string[];
+  generatedAt: string;
+};
+
+/** Como terminan las partidas: una partida sin terminar sigue abierta, y si el estudiante vuelve la retoma. */
+export type AttemptState = "finished" | "failed" | "open";
+
+/** Las partidas de un juego segun como terminaron, y cuantas entran en sus graficos. */
+export type GameBreakdown = {
+  total: number;
+  finished: number;
+  failed: number;
+  open: number;
+  /** Los estados elegidos para los graficos de este juego (todos, si no se elige). */
+  states: AttemptState[];
+  /** Partidas de esos estados. */
+  selected: number;
+  /** De las elegidas, las que guardaron al menos un resultado: las unicas que se pueden graficar. */
+  withData: number;
+};
+
+/** Una pagina del historial «partida a partida», de la mas reciente a la mas antigua. */
+export type HistoryPage = {
+  columns: string[];
+  rows: (string | number | null)[][];
+  total: number;
+  page: number;
+  pageSize: number;
+  pages: number;
+};
+
+export type EvolutionBy = "week" | "month";
+
+export type EvolutionSpan = "1" | "2" | "3" | "6" | "9" | "12" | "all";
+
+/** Promedios del estudiante por semana o por mes, un bloque de graficos por juego. */
+export type StudentEvolution = {
+  by: EvolutionBy;
+  span: EvolutionSpan;
+  /** «Promedios por semana · último mes». */
+  label: string;
+  games: { game: GameId; label: string; played: boolean; partidas: number; charts: StudentProfileChart[] }[];
   notes: string[];
   generatedAt: string;
 };

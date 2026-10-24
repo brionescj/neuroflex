@@ -16,6 +16,8 @@ import adminMiniCases from "./handlers/admin/miniCases";
 import adminStats from "./handlers/admin/statsChart";
 import adminStatsCatalog from "./handlers/admin/statsCatalog";
 import adminStatsStudent from "./handlers/admin/statsStudent";
+import adminStatsStudentEvolution from "./handlers/admin/statsStudentEvolution";
+import adminStatsStudentHistory from "./handlers/admin/statsStudentHistory";
 import adminStudentDetails from "./handlers/admin/studentDetails";
 import adminStudents from "./handlers/admin/students";
 import adminStudentStatus from "./handlers/admin/studentStatus";
@@ -47,6 +49,8 @@ const EXPECTED: [string, unknown, Record<string, string>][] = [
   ["admin/stats/catalog", adminStatsCatalog, {}],
   ["admin/stats/chart", adminStats, {}],
   ["admin/stats/students/12345678-9", adminStatsStudent, { rut: "12345678-9" }],
+  ["admin/stats/students/12345678-9/evolution", adminStatsStudentEvolution, { rut: "12345678-9" }],
+  ["admin/stats/students/12345678-9/history", adminStatsStudentHistory, { rut: "12345678-9" }],
   ["admin/students", adminStudents, {}],
   ["admin/students/12345678-9/details", adminStudentDetails, { rut: "12345678-9" }],
   ["admin/students/12345678-9/status", adminStudentStatus, { rut: "12345678-9" }],

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildStudentProfile } from "./studentProfile";
+import { buildStudentProfile, parseStatesQuery } from "./studentProfile";
 import type { AttemptRow, GameId, ResultRow, StatsData, StudentRow, UnlockRow } from "./types";
 
 // Miercoles 21 de octubre de 2026, 12:00 en Chile.
@@ -138,7 +138,22 @@ describe("buildStudentProfile", () => {
         value: "3",
         hint: "Seriación de colores 2 · Conexión de nodos 1 · Mini casos 0",
       });
-      expect(card("Cómo terminaron")).toMatchObject({ value: "1 terminadas", hint: "1 fallidas · 1 sin terminar" });
+    });
+
+    it("terminadas, fallidas y sin terminar son tres cifras iguales, cada una con su desglose por juego", () => {
+      expect(card("Terminadas")).toMatchObject({
+        value: "1",
+        hint: "Seriación de colores 1 · Conexión de nodos 0 · Mini casos 0",
+      });
+      expect(card("Fallidas")).toMatchObject({
+        value: "1",
+        hint: "Seriación de colores 1 · Conexión de nodos 0 · Mini casos 0",
+      });
+      expect(card("Sin terminar")).toMatchObject({
+        value: "1",
+        hint: "Seriación de colores 0 · Conexión de nodos 1 · Mini casos 0",
+      });
+      expect(card("Cómo terminaron")).toBeUndefined();
     });
 
     it("dice la primera partida y la última actividad", () => {
@@ -159,14 +174,34 @@ describe("buildStudentProfile", () => {
       expect(unlocked?.hint).toMatch(/12 oct 2026/);
     });
 
-    it("el nivel máximo se compara con la mediana de su paralelo", () => {
-      // Su nivel: 5 (de la partida 2). Compañeros de paralelo 1: 4, 5, 6 -> mediana 5.
+    it("el nivel máximo da su cifra, su promedio y mediana por partida, y el promedio y mediana de su paralelo", () => {
+      // Su nivel: 5 (de la partida 2); por partida 3 y 5. Compañeros de paralelo 1: 4, 5 y 6.
       expect(card("Nivel máximo en Seriación")).toMatchObject({
         value: "5",
-        hint: "Mediana de su paralelo (3 estudiantes): 5",
+        hint: "Por partida: promedio 4 · mediana 4\nSu paralelo (3 estudiantes): promedio 5 · mediana 5",
       });
-      // En Nodos: el suyo es 2; sus compañeros 2, 3, 4 -> 3.
-      expect(card("Nivel máximo en Nodos")).toMatchObject({ value: "2", hint: "Mediana de su paralelo (3 estudiantes): 3" });
+      // En Nodos: el suyo es 2; sus compañeros 2, 3, 4.
+      expect(card("Nivel máximo en Nodos")).toMatchObject({
+        value: "2",
+        hint: "Por partida: promedio 2 · mediana 2\nSu paralelo (3 estudiantes): promedio 3 · mediana 3",
+      });
+    });
+
+    it("el tiempo por nivel es el promedio de sus primeros intentos, con su mediana y la de su paralelo", () => {
+      // Primeros intentos: 30, 40, 50, 10, 12, 14, 20, 25 s -> promedio 25,1; mediana 22,5. Su paralelo: todo 20 s.
+      expect(card("Tiempo por nivel en Seriación (promedio)")).toMatchObject({
+        value: "25,1 s",
+        hint: "Mediana: 22,5 s\nSu paralelo (3 estudiantes): promedio 20 s · mediana 20 s",
+      });
+    });
+
+    it("las notas del resumen dicen que sus cifras salen de su historial y que la comparación es solo ahí", () => {
+      const notes = buildStudentProfile("11111111", data(), NOW)?.notes.join(" ") ?? "";
+
+      expect(notes).toMatch(/solo de su propio historial/);
+      expect(notes).toMatch(/única comparación/);
+      expect(notes).toMatch(/Promedio.*Mediana/);
+      expect(notes).not.toMatch(/habilitad/i);
     });
 
     it("con pocos compañeros se compara con todo el grupo y lo dice", () => {
@@ -176,7 +211,7 @@ describe("buildStudentProfile", () => {
 
       const hint = buildStudentProfile("11111111", base, NOW)?.cards[0]?.items.find((i) => i.label === "Nivel máximo en Seriación")?.hint;
 
-      expect(hint).toMatch(/todo el grupo \(4 estudiantes\)/);
+      expect(hint).toMatch(/Todo el grupo \(4 estudiantes\)/);
     });
 
     it("un juego que no jugó dice «Sin partidas»", () => {
@@ -187,37 +222,6 @@ describe("buildStudentProfile", () => {
       const nodes = buildStudentProfile("11111111", base, NOW)?.cards[0]?.items.find((i) => i.label === "Nivel máximo en Nodos");
 
       expect(nodes?.value).toBe("Sin partidas");
-    });
-  });
-
-  describe("historial", () => {
-    it("lista cada partida, la más reciente primero, con su estado", () => {
-      const history = buildStudentProfile("11111111", data(), NOW)?.history;
-
-      expect(history?.columns[0]).toBe("Juego");
-      expect(history?.rows).toHaveLength(3);
-      // El orden lo da la fecha de inicio: la partida 2 de Seriación (2 oct), la 1 de ambos juegos (1 oct).
-      expect(history?.rows.map((row) => `${row[0]} ${row[1]} ${row[3]}`)[0]).toBe("Seriación de colores 2 Fallida");
-      expect(history?.rows.map((row) => `${row[0]} ${row[1]} ${row[3]}`)).toEqual(
-        expect.arrayContaining(["Seriación de colores 1 Terminada", "Conexión de nodos 1 Sin terminar (última actividad hace 1 día)"]),
-      );
-    });
-
-    it("una partida abierta no se llama «abandonada»: dice cuándo fue su última actividad", () => {
-      const late = new Date("2026-11-30T15:00:00Z");
-      const states = (buildStudentProfile("11111111", data(), late)?.history.rows ?? []).map((row) => String(row[3]));
-
-      expect(states.some((state) => /abandon/i.test(state))).toBe(false);
-      expect(states).toContain("Sin terminar (última actividad hace 41 días)");
-    });
-
-    it("trae el mejor nivel y el tiempo activo de cada partida", () => {
-      const rows = buildStudentProfile("11111111", data(), NOW)?.history.rows ?? [];
-      const second = rows.find((row) => row[0] === "Seriación de colores" && row[1] === 2);
-
-      // Niveles 1 a 5 aprobados; 10+12+14+20+22+25 s = 103 s = 1,7 min.
-      expect(second?.[5]).toBe(5);
-      expect(second?.[6]).toBe(1.7);
     });
   });
 
@@ -296,7 +300,7 @@ describe("buildStudentProfile", () => {
 
       const time = profile()?.games.find((g) => g.game === "color-sequence")?.charts.find((c) => c.id === "cs-time")?.result;
 
-      expect(time?.notes).toContain("Se usan todas las partidas del estudiante.");
+      expect(time?.notes).toContain("Se usan todas sus partidas.");
       expect(time?.notes).toContain("En cada nivel se toma la mediana de sus tiempos entre las partidas que lo jugaron.");
     });
 
@@ -329,12 +333,124 @@ describe("buildStudentProfile", () => {
       expect(basis["cs-first-error"]).toMatch(/^Calculado con \d+ respuestas con error en sus 2 partidas\.$/);
     });
 
+    it("la mejora entre partidas no se corta en 20: entran todas sus partidas", () => {
+      const base = data();
+      const many = Array.from({ length: 25 }, (_, i) => attempt("11111111", "color-sequence", i + 3, { startedAt: new Date(`2026-09-${String((i % 28) + 1).padStart(2, "0")}T15:00:00Z`) }));
+
+      base.attempts = [...base.attempts, ...many];
+      base.results = [...base.results, ...many.map((a) => level(a, 2, true, 10))];
+
+      const chart = buildStudentProfile("11111111", base, NOW)
+        ?.games.find((g) => g.game === "color-sequence")
+        ?.charts.find((c) => c.id === "cs-improvement")?.result;
+
+      expect(chart?.categories).toHaveLength(27);
+      expect(chart?.categories.at(-1)).toBe("27");
+    });
+
     it("la evolución del nivel muestra su nivel en cada partida", () => {
       const chart = profile()?.games.find((g) => g.game === "color-sequence")?.charts.find((c) => c.id === "cs-improvement")?.result;
 
       expect(chart?.series).toHaveLength(1);
-      expect(chart?.series[0]?.label).toBe("Nombre11111111 Apellido11111111");
+      expect(chart?.series[0]?.label).toBe("Nivel más alto superado");
       expect(chart?.series[0]?.values).toEqual([3, 5]);
+    });
+  });
+
+  describe("partidas que entran en los gráficos", () => {
+    const seriation = (options?: Parameters<typeof buildStudentProfile>[3]) =>
+      buildStudentProfile("11111111", data(), NOW, options)?.games.find((g) => g.game === "color-sequence");
+
+    it("por defecto entran todas: terminadas, fallidas y sin terminar", () => {
+      expect(seriation()?.breakdown).toEqual({
+        total: 2,
+        finished: 1,
+        failed: 1,
+        open: 0,
+        states: ["finished", "failed", "open"],
+        selected: 2,
+        withData: 2,
+      });
+    });
+
+    it("un gráfico no deja fuera partidas fallidas: la mejora entre partidas incluye la fallida", () => {
+      const chart = seriation()?.charts.find((c) => c.id === "cs-improvement")?.result;
+
+      expect(chart?.series[0]?.values).toEqual([3, 5]);
+    });
+
+    it("si se eligen solo las terminadas, los gráficos se calculan solo con ellas y lo dicen", () => {
+      const only = seriation({ states: { "color-sequence": ["finished"] } });
+      const chart = only?.charts.find((c) => c.id === "cs-improvement")?.result;
+
+      expect(only?.breakdown).toMatchObject({ selected: 1, withData: 1, states: ["finished"] });
+      expect(chart?.series[0]?.values).toEqual([3]);
+      expect(chart?.basis).toBe("Calculado con su única partida terminada.");
+      expect(chart?.notes).toContain("Se usan solo sus partidas terminadas de Seriación de colores.");
+    });
+
+    it("elegir estados de un juego no cambia los otros", () => {
+      const nodes = buildStudentProfile("11111111", data(), NOW, { states: { "color-sequence": ["failed"] } })?.games.find(
+        (g) => g.game === "node-connection",
+      );
+
+      expect(nodes?.breakdown.states).toEqual(["finished", "failed", "open"]);
+      expect(nodes?.charts.length).toBeGreaterThan(0);
+    });
+
+    it("el resumen no cambia con el filtro: cuenta siempre todas sus partidas", () => {
+      const filtered = buildStudentProfile("11111111", data(), NOW, { states: { "color-sequence": ["finished"] } });
+      const all = buildStudentProfile("11111111", data(), NOW);
+
+      expect(filtered?.cards).toEqual(all?.cards);
+    });
+
+    it("estados sin ninguna partida dejan el juego sin gráficos", () => {
+      const only = seriation({ states: { "color-sequence": ["open"] } });
+
+      expect(only?.charts).toEqual([]);
+      expect(only?.breakdown).toMatchObject({ selected: 0, withData: 0 });
+    });
+
+    it("las partidas sin ningún resultado guardado se cuentan aparte y se explican", () => {
+      const base = data();
+      const empty = attempt("11111111", "color-sequence", 3, { status: "in_progress" });
+
+      base.attempts = [...base.attempts, empty];
+
+      const game = buildStudentProfile("11111111", base, NOW)?.games.find((g) => g.game === "color-sequence");
+      const chart = game?.charts.find((c) => c.id === "cs-improvement")?.result;
+
+      expect(game?.breakdown).toMatchObject({ total: 3, open: 1, selected: 3, withData: 2 });
+      expect(chart?.notes.join(" ")).toMatch(/Entran 2 de sus 3 partidas: 1 no guardó ningún nivel o caso/);
+    });
+  });
+
+  describe("leyenda de deducción y notas de un estudiante", () => {
+    const charts = () => buildStudentProfile("11111111", data(), NOW)?.games.flatMap((g) => g.charts) ?? [];
+
+    it("cada gráfico trae su leyenda de deducción", () => {
+      for (const chart of charts()) {
+        expect(chart.result.deduction?.length ?? 0, chart.id).toBeGreaterThan(30);
+      }
+    });
+
+    it("ningún gráfico habla de estudiantes habilitados ni compara con el paralelo", () => {
+      for (const chart of charts()) {
+        const text = [...chart.result.notes, chart.result.basis ?? "", chart.description, chart.result.deduction ?? ""].join(" ");
+
+        expect(text, chart.id).not.toMatch(/habilitad|paralelo/i);
+      }
+    });
+
+    it("un estudiante inhabilitado no muestra frases sobre habilitados", () => {
+      const base = data();
+
+      base.students[0] = { ...(base.students[0] as StudentRow), enabled: false };
+
+      for (const chart of buildStudentProfile("11111111", base, NOW)?.games.flatMap((g) => g.charts) ?? []) {
+        expect(chart.result.notes.join(" "), chart.id).not.toMatch(/habilitad/i);
+      }
     });
   });
 
@@ -344,5 +460,22 @@ describe("buildStudentProfile", () => {
 
     expect(chart?.series).toHaveLength(1);
     expect(chart?.studentsTotal).toBe(1);
+  });
+});
+
+describe("parseStatesQuery", () => {
+  it("sin nada pedido, entran todas", () => {
+    expect(parseStatesQuery({})).toEqual({ ok: true, states: {} });
+  });
+
+  it("lee los estados de cada juego", () => {
+    expect(parseStatesQuery({ "color-sequence": "finished,failed", "mini-cases": "open" })).toEqual({
+      ok: true,
+      states: { "color-sequence": ["finished", "failed"], "mini-cases": ["open"] },
+    });
+  });
+
+  it("rechaza un estado que no existe", () => {
+    expect(parseStatesQuery({ "color-sequence": "abandoned" }).ok).toBe(false);
   });
 });

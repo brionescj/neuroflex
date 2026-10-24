@@ -4,9 +4,9 @@ import { requireAuth } from "../../auth";
 import { connectDB } from "../../db";
 import { RUT_LIKE } from "../../stats/request";
 import { loadStudentProfileData } from "../../stats/loadData";
-import { buildStudentProfile } from "../../stats/studentProfile";
+import { buildStudentProfile, parseStatesQuery } from "../../stats/studentProfile";
 
-/** La ficha de desempeno de un estudiante: resumen, historial y graficos por juego. */
+/** La ficha de desempeno de un estudiante: resumen y graficos por juego (el partida a partida se pide aparte, por paginas). */
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
@@ -24,9 +24,15 @@ export default async function handler(
     return res.status(400).json({ success: false, message: "El RUT no es valido." });
   }
 
+  const states = parseStatesQuery(req.query);
+
+  if (!states.ok) {
+    return res.status(400).json({ success: false, message: states.message });
+  }
+
   await connectDB();
 
-  const profile = buildStudentProfile(rut, await loadStudentProfileData(rut));
+  const profile = buildStudentProfile(rut, await loadStudentProfileData(rut), new Date(), { states: states.states });
 
   if (!profile) {
     return res.status(404).json({ success: false, message: "No se encontro al estudiante." });

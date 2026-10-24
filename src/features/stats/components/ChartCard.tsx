@@ -255,6 +255,16 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
 
       </div>
 
+      {full.deduction && (
+        <section
+          aria-label={`Qué se deduce de «${result.title}»`}
+          className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-[var(--viz-text-2)]"
+        >
+          <h3 className="font-medium text-[var(--viz-text)]">Qué se deduce</h3>
+          <p className="mt-0.5">{full.deduction}</p>
+        </section>
+      )}
+
       <details className="mt-4 text-xs text-[var(--viz-text-2)]">
         <summary className="cursor-pointer select-none py-1 text-[var(--viz-muted)] hover:text-[var(--viz-text-2)]">
           Cómo se calculó

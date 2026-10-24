@@ -7,15 +7,24 @@ import { cn } from "@/lib/utils";
 
 import { getStatsCatalogAction, getStudentProfileAction } from "../actions/stats.action";
 import { ChartCard } from "../components/ChartCard";
-import { RowsTable } from "../components/charts/ChartTable";
 import { StatCards } from "../components/charts/StatCards";
+import { EvolutionSection } from "../components/EvolutionSection";
 import { GameSection } from "../components/GameSection";
+import { GameStateFilter } from "../components/GameStateFilter";
+import { HistoryTable } from "../components/HistoryTable";
 import { StudentTable } from "../components/StudentTable";
-import type { Catalog, StudentProfile } from "../types";
+import type { StatesByGame } from "../services/stats.service";
+import type { AttemptState, Catalog, GameId, StudentProfile } from "../types";
+import { breakdownText } from "../utils/breakdown";
 
 const PANEL = "viz-root rounded-2xl border border-white/10 bg-[var(--viz-surface)] p-4 text-[var(--viz-text)]";
 
+const NO_STATES: StatesByGame = {};
+
 type Loaded = { rut: string; profile: StudentProfile };
+
+/** Las partidas que el admin dejó entrar en los gráficos de cada juego, para un estudiante. */
+type StatesChoice = { rut: string; states: StatesByGame };
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
@@ -36,6 +45,7 @@ export default function StudentStatsPage() {
   const [choosing, setChoosing] = useState(false);
   const [loadingRut, setLoadingRut] = useState<string | null>(null);
   const [error, setError] = useState<{ rut: string; message: string } | null>(null);
+  const [choice, setChoice] = useState<StatesChoice>({ rut: "", states: {} });
   // Solo vale la ultima respuesta pedida: si se cambia de estudiante, las anteriores se descartan.
   const latest = useRef(0);
 
@@ -56,13 +66,13 @@ export default function StudentStatsPage() {
     void loadCatalog();
   }, [loadCatalog]);
 
-  const loadProfile = useCallback(async (target: string) => {
+  const loadProfile = useCallback(async (target: string, states: StatesByGame) => {
     const ticket = ++latest.current;
 
     setLoadingRut(target);
     setError(null);
 
-    const response = await getStudentProfileAction(target);
+    const response = await getStudentProfileAction(target, states);
 
     if (ticket !== latest.current) return;
 
@@ -76,9 +86,16 @@ export default function StudentStatsPage() {
     setLoaded({ rut: target, profile: response.data });
   }, []);
 
+  // Los estados elegidos valen solo para el estudiante abierto: al cambiar de estudiante vuelven a «todas».
+  const states = choice.rut === rut ? choice.states : NO_STATES;
+
   useEffect(() => {
-    if (rut !== "") void loadProfile(rut);
-  }, [rut, loadProfile]);
+    if (rut !== "") void loadProfile(rut, states);
+  }, [rut, states, loadProfile]);
+
+  function chooseStates(game: GameId, next: AttemptState[]) {
+    setChoice({ rut, states: { ...states, [game]: next } });
+  }
 
   function select(next: string) {
     setChoosing(false);
@@ -96,7 +113,7 @@ export default function StudentStatsPage() {
       <header>
         <h1 className="text-xl font-semibold text-white">Desempeño por estudiante</h1>
         <p className="mt-1 text-sm text-zinc-400">
-          Elige a un estudiante para ver cómo ha ido jugando, en qué falla y cómo se compara con su grupo.
+          Elige a un estudiante para ver cómo ha ido jugando y en qué le cuesta.
         </p>
       </header>
 
@@ -129,12 +146,6 @@ export default function StudentStatsPage() {
         )}
       </section>
 
-      {rut === "" && (
-        <p className="rounded-2xl border border-dashed border-zinc-800 px-4 py-10 text-center text-sm text-zinc-500">
-          Toca a un estudiante de la lista para ver su desempeño. También puedes abrirlo desde un RUT en las listas de «Estadísticas».
-        </p>
-      )}
-
       {rut !== "" && loading && !profile && (
         <p className="flex items-center gap-2 text-sm text-zinc-400" role="status">
           <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
@@ -145,7 +156,7 @@ export default function StudentStatsPage() {
       {failure && (
         <div className="flex flex-col items-start gap-3">
           <p role="alert" className="text-sm text-red-300">{failure}</p>
-          <Button variant="outline" size="sm" onClick={() => void loadProfile(rut)}>
+          <Button variant="outline" size="sm" onClick={() => void loadProfile(rut, states)}>
             Reintentar
           </Button>
         </div>
@@ -201,13 +212,10 @@ export default function StudentStatsPage() {
             <p className="mb-3 mt-0.5 text-xs text-[var(--viz-text-2)]">
               Cada vez que jugó, de la más reciente a la más antigua.
             </p>
-            <RowsTable
-              caption="Partidas jugadas"
-              columns={profile.history.columns}
-              rows={profile.history.rows}
-              emptyText="Este estudiante aún no ha jugado."
-            />
+            <HistoryTable key={rut} rut={rut} />
           </section>
+
+          <EvolutionSection key={`evolucion-${rut}`} rut={rut} />
 
           {profile.games.map((game) => (
             <GameSection
@@ -216,10 +224,18 @@ export default function StudentStatsPage() {
               empty={!game.played}
               summary={
                 game.played
-                  ? `${game.attempts} ${game.attempts === 1 ? "partida" : "partidas"} · ${game.charts.length} ${game.charts.length === 1 ? "gráfico" : "gráficos"}`
+                  ? `${breakdownText(game.breakdown)} · ${game.charts.length} ${game.charts.length === 1 ? "gráfico" : "gráficos"}`
                   : "Aún no ha jugado"
               }
             >
+              <GameStateFilter breakdown={game.breakdown} onChange={(next) => chooseStates(game.game, next)} />
+
+              {game.charts.length === 0 && (
+                <p className="rounded-xl border border-dashed border-zinc-800 px-4 py-6 text-center text-xs text-zinc-500">
+                  Con estas partidas no hay nada que graficar. Elige otras arriba.
+                </p>
+              )}
+
               {game.charts.map((chart) => (
                 <ChartCard
                   key={chart.id}
