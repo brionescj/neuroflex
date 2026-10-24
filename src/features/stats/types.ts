@@ -49,6 +49,7 @@ export type ChartId =
   | "mc-time"
   /** Solo en la ficha de un estudiante (no estan en el catalogo). */
   | "st-time"
+  | "st-levels"
   | "st-restarts";
 
 /** Como comparar: sin agrupar, por una caracteristica, por estudiantes elegidos o por rangos de fechas. */
@@ -112,6 +113,8 @@ export type Catalog = {
   countBy: OptionChoice[];
   periods: { value: PeriodId; label: string }[];
   students: { rut: string; name: string; paralelo: number | null }[];
+  /** Todos los estudiantes (tambien los inhabilitados) para elegir a quien ver en «Desempeño». */
+  studentTable: { rut: string; name: string; paralelo: number | null; university: string; enabled: boolean }[];
   maxComparedStudents: number;
 };
 
@@ -151,6 +154,10 @@ export type ChartResult = {
   title: string;
   /** Formas de ver el grafico; la primera es la de partida. Vacio: solo tabla. */
   views: ViewId[];
+  /** Con cuantos datos se calculo, en una frase («Calculado con 14 partidas…»); solo en la vista de un estudiante. */
+  basis?: string;
+  /** Aclaracion bajo la leyenda, para entender que es cada serie. */
+  legendNote?: string;
   exploratory: boolean;
   table?: ChartTable;
   cards?: ChartCards;
@@ -219,7 +226,7 @@ export type StudentProfile = {
   /** Cada partida, de la mas reciente a la mas antigua. */
   history: { columns: string[]; rows: (string | number | null)[][] };
   /** Los graficos de cada juego; `played` dice si el estudiante ya lo jugo. */
-  games: { game: GameId; label: string; played: boolean; charts: StudentProfileChart[] }[];
+  games: { game: GameId; label: string; played: boolean; attempts: number; charts: StudentProfileChart[] }[];
   /** Como se comparo con su grupo y otras aclaraciones. */
   notes: string[];
   generatedAt: string;

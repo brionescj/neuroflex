@@ -74,6 +74,7 @@ export type ChartId =
   | "mc-time"
   /** Solo en la ficha de un estudiante (no estan en el catalogo). */
   | "st-time"
+  | "st-levels"
   | "st-restarts";
 
 /**
@@ -156,6 +157,10 @@ export type ChartResult = {
   /** Formas de ver el grafico; la primera es la de partida. */
   views: ViewId[];
   /** Indicador exploratorio: orienta, pero no concluye por si solo. */
+  /** Con cuantos datos se calculo, en una frase («Calculado con 14 partidas…»); solo en la vista de un estudiante. */
+  basis?: string;
+  /** Aclaracion bajo la leyenda, para entender que es cada serie. */
+  legendNote?: string;
   exploratory: boolean;
   /** Si viene, la vista de tabla muestra esto en vez de categorias por series. */
   table?: ChartTable;
@@ -291,7 +296,7 @@ export type StudentProfile = {
   /** Cada partida, de la mas reciente a la mas antigua. */
   history: { columns: string[]; rows: (string | number | null)[][] };
   /** Los graficos de cada juego; `played` dice si el estudiante ya lo jugo. */
-  games: { game: GameId; label: string; played: boolean; charts: StudentProfileChart[] }[];
+  games: { game: GameId; label: string; played: boolean; attempts: number; charts: StudentProfileChart[] }[];
   /** Como se comparo con su grupo y otras aclaraciones. */
   notes: string[];
   generatedAt: string;

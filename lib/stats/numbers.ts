@@ -30,3 +30,33 @@ export function round(value: number | null, decimals = 1): number | null {
 export function percentOf(part: number, total: number): number | null {
   return total === 0 ? null : (part / total) * 100;
 }
+
+/**
+ * Porcentajes de un reparto con 1 decimal que suman exactamente 100,0.
+ * Redondear cada parte por separado puede dar 99,9 o 100,1; aqui el decimal que
+ * sobra o falta se reparte entre las partes con mayor resto (metodo del resto mayor).
+ * Si las partes no suman el total (hay un resto sin categoria), se redondea cada una sola.
+ */
+export function splitPercent(parts: number[], total: number): (number | null)[] {
+  if (total <= 0) return parts.map(() => null);
+
+  const exact = parts.map((part) => (part / total) * 1000);
+  const sum = parts.reduce((acc, part) => acc + part, 0);
+
+  if (sum !== total) return exact.map((tenths) => Math.round(tenths) / 10);
+
+  const floors = exact.map((tenths) => Math.floor(tenths + 1e-9));
+  let missing = 1000 - floors.reduce((acc, tenths) => acc + tenths, 0);
+  const order = exact
+    .map((tenths, index) => ({ index, rest: tenths - (floors[index] as number) }))
+    .sort((a, b) => b.rest - a.rest || a.index - b.index);
+
+  for (const { index } of order) {
+    if (missing <= 0) break;
+
+    floors[index] = (floors[index] as number) + 1;
+    missing -= 1;
+  }
+
+  return floors.map((tenths) => tenths / 10);
+}

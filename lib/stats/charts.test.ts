@@ -307,7 +307,8 @@ describe("Seriacion: nivel maximo superado", () => {
   it("en porcentaje reparte sobre los estudiantes del grupo", () => {
     const chart = run(colorData(), { chart: "cs-max-level", options: '{"as":"percent"}' });
 
-    expect(seriesOf(chart).values).toEqual([0, 33.3, 33.3, 33.3]);
+    // Tres partes iguales: el 0,1 que sobra va a una sola, así el reparto suma 100,0.
+    expect(seriesOf(chart).values).toEqual([0, 33.4, 33.3, 33.3]);
     expect(chart.unit).toBe("percent");
   });
 
@@ -702,7 +703,7 @@ function caseData(): StatsData {
       result(s1, "caso-a", 1, 1, 8, { correctSteps: 4, isFullyCorrect: true }),
       result(s1, "caso-b", 2, 1, 20, { correctSteps: 2, isFullyCorrect: false }),
       result(s2, "caso-a", 1, 1, 10, { correctSteps: 2, isFullyCorrect: false }),
-      // s2 vio los casos en otro orden: el orden del grafico sigue el primero.
+      // s2 vio los casos en otro orden: el grafico no depende del orden en que se jugaron.
       result(s2, "caso-b", 2, 1, 12, { correctSteps: 3, isFullyCorrect: false }),
     ],
     caseTitles: { "caso-a": "El semáforo" },
@@ -716,6 +717,26 @@ describe("Mini casos", () => {
     expect(chart.categories).toEqual(["El semáforo", "caso-b"]);
     expect(seriesOf(chart).values).toEqual([3, 2.5]);
     expect(chart.unit).toBe("steps");
+  });
+
+  it("los casos salen del 1 al 10 por su número, no en el orden en que cada estudiante los jugó", () => {
+    const s1 = attempt(R1, "mini-cases", 1);
+    // El banco baraja los casos: este estudiante jugó el 10 primero y el 2 al final.
+    const data: StatsData = {
+      students: [student(R1)],
+      attempts: [s1],
+      results: [
+        result(s1, "caso-10", 1, 1, 8, { correctSteps: 4, isFullyCorrect: true }),
+        result(s1, "caso-1", 2, 1, 8, { correctSteps: 3, isFullyCorrect: false }),
+        result(s1, "caso-3", 3, 1, 8, { correctSteps: 2, isFullyCorrect: false }),
+        result(s1, "caso-2", 4, 1, 8, { correctSteps: 1, isFullyCorrect: false }),
+      ],
+      caseTitles: { "caso-1": "El semáforo", "caso-10": "La mochila" },
+    };
+    const chart = run(data, { chart: "mc-steps" });
+
+    expect(chart.categories).toEqual(["Caso 1 · El semáforo", "Caso 2", "Caso 3", "Caso 10 · La mochila"]);
+    expect(seriesOf(chart).values).toEqual([3, 1, 2, 4]);
   });
 
   it("orden completo: porcentaje de estudiantes", () => {

@@ -3,7 +3,7 @@ import {
   deviceOfAttempt,
   dimensionValue,
 } from "./dimensions";
-import { mean, median, percentOf, round } from "./numbers";
+import { mean, median, round, splitPercent } from "./numbers";
 import {
   ABANDON_AFTER_MS,
   attemptPasses,
@@ -290,6 +290,12 @@ export function unitLabelOf(ctx: Ctx): string {
 /** Como se eligieron las partidas y que se cuenta; los avisos de periodo y dispositivo van aparte. */
 export function partidaNote(ctx: Ctx): string {
   const { partida, take, groupBy, range } = ctx.request;
+
+  // Un solo estudiante: «cada uno cuenta una sola vez» no dice nada.
+  if (partida === null && groupBy === "student" && ctx.request.students.length === 1) {
+    return "Se usan todas las partidas del estudiante.";
+  }
+
   const inside =
     groupBy === "dateRange" ? " dentro de cada rango" : ctx.request.period === "all" && !range ? "" : " dentro del período elegido";
 
@@ -404,6 +410,7 @@ export function distribution(
   const top = Math.max(firstLevel, ...units.map(levelOf));
   const levels = Array.from({ length: top - firstLevel + 1 }, (_, i) => i + firstLevel);
   const mode = asOf(ctx);
+  const countsOf = new WeakMap<object, number[]>();
 
   return {
     xLabel,
@@ -417,10 +424,23 @@ export function distribution(
     unitLabel: unitLabelOf(ctx),
     categories: levels.map(String),
     series: seriesOf(grouped, unitRut, levels.length, (group, i) => {
-      const count = group.filter((unit) => levelOf(unit) === levels[i]).length;
+      let counts = countsOf.get(group);
+
+      if (!counts) {
+        const known = group;
+
+        counts = levels.map((level) => known.filter((unit) => levelOf(unit) === level).length);
+        countsOf.set(group, counts);
+      }
+
+      const count = counts[i] as number;
 
       return {
-        value: mode === "percent" ? percentOf(count, group.length) : count,
+        // Los porcentajes del reparto suman 100,0: se calculan todos juntos.
+        value:
+          mode === "percent"
+            ? (splitPercent(counts, group.length)[i] as number | null)
+            : count,
         n: group.length,
       };
     }),
@@ -476,25 +496,47 @@ export function timePerLevel(
   };
 }
 
-/** Casos en el orden en que se juegan, con su titulo. */
+/** El numero de un caso segun su clave («caso-4» es el 4); null si la clave no lo trae. */
+export function caseNumber(key: string): number | null {
+  const found = /(\d+)\s*$/.exec(key);
+
+  return found ? Number(found[1]) : null;
+}
+
+/**
+ * Casos del 1 al 10, con su titulo. El banco baraja los casos para cada estudiante,
+ * asi que ordenar por la posicion en que se jugaron los dejaba en cualquier orden:
+ * se ordenan por su numero.
+ */
 export function caseCategories(ctx: Ctx, units: Unit[]): { keys: string[]; labels: string[] } {
-  const firstIndex = new Map<string, number>();
+  const found = new Set<string>();
 
   for (const unit of units) {
-    for (const result of unit.results) {
-      const current = firstIndex.get(result.key);
-
-      if (current === undefined || result.index < current) {
-        firstIndex.set(result.key, result.index);
-      }
-    }
+    for (const result of unit.results) found.add(result.key);
   }
 
-  const keys = [...firstIndex.keys()].sort(
-    (a, b) => (firstIndex.get(a) as number) - (firstIndex.get(b) as number) || a.localeCompare(b),
-  );
+  const keys = [...found].sort((a, b) => {
+    const na = caseNumber(a);
+    const nb = caseNumber(b);
 
-  return { keys, labels: keys.map((key) => ctx.data.caseTitles[key] ?? key) };
+    if (na !== null && nb !== null && na !== nb) return na - nb;
+    if (na !== null && nb === null) return -1;
+    if (na === null && nb !== null) return 1;
+
+    return a.localeCompare(b);
+  });
+
+  return {
+    keys,
+    labels: keys.map((key) => {
+      const number = caseNumber(key);
+      const title = ctx.data.caseTitles[key];
+
+      if (number === null) return title ?? key;
+
+      return title ? `Caso ${number} · ${title}` : `Caso ${number}`;
+    }),
+  };
 }
 
 export function perCase(
@@ -634,9 +676,13 @@ export function compositionSeries<T>(
       label: spec.label,
       slot: spec.slot,
       n: distinctStudents(items, rutOf),
-      values: Array.from({ length: categoryCount }, (_, i) =>
-        round(mode === "percent" ? percentOf(parts[i] ?? 0, total) : (parts[i] ?? 0)),
-      ),
+      values:
+        mode === "percent"
+          ? splitPercent(
+              Array.from({ length: categoryCount }, (_, i) => parts[i] ?? 0),
+              total,
+            )
+          : Array.from({ length: categoryCount }, (_, i) => round(parts[i] ?? 0)),
       ns: Array.from({ length: categoryCount }, (_, i) => parts[i] ?? 0),
     };
   });

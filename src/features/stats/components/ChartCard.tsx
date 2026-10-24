@@ -32,6 +32,7 @@ import { GroupLegend } from "./charts/GroupLegend";
 import { LineChart } from "./charts/LineChart";
 import { PieChart } from "./charts/PieChart";
 import { StackedChart } from "./charts/StackedChart";
+import { SingleStudentContext } from "./charts/singleStudent";
 import { StatCards } from "./charts/StatCards";
 import { HelpButton, HelpNote } from "./HelpNote";
 
@@ -45,6 +46,8 @@ type ChartCardProps = {
   loading: boolean;
   /** La seleccion cambio despues de dibujar este grafico. */
   stale: boolean;
+  /** Habla de un solo estudiante: no se escribe «total de estudiantes» ni «(1)». */
+  single?: boolean;
 };
 
 type ViewChoice = ViewId | "table";
@@ -58,8 +61,8 @@ const VIEW_META: Record<ViewChoice, { label: string; Icon: typeof ChartColumn }>
   table: { label: "Tabla", Icon: Table2 },
 };
 
-function download(result: ChartResult) {
-  const blob = new Blob([chartToCsv(result)], { type: "text/csv;charset=utf-8" });
+function download(result: ChartResult, single: boolean) {
+  const blob = new Blob([chartToCsv(result, { single })], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
 
@@ -74,7 +77,7 @@ function download(result: ChartResult) {
 const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
 const NO_CATEGORIES_HIDDEN: ReadonlySet<number> = new Set();
 
-export function ChartCard({ result: full, description, subtitle, loading, stale }: ChartCardProps) {
+export function ChartCard({ result: full, description, subtitle, loading, stale, single = false }: ChartCardProps) {
   const [chosen, setChosen] = useState<ViewChoice | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [hiddenState, setHiddenState] = useState<{ signature: string; keys: Set<string> }>({
@@ -116,6 +119,7 @@ export function ChartCard({ result: full, description, subtitle, loading, stale 
   const view: ViewChoice = chosen && choices.includes(chosen) ? chosen : (choices[0] as ViewChoice);
 
   return (
+    <SingleStudentContext.Provider value={single}>
     <article className="viz-root rounded-2xl border border-white/10 bg-[var(--viz-surface)] p-4 text-[var(--viz-text)]">
       <header className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
@@ -134,13 +138,14 @@ export function ChartCard({ result: full, description, subtitle, loading, stale 
                 />
               )}
             </div>
-            <p className="mt-0.5 text-xs leading-relaxed text-[var(--viz-text-2)]">{subtitle}</p>
+            {subtitle && <p className="mt-0.5 text-xs leading-relaxed text-[var(--viz-text-2)]">{subtitle}</p>}
+            {full.basis && <p className="mt-0.5 text-xs leading-relaxed text-[var(--viz-muted)]">{full.basis}</p>}
           </div>
 
           <div className="flex shrink-0 gap-1.5">
             <button
               type="button"
-              onClick={() => download(result)}
+              onClick={() => download(result, single)}
               aria-label="Descargar CSV"
               title="Descargar CSV"
               className="flex size-11 items-center justify-center rounded-lg border border-white/10 text-[var(--viz-text-2)] hover:bg-white/5"
@@ -252,8 +257,14 @@ export function ChartCard({ result: full, description, subtitle, loading, stale 
 
       <details className="mt-4 text-xs text-[var(--viz-text-2)]">
         <summary className="cursor-pointer select-none py-1 text-[var(--viz-muted)] hover:text-[var(--viz-text-2)]">
-          Cómo se calculó ({full.studentsTotal} {full.studentsTotal === 1 ? "estudiante" : "estudiantes"}
-          {hidden.size > 0 || hiddenCategories.size > 0 ? ", contando lo que se quitó del gráfico" : ""})
+          Cómo se calculó
+          {single
+            ? hidden.size > 0 || hiddenCategories.size > 0
+              ? " (contando lo que se quitó del gráfico)"
+              : ""
+            : ` (${full.studentsTotal} ${full.studentsTotal === 1 ? "estudiante" : "estudiantes"}${
+                hidden.size > 0 || hiddenCategories.size > 0 ? ", contando lo que se quitó del gráfico" : ""
+              })`}
         </summary>
 
         <ul className="mt-2 list-disc space-y-1 pl-4 leading-relaxed">
@@ -263,5 +274,6 @@ export function ChartCard({ result: full, description, subtitle, loading, stale 
         </ul>
       </details>
     </article>
+    </SingleStudentContext.Provider>
   );
 }

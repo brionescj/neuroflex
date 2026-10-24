@@ -1,6 +1,7 @@
 import { seriesColor } from "../../utils/colors";
 import { formatNumber, formatValue } from "../../utils/format";
 import type { ChartResult } from "../../types";
+import { showsCounts, useSingleStudent } from "./singleStudent";
 
 type ChartTooltipProps = {
   result: ChartResult;
@@ -26,7 +27,8 @@ export function ChartTooltip({ result, index, x, y, containerWidth }: ChartToolt
   );
 
   // En actividad y abandono el valor ya es la cantidad: un "n" igual lo repetiria.
-  const showN = result.chart !== "activity" && result.chart !== "abandonment";
+  const single = useSingleStudent();
+  const showN = result.chart !== "activity" && result.chart !== "abandonment" && showsCounts(result, single);
 
   return (
     <div

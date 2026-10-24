@@ -4,6 +4,7 @@ import { seriesColor } from "../../utils/colors";
 import { formatNumber } from "../../utils/format";
 import { groupsOf } from "../../utils/groups";
 import type { ChartResult, ViewId } from "../../types";
+import { useSingleStudent } from "./singleStudent";
 
 type GroupLegendProps = {
   /** El resultado completo: los grupos ocultos siguen en la lista para poder volver a ponerlos. */
@@ -21,6 +22,7 @@ type GroupLegendProps = {
  * un solo grupo no hace falta (el titulo ya dice que se mira).
  */
 export function GroupLegend({ result, view, hidden, onToggle, onShowAll }: GroupLegendProps) {
+  const single = useSingleStudent();
   const groups = groupsOf(result);
 
   if (groups.length < 2) return null;
@@ -72,7 +74,7 @@ export function GroupLegend({ result, view, hidden, onToggle, onShowAll }: Group
                 <span className="min-w-0">
                   <span className={cn("block break-words leading-snug", isHidden && "line-through")}>{group.label}</span>
 
-                  {series && result.studentsTotal !== 1 && (
+                  {series && !single && (
                     <span className="block text-[11px] leading-snug text-[var(--viz-muted)]">
                       {/* El numero va pegado a la palabra anterior: si hay que partir la linea, no queda suelto. */}
                       Total de estudiantes:&nbsp;{formatNumber(series.n)}
@@ -98,6 +100,10 @@ export function GroupLegend({ result, view, hidden, onToggle, onShowAll }: Group
           </button>
         )}
       </p>
+
+      {result.legendNote && (
+        <p className="text-[11px] leading-snug text-[var(--viz-text-2)]">{result.legendNote}</p>
+      )}
     </div>
   );
 }

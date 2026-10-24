@@ -9,7 +9,8 @@ import { getStatsCatalogAction, getStudentProfileAction } from "../actions/stats
 import { ChartCard } from "../components/ChartCard";
 import { RowsTable } from "../components/charts/ChartTable";
 import { StatCards } from "../components/charts/StatCards";
-import { StudentSearch } from "../components/StudentSearch";
+import { GameSection } from "../components/GameSection";
+import { StudentTable } from "../components/StudentTable";
 import type { Catalog, StudentProfile } from "../types";
 
 const PANEL = "viz-root rounded-2xl border border-white/10 bg-[var(--viz-surface)] p-4 text-[var(--viz-text)]";
@@ -31,6 +32,8 @@ export default function StudentStatsPage() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  // La lista se pliega al elegir a alguien; «Cambiar estudiante» la vuelve a abrir.
+  const [choosing, setChoosing] = useState(false);
   const [loadingRut, setLoadingRut] = useState<string | null>(null);
   const [error, setError] = useState<{ rut: string; message: string } | null>(null);
   // Solo vale la ultima respuesta pedida: si se cambia de estudiante, las anteriores se descartan.
@@ -78,12 +81,15 @@ export default function StudentStatsPage() {
   }, [rut, loadProfile]);
 
   function select(next: string) {
+    setChoosing(false);
     setParams({ rut: next });
   }
 
   const loading = loadingRut !== null;
   const profile = loaded && loaded.rut === rut ? loaded.profile : null;
   const failure = error && error.rut === rut ? error.message : null;
+  const showTable = rut === "" || choosing;
+  const chosen = catalog?.studentTable.find((student) => student.rut === rut);
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
@@ -102,19 +108,30 @@ export default function StudentStatsPage() {
               Reintentar
             </Button>
           </div>
-        ) : catalog ? (
-          <StudentSearch students={catalog.students} onSelect={select} />
-        ) : (
+        ) : !catalog ? (
           <p className="flex items-center gap-2 text-sm text-zinc-400" role="status">
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
             Cargando estudiantes…
           </p>
+        ) : showTable ? (
+          <StudentTable students={catalog.studentTable} selected={rut} onSelect={select} />
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="min-w-0 text-sm text-zinc-300">
+              Estudiante:{" "}
+              <span className="font-medium text-white">{profile?.student.name ?? chosen?.name ?? rut}</span>
+              <span className="text-zinc-500"> · {rut}</span>
+            </p>
+            <Button variant="outline" size="sm" onClick={() => setChoosing(true)}>
+              Cambiar estudiante
+            </Button>
+          </div>
         )}
       </section>
 
       {rut === "" && (
         <p className="rounded-2xl border border-dashed border-zinc-800 px-4 py-10 text-center text-sm text-zinc-500">
-          Aún no elegiste a nadie. Busca un estudiante arriba o toca un RUT en las listas de «Estadísticas».
+          Toca a un estudiante de la lista para ver su desempeño. También puedes abrirlo desde un RUT en las listas de «Estadísticas».
         </p>
       )}
 
@@ -163,6 +180,20 @@ export default function StudentStatsPage() {
           <section aria-label="Resumen" className={PANEL}>
             <h2 className="mb-3 text-base font-semibold">Resumen</h2>
             <StatCards cards={profile.cards} />
+
+            {profile.notes.length > 0 && (
+              <details className="mt-4 text-xs text-[var(--viz-text-2)]">
+                <summary className="cursor-pointer select-none py-1 text-[var(--viz-muted)] hover:text-[var(--viz-text-2)]">
+                  Cómo se calculó
+                </summary>
+
+                <ul className="mt-2 list-disc space-y-1 pl-4 leading-relaxed">
+                  {profile.notes.map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </section>
 
           <section aria-label="Partida a partida" className={PANEL}>
@@ -179,39 +210,29 @@ export default function StudentStatsPage() {
           </section>
 
           {profile.games.map((game) => (
-            <section key={game.game} aria-label={game.label} className="flex flex-col gap-3">
-              <h2 className="text-base font-semibold text-white">{game.label}</h2>
-
-              {game.played ? (
-                game.charts.map((chart) => (
-                  <ChartCard
-                    key={chart.id}
-                    result={chart.result}
-                    description={chart.description}
-                    subtitle={`${game.label} · solo ${profile.student.name}`}
-                    loading={false}
-                    stale={false}
-                  />
-                ))
-              ) : (
-                <p className="rounded-2xl border border-dashed border-zinc-800 px-4 py-6 text-center text-sm text-zinc-500">
-                  Aún no ha jugado {game.label}.
-                </p>
-              )}
-            </section>
+            <GameSection
+              key={game.game}
+              title={game.label}
+              empty={!game.played}
+              summary={
+                game.played
+                  ? `${game.attempts} ${game.attempts === 1 ? "partida" : "partidas"} · ${game.charts.length} ${game.charts.length === 1 ? "gráfico" : "gráficos"}`
+                  : "Aún no ha jugado"
+              }
+            >
+              {game.charts.map((chart) => (
+                <ChartCard
+                  key={chart.id}
+                  result={chart.result}
+                  description={chart.description}
+                  subtitle=""
+                  loading={false}
+                  stale={false}
+                  single
+                />
+              ))}
+            </GameSection>
           ))}
-
-          {profile.notes.length > 0 && (
-            <details className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-xs text-zinc-400">
-              <summary className="cursor-pointer select-none py-1 text-zinc-300">Cómo se calculó</summary>
-
-              <ul className="mt-2 list-disc space-y-1 pl-4 leading-relaxed">
-                {profile.notes.map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            </details>
-          )}
         </div>
       )}
     </div>

@@ -1,7 +1,8 @@
 import { seriesColor } from "../../utils/colors";
 import { formatNumber, formatValue } from "../../utils/format";
 import type { ChartResult } from "../../types";
-import { shares } from "./composition";
+import { percentParts, shares } from "./composition";
+import { useSingleStudent } from "./singleStudent";
 
 /** Segmentos de menos de esto no llevan el numero adentro: no cabe. */
 const LABEL_MIN_SHARE = 0.1;
@@ -11,20 +12,25 @@ const LABEL_MIN_SHARE = 0.1;
  * comparar repartos entre grupos, que es lo que cuesta ver en una torta.
  */
 export function StackedChart({ result }: { result: ChartResult }) {
+  const single = useSingleStudent();
+
   return (
     <div className="flex flex-col gap-4">
       {result.series.map((series) => {
         const parts = shares(series.values);
+        const percents = percentParts(series.values);
         const drawable = parts.some((part) => part > 0);
 
         return (
           <div key={series.key} className="flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between gap-3 text-xs">
-              <span className="min-w-0 truncate font-medium text-[var(--viz-text)]">{series.label}</span>
-              <span className="shrink-0 text-[var(--viz-muted)]">
-                Total de estudiantes: {formatNumber(series.n)}
-              </span>
-            </div>
+            {!single && (
+              <div className="flex items-baseline justify-between gap-3 text-xs">
+                <span className="min-w-0 truncate font-medium text-[var(--viz-text)]">{series.label}</span>
+                <span className="shrink-0 text-[var(--viz-muted)]">
+                  Total de estudiantes: {formatNumber(series.n)}
+                </span>
+              </div>
+            )}
 
             {drawable ? (
               <div
@@ -38,13 +44,13 @@ export function StackedChart({ result }: { result: ChartResult }) {
                   part > 0 ? (
                     <div
                       key={result.categories[i]}
-                      title={`${result.categories[i]}: ${formatNumber(part * 100)} % (${series.ns[i] ?? 0})`}
+                      title={`${result.categories[i]}: ${formatNumber(percents[i] ?? 0)} % (${series.ns[i] ?? 0})`}
                       className="flex min-w-0 items-center justify-center text-[11px] font-semibold text-white"
                       style={{ width: `${part * 100}%`, background: seriesColor(result.categorySlots?.[i] ?? i) }}
                     >
                       {part >= LABEL_MIN_SHARE && (
                         <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">
-                          {formatNumber(part * 100)} %
+                          {formatNumber(percents[i] ?? 0)} %
                         </span>
                       )}
                     </div>

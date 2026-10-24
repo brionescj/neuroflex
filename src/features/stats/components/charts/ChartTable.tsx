@@ -5,6 +5,7 @@ import { ROUTES } from "@/config/routes";
 import { seriesColor } from "../../utils/colors";
 import { formatNumber, formatValue } from "../../utils/format";
 import type { ChartResult } from "../../types";
+import { showsCounts, useSingleStudent } from "./singleStudent";
 
 /** Donde se ve el desempeño de un estudiante, abierto desde su RUT. */
 function profileLink(rut: string) {
@@ -90,6 +91,9 @@ function OwnTable({ result }: { result: ChartResult }) {
 
 /** La version en tabla de cualquier grafico: todos los valores, sin pasar el cursor. */
 export function ChartTable({ result }: { result: ChartResult }) {
+  const single = useSingleStudent();
+  const counts = showsCounts(result, single);
+
   if (result.table) return <OwnTable result={result} />;
 
   return (
@@ -116,9 +120,11 @@ export function ChartTable({ result }: { result: ChartResult }) {
                     />
                     {series.label}
                   </span>
-                  <span className="block font-normal">
-                    Total de estudiantes: {formatNumber(series.n)}
-                  </span>
+                  {!single && (
+                    <span className="block font-normal">
+                      Total de estudiantes: {formatNumber(series.n)}
+                    </span>
+                  )}
                 </th>
               ))}
             </tr>
@@ -142,7 +148,7 @@ export function ChartTable({ result }: { result: ChartResult }) {
                       <span className="text-[var(--viz-text)]">
                         {value === null ? "—" : formatValue(value, result.unit)}
                       </span>
-                      <span className="ml-1.5 text-[var(--viz-muted)]">({series.ns[i] ?? 0})</span>
+                      {counts && <span className="ml-1.5 text-[var(--viz-muted)]">({series.ns[i] ?? 0})</span>}
                     </td>
                   );
                 })}
@@ -152,9 +158,11 @@ export function ChartTable({ result }: { result: ChartResult }) {
         </table>
       </div>
 
-      <p className="text-[11px] leading-snug text-[var(--viz-muted)]">
-        Entre paréntesis, el total de {result.unitLabel} detrás de cada valor.
-      </p>
+      {counts && (
+        <p className="text-[11px] leading-snug text-[var(--viz-muted)]">
+          Entre paréntesis, el total de {result.unitLabel} detrás de cada valor.
+        </p>
+      )}
     </div>
   );
 }

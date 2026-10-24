@@ -26,6 +26,29 @@ function result(extra: Partial<ChartResult> = {}): ChartResult {
   };
 }
 
+describe("chartToCsv de un solo estudiante", () => {
+  it("no escribe columnas «total de estudiantes» (siempre es 1)", () => {
+    const single = result({ series: [{ key: "a", label: "Camila", slot: 0, n: 1, values: [10, 12], ns: [1, 1] }] });
+    const lines = chartToCsv(single, { single: true }).replace("\uFEFF", "").trim().split("\r\n");
+
+    expect(lines[0]).toBe("Nivel;Camila (Segundos (mediana))");
+    expect(lines[1]).toBe("1;10");
+  });
+
+  it("en un reparto sí deja la cantidad real detrás de cada porcentaje", () => {
+    const share = result({
+      views: ["bars", "pie", "stacked"],
+      unit: "percent",
+      unitLabel: "niveles jugados",
+      series: [{ key: "a", label: "Camila", slot: 0, n: 1, values: [60, 40], ns: [6, 4] }],
+    });
+    const lines = chartToCsv(share, { single: true }).replace("\uFEFF", "").trim().split("\r\n");
+
+    expect(lines[0]).toBe("Nivel;Camila (Segundos (mediana));Camila (total de niveles jugados)");
+    expect(lines[1]).toBe("1;60;6");
+  });
+});
+
 describe("chartToCsv", () => {
   const lines = chartToCsv(result()).replace("﻿", "").trim().split("\r\n");
 

@@ -100,6 +100,7 @@ const catalog: Catalog = {
     { value: "7d", label: "Últimos 7 días" },
   ],
   students: [],
+  studentTable: [],
   maxComparedStudents: 6,
 };
 

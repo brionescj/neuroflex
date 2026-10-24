@@ -396,14 +396,14 @@ const csErrorType: ChartDef = {
   },
 };
 
-const FIRST_ERROR = ["Al inicio (primer tercio)", "En el medio", "Al final (último tercio)"];
+const FIRST_ERROR = ["Al comienzo de la secuencia", "En la parte central", "Al final de la secuencia"];
 
 const csFirstError: ChartDef = {
   id: "cs-first-error",
   game: GAME,
   title: "Dónde fallan primero",
   blurb:
-    "En las respuestas con error del primer intento, en qué parte de la secuencia ocurrió el primer fallo: al inicio, en el medio o al final. Un fallo temprano suele hablar de no haber retenido el comienzo; uno tardío, de perder el hilo.",
+    "En las respuestas con error del primer intento, en qué parte de la secuencia ocurrió el primer fallo: al comienzo, en la parte central o al final. Por ejemplo, en una secuencia de 9 colores el comienzo son los colores 1 a 3, la parte central del 4 al 6 y el final del 7 al 9. Un fallo temprano suele hablar de no haber retenido el comienzo; uno tardío, de perder el hilo.",
   views: COMPOSITION_VIEWS,
   exploratory: true,
   usesPartida: true,

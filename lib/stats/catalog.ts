@@ -1,4 +1,5 @@
 import { CHARTS } from "./charts";
+import { universityText } from "./chartsLists";
 import {
   DIMENSION_IDS,
   DIMENSION_LABELS,
@@ -55,6 +56,8 @@ export type Catalog = {
   countBy: OptionChoice[];
   periods: OptionChoice[];
   students: { rut: string; name: string; paralelo: number | null }[];
+  /** Todos los estudiantes (tambien los inhabilitados) para elegir a quien ver en «Desempeño». */
+  studentTable: { rut: string; name: string; paralelo: number | null; university: string; enabled: boolean }[];
   maxComparedStudents: number;
 };
 
@@ -108,6 +111,19 @@ export function buildCatalog(
           student.maternalLastName ? ` ${student.maternalLastName}` : ""
         }`,
         paralelo: typeof student.paralelo === "number" ? student.paralelo : null,
+      })),
+    studentTable: [...students]
+      .sort(
+        (a, b) =>
+          a.paternalLastName.localeCompare(b.paternalLastName, "es") ||
+          a.firstName.localeCompare(b.firstName, "es"),
+      )
+      .map((student) => ({
+        rut: student.rut,
+        name: `${studentName(student, student.rut)}${student.maternalLastName ? ` ${student.maternalLastName}` : ""}`,
+        paralelo: typeof student.paralelo === "number" ? student.paralelo : null,
+        university: universityText(student.university),
+        enabled: student.enabled !== false,
       })),
     maxComparedStudents: MAX_COMPARED_STUDENTS,
   };

@@ -20,7 +20,7 @@ function numberCell(value: number | null): string {
   return value === null ? "" : formatNumber(value).replace(/\./g, "");
 }
 
-export function chartToCsv(result: ChartResult): string {
+export function chartToCsv(result: ChartResult, options: { single?: boolean } = {}): string {
   if (result.table) {
     const lines = [result.table.columns, ...result.table.rows.map((row) => row.map((v) => (typeof v === "number" ? numberCell(v) : (v ?? ""))))].map((row) =>
       row.map((text) => cell(safeText(String(text)))).join(SEPARATOR),
@@ -29,11 +29,14 @@ export function chartToCsv(result: ChartResult): string {
     return `\uFEFF${lines.join("\r\n")}\r\n`;
   }
 
+  // Con un solo estudiante el total de «estudiantes» siempre es 1: solo sirve en los repartos.
+  const withCounts = !options.single || (result.views.includes("stacked") && result.unit === "percent");
+
   const header = [
     result.xLabel,
     ...result.series.flatMap((series) => [
       `${series.label} (${result.yLabel})`,
-      `${series.label} (total de ${result.unitLabel})`,
+      ...(withCounts ? [`${series.label} (total de ${result.unitLabel})`] : []),
     ]),
   ];
 
@@ -41,7 +44,7 @@ export function chartToCsv(result: ChartResult): string {
     category,
     ...result.series.flatMap((series) => [
       numberCell(series.values[i] ?? null),
-      String(series.ns[i] ?? 0),
+      ...(withCounts ? [String(series.ns[i] ?? 0)] : []),
     ]),
   ]);
 

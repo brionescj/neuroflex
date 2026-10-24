@@ -199,8 +199,16 @@ describe("buildStudentProfile", () => {
       // El orden lo da la fecha de inicio: la partida 2 de Seriación (2 oct), la 1 de ambos juegos (1 oct).
       expect(history?.rows.map((row) => `${row[0]} ${row[1]} ${row[3]}`)[0]).toBe("Seriación de colores 2 Fallida");
       expect(history?.rows.map((row) => `${row[0]} ${row[1]} ${row[3]}`)).toEqual(
-        expect.arrayContaining(["Seriación de colores 1 Terminada", "Conexión de nodos 1 Abandonada"]),
+        expect.arrayContaining(["Seriación de colores 1 Terminada", "Conexión de nodos 1 Sin terminar (última actividad hace 1 día)"]),
       );
+    });
+
+    it("una partida abierta no se llama «abandonada»: dice cuándo fue su última actividad", () => {
+      const late = new Date("2026-11-30T15:00:00Z");
+      const states = (buildStudentProfile("11111111", data(), late)?.history.rows ?? []).map((row) => String(row[3]));
+
+      expect(states.some((state) => /abandon/i.test(state))).toBe(false);
+      expect(states).toContain("Sin terminar (última actividad hace 41 días)");
     });
 
     it("trae el mejor nivel y el tiempo activo de cada partida", () => {
@@ -217,12 +225,12 @@ describe("buildStudentProfile", () => {
     const profile = () => buildStudentProfile("11111111", data(), NOW);
     const ids = (game: GameId) => profile()?.games.find((g) => g.game === game)?.charts.map((c) => c.id) ?? [];
 
-    it("Seriación trae los gráficos del catálogo para este estudiante, más su tiempo por partida", () => {
-      expect(ids("color-sequence")).toEqual(expect.arrayContaining(["cs-improvement", "cs-time", "cs-tries", "st-time"]));
+    it("Seriación trae los gráficos del catálogo para este estudiante, más primera vs última partida", () => {
+      expect(ids("color-sequence")).toEqual(["cs-improvement", "cs-time", "st-time", "cs-tries", "cs-error-type", "cs-first-error"]);
     });
 
-    it("Nodos trae sus gráficos y las veces que volvió a empezar", () => {
-      expect(ids("node-connection")).toEqual(expect.arrayContaining(["nc-levels", "nc-time", "st-restarts"]));
+    it("Nodos trae su mejora entre partidas, el tiempo y los reinicios; sin primera vs última si jugó una sola partida", () => {
+      expect(ids("node-connection")).toEqual(["st-levels", "nc-time", "st-restarts"]);
     });
 
     it("un juego que no jugó no trae gráficos y se marca como no jugado", () => {
@@ -237,12 +245,15 @@ describe("buildStudentProfile", () => {
       }
     });
 
-    it("«Volvió a empezar» suma rehacer el tablero y rehacer rutas; «Deshacer» va aparte", () => {
+    it("«Empezó de nuevo» suma rehacer el tablero y rehacer rutas; «Deshacer» va aparte y la leyenda lo explica", () => {
       const chart = profile()?.games.find((g) => g.game === "node-connection")?.charts.find((c) => c.id === "st-restarts")?.result;
 
       expect(chart?.categories).toEqual(["Nivel 1", "Nivel 2"]);
       expect(chart?.series[0]?.values).toEqual([4, 1]);
       expect(chart?.series[1]?.values).toEqual([2, 0]);
+      expect(chart?.series.map((series) => series.label)).toEqual(["Empezó de nuevo", "Corrigió con Deshacer"]);
+      expect(chart?.legendNote).toMatch(/reinició el nivel o rehízo una ruta/);
+      expect(chart?.legendNote).toMatch(/último movimiento/);
     });
 
     it("los reinicios no usan la unidad de pasos: su eje no tiene tope de 4 y no recorta valores altos", () => {
@@ -251,12 +262,71 @@ describe("buildStudentProfile", () => {
       expect(chart?.unit).toBe("count");
     });
 
-    it("el tiempo por partida es la mediana del primer intento de cada nivel", () => {
+    it("primera vs última partida compara nivel a nivel, solo con los niveles que jugó en las dos", () => {
       const chart = profile()?.games.find((g) => g.game === "color-sequence")?.charts.find((c) => c.id === "st-time")?.result;
 
-      expect(chart?.categories).toEqual(["Partida 1", "Partida 2"]);
-      // Partida 1: 30, 40, 50 -> 40. Partida 2: 10, 12, 14, 20 (primer intento del 4), 25 -> 14.
-      expect(chart?.series[0]?.values).toEqual([40, 14]);
+      // Partida 1: niveles 1 a 3 (30, 40, 50 s). Partida 2: niveles 1 a 5 (10, 12, 14, 20, 25 s). En común: 1 a 3.
+      expect(chart?.categories).toEqual(["Nivel 1", "Nivel 2", "Nivel 3"]);
+      expect(chart?.series.map((series) => series.values)).toEqual([
+        [30, 40, 50],
+        [10, 12, 14],
+      ]);
+      expect(chart?.series.map((series) => series.label)).toEqual(["Primera: partida 1", "Última: partida 2"]);
+      expect(chart?.basis).toBe("Compara la partida 1 con la partida 2, en los 3 niveles que jugó en ambas.");
+    });
+
+    it("sin dos partidas con tiempos no hay primera vs última", () => {
+      expect(ids("node-connection")).not.toContain("st-time");
+    });
+
+    it("la mejora de Nodos da el nivel más alto completado en cada partida", () => {
+      const chart = profile()?.games.find((g) => g.game === "node-connection")?.charts.find((c) => c.id === "st-levels")?.result;
+
+      expect(chart?.categories).toEqual(["1"]);
+      expect(chart?.series[0]?.values).toEqual([2]);
+      expect(chart?.xLabel).toBe("Partida (1 = la primera que jugó)");
+    });
+
+    it("las notas hablan de un estudiante: no dicen «cada uno cuenta una sola vez»", () => {
+      for (const game of profile()?.games ?? []) {
+        for (const chart of game.charts) {
+          expect(chart.result.notes.join(" "), chart.id).not.toMatch(/cada uno cuenta una sola vez|cada estudiante/i);
+        }
+      }
+
+      const time = profile()?.games.find((g) => g.game === "color-sequence")?.charts.find((c) => c.id === "cs-time")?.result;
+
+      expect(time?.notes).toContain("Se usan todas las partidas del estudiante.");
+      expect(time?.notes).toContain("En cada nivel se toma la mediana de sus tiempos entre las partidas que lo jugaron.");
+    });
+
+    it("«Dónde fallan primero» usa tramos que se entienden y los repartos suman exactamente 100", () => {
+      const charts = profile()?.games.find((g) => g.game === "color-sequence")?.charts ?? [];
+      const first = charts.find((c) => c.id === "cs-first-error")?.result;
+
+      expect(first?.categories).toEqual(["Al comienzo de la secuencia", "En la parte central", "Al final de la secuencia"]);
+      expect(charts.find((c) => c.id === "cs-first-error")?.description).toMatch(/9 colores/);
+
+      for (const id of ["cs-tries", "cs-error-type", "cs-first-error"] as const) {
+        const result = charts.find((c) => c.id === id)?.result;
+        const total = (result?.series[0]?.values ?? []).reduce<number>((sum, value) => sum + (value ?? 0), 0);
+
+        expect(Math.round(total * 10) / 10, id).toBe(100);
+      }
+    });
+
+    it("cada gráfico dice con cuántas partidas se calculó", () => {
+      const basis = Object.fromEntries(
+        (profile()?.games ?? []).flatMap((g) => g.charts.map((c) => [c.id, c.result.basis] as const)),
+      );
+
+      expect(basis["cs-improvement"]).toBe("Calculado con sus 2 partidas.");
+      expect(basis["cs-time"]).toBe("Calculado con sus 2 partidas, en el primer intento de cada nivel.");
+      expect(basis["nc-time"]).toBe("Calculado con su única partida.");
+      expect(basis["st-restarts"]).toBe("Suma de su única partida.");
+      // Repartos: la cantidad real detrás de los porcentajes.
+      expect(basis["cs-tries"]).toMatch(/^Calculado con \d+ niveles jugados en sus 2 partidas\.$/);
+      expect(basis["cs-first-error"]).toMatch(/^Calculado con \d+ respuestas con error en sus 2 partidas\.$/);
     });
 
     it("la evolución del nivel muestra su nivel en cada partida", () => {

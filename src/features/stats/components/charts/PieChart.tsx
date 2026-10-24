@@ -1,7 +1,8 @@
 import { seriesColor } from "../../utils/colors";
 import { formatNumber, formatValue } from "../../utils/format";
 import type { ChartResult } from "../../types";
-import { shares } from "./composition";
+import { percentParts, shares } from "./composition";
+import { useSingleStudent } from "./singleStudent";
 
 const SIZE = 148;
 const RADIUS = 60;
@@ -25,11 +26,26 @@ function arcPath(from: number, to: number): string {
   ].join(" ");
 }
 
+/** Parte un nombre en líneas de unos 12 caracteres como máximo, sin cortar palabras. */
+function wrapLabel(text: string, max = 12): string[] {
+  const lines: string[] = [];
+
+  for (const word of text.split(" ")) {
+    const last = lines[lines.length - 1];
+
+    if (last !== undefined && last.length + 1 + word.length <= max) lines[lines.length - 1] = `${last} ${word}`;
+    else lines.push(word);
+  }
+
+  return lines.length > 0 ? lines : [text];
+}
+
 /**
  * Una dona por grupo comparado, solo para repartos de un total. Debajo de cada
  * una va la lista con el valor de cada parte, asi no hace falta pasar el cursor.
  */
 export function PieChart({ result }: { result: ChartResult }) {
+  const single = useSingleStudent();
   // Al quitar partes, cada una conserva su color original.
   const slotOf = (index: number) => result.categorySlots?.[index] ?? index;
 
@@ -38,7 +54,9 @@ export function PieChart({ result }: { result: ChartResult }) {
     <div className="grid gap-5 sm:grid-cols-2">
       {result.series.map((series) => {
         const parts = shares(series.values);
+        const percents = percentParts(series.values);
         const total = series.ns.reduce((sum, n) => sum + n, 0);
+        const labelLines = wrapLabel(result.unitLabel);
         const drawable = parts.some((part) => part > 0);
 
         let angle = 0;
@@ -46,12 +64,14 @@ export function PieChart({ result }: { result: ChartResult }) {
         return (
           <figure key={series.key} className="flex flex-col items-center gap-3">
             <figcaption className="text-center text-xs text-[var(--viz-text-2)]">
-              {series.key !== "all" && (
+              {series.key !== "all" && !(single && result.series.length === 1) && (
                 <span className="block font-medium text-[var(--viz-text)]">{series.label}</span>
               )}
-              <span className="text-[var(--viz-muted)]">
-                Total de estudiantes: {formatNumber(series.n)}
-              </span>
+              {!single && (
+                <span className="text-[var(--viz-muted)]">
+                  Total de estudiantes: {formatNumber(series.n)}
+                </span>
+              )}
             </figcaption>
 
             {drawable ? (
@@ -97,7 +117,7 @@ export function PieChart({ result }: { result: ChartResult }) {
                       strokeWidth={2}
                     >
                       <title>
-                        {result.categories[i]}: {formatNumber(part * 100)} % ({series.ns[i] ?? 0})
+                        {result.categories[i]}: {formatNumber(percents[i] ?? 0)} % ({series.ns[i] ?? 0})
                       </title>
                     </path>
                   );
@@ -105,20 +125,24 @@ export function PieChart({ result }: { result: ChartResult }) {
 
                 <text
                   x={SIZE / 2}
-                  y={SIZE / 2 - 2}
+                  y={SIZE / 2 - 4 - (labelLines.length - 1) * 5}
                   textAnchor="middle"
                   className="fill-[var(--viz-text)] text-[15px] font-semibold"
                 >
                   {formatNumber(total)}
                 </text>
-                <text
-                  x={SIZE / 2}
-                  y={SIZE / 2 + 12}
-                  textAnchor="middle"
-                  className="fill-[var(--viz-muted)] text-[9px]"
-                >
-                  {result.unitLabel}
-                </text>
+                {/* El nombre largo («respuestas con error») se parte en líneas para que quepa en el hueco. */}
+                {labelLines.map((line, i) => (
+                  <text
+                    key={line}
+                    x={SIZE / 2}
+                    y={SIZE / 2 + 9 + i * 10 - (labelLines.length - 1) * 5}
+                    textAnchor="middle"
+                    className="fill-[var(--viz-muted)] text-[9px]"
+                  >
+                    {line}
+                  </text>
+                ))}
               </svg>
             ) : (
               <p className="py-10 text-xs text-[var(--viz-muted)]">Sin datos en este grupo</p>
@@ -134,7 +158,7 @@ export function PieChart({ result }: { result: ChartResult }) {
                   />
                   <span className="min-w-0 flex-1">{category}</span>
                   <span className="tabular-nums text-[var(--viz-text)]">
-                    {drawable ? `${formatNumber((parts[i] ?? 0) * 100)} %` : "—"}
+                    {drawable ? `${formatNumber(percents[i] ?? 0)} %` : "—"}
                   </span>
                   <span className="w-12 text-right tabular-nums text-[var(--viz-muted)]">
                     ({series.ns[i] ?? 0})
