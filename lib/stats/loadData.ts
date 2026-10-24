@@ -66,11 +66,14 @@ export async function loadChartData(def: ChartDef): Promise<StatsData> {
         .lean()) as ResultRow[];
     }
 
-    // El resumen necesita el nivel y el tiempo de cada nivel de seriacion y nodos.
-    if (def.id === "gen-summary") {
+    // El resumen y las listas de avance necesitan el nivel (y el tiempo) de cada nivel de seriacion y nodos.
+    if (def.id === "gen-summary" || def.id === "gen-stuck" || def.id === "gen-locked") {
       results = (await GameLevelResult.find({ gameId: { $in: ["color-sequence", "node-connection"] } })
-        .select("studentRut gameId index tryNumber activeMsNet metrics.passed metrics.correctCount metrics.sequenceLength")
+        .select("attemptId studentRut gameId index tryNumber activeMsNet metrics.passed metrics.correctCount metrics.sequenceLength")
         .lean()) as ResultRow[];
+    }
+
+    if (def.id === "gen-summary" || def.id === "gen-locked") {
       unlocks = (await GameUnlock.find().select("studentRut gameId unlockedAt").lean()) as UnlockRow[];
     }
   } else {

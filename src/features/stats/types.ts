@@ -28,6 +28,11 @@ export type ChartId =
   | "gen-outcomes"
   | "gen-when"
   | "gen-no-play"
+  | "gen-inactive"
+  | "gen-stuck"
+  | "gen-failed"
+  | "gen-abandoners"
+  | "gen-locked"
   | "cs-max-level"
   | "cs-pass-rate"
   | "cs-time"
@@ -129,7 +134,13 @@ export type ChartTable = {
 export type ChartCards = {
   group: string;
   slot: number;
-  items: { label: string; value: string; hint?: string }[];
+  items: {
+    label: string;
+    value: string;
+    hint?: string;
+    /** Listas de estudiantes que se abren al tocar la tarjeta (quienes si, quienes no). */
+    lists?: { title: string; columns: string[]; rows: (string | number | null)[][] }[];
+  }[];
 }[];
 
 export type ChartResult = {

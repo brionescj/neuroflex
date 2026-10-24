@@ -2,26 +2,32 @@ import { seriesColor } from "../../utils/colors";
 import { formatNumber, formatValue } from "../../utils/format";
 import type { ChartResult } from "../../types";
 
-/** Tabla propia de listas y resumenes (estudiantes sin partidas, indicadores por grupo). */
-function OwnTable({ result }: { result: ChartResult }) {
-  const table = result.table as NonNullable<ChartResult["table"]>;
-
-  if (table.rows.length === 0) {
+/** Una tabla de filas (listas de estudiantes, indicadores por grupo): se desplaza si no cabe. */
+export function RowsTable({
+  caption,
+  columns,
+  rows,
+  emptyText = "No hay filas para mostrar con estos filtros.",
+}: {
+  caption: string;
+  columns: string[];
+  rows: (string | number | null)[][];
+  emptyText?: string;
+}) {
+  if (rows.length === 0) {
     return (
-      <p className="rounded-lg border border-white/10 px-3 py-6 text-center text-xs text-[var(--viz-muted)]">
-        No hay filas para mostrar con estos filtros.
-      </p>
+      <p className="rounded-lg border border-white/10 px-3 py-6 text-center text-xs text-[var(--viz-muted)]">{emptyText}</p>
     );
   }
 
   return (
     <div className="max-h-[28rem] max-w-full overflow-auto rounded-lg border border-white/10">
       <table className="w-full min-w-max border-collapse text-left text-xs text-[var(--viz-text-2)]">
-        <caption className="sr-only">{result.title}</caption>
+        <caption className="sr-only">{caption}</caption>
 
         <thead className="sticky top-0 bg-[var(--viz-surface)]">
           <tr className="border-b border-white/10 text-[var(--viz-muted)]">
-            {table.columns.map((column) => (
+            {columns.map((column) => (
               <th key={column} scope="col" className="px-3 py-2 font-medium">
                 {column}
               </th>
@@ -30,7 +36,7 @@ function OwnTable({ result }: { result: ChartResult }) {
         </thead>
 
         <tbody>
-          {table.rows.map((row, r) => (
+          {rows.map((row, r) => (
             <tr key={r} className="border-b border-white/5 last:border-0">
               {row.map((value, c) => (
                 <td
@@ -50,6 +56,13 @@ function OwnTable({ result }: { result: ChartResult }) {
       </table>
     </div>
   );
+}
+
+/** Tabla propia de listas y resumenes (estudiantes sin partidas, indicadores por grupo). */
+function OwnTable({ result }: { result: ChartResult }) {
+  const table = result.table as NonNullable<ChartResult["table"]>;
+
+  return <RowsTable caption={result.title} columns={table.columns} rows={table.rows} />;
 }
 
 /** La version en tabla de cualquier grafico: todos los valores, sin pasar el cursor. */

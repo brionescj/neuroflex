@@ -27,6 +27,7 @@ import {
   type StudentRow,
 } from "./types";
 import { studentName } from "./pipeline";
+import { LIST_CHARTS, baseCells, chileDate, lockedMiniCases, miniCasesCells, miniCasesColumns } from "./chartsLists";
 
 const PERIOD_ONLY = { usesPartida: false, usesPeriod: true } as const;
 
@@ -100,8 +101,17 @@ const genSummary: ChartDef = {
           ),
         );
 
+      const unlockedAt = new Map(
+        unlocks.filter((u) => u.gameId === "mini-cases").map((u) => [u.studentRut, u.unlockedAt] as const),
+      );
+      const sortByName = (a: StudentRow, b: StudentRow) =>
+        a.paternalLastName.localeCompare(b.paternalLastName, "es") || a.firstName.localeCompare(b.firstName, "es");
+
       return {
         spec,
+        notPlayed: students.filter((s) => !played.includes(s)).sort(sortByName),
+        locked: lockedMiniCases(students, ctx.data.results, unlocks),
+        unlockedList: students.filter((s) => unlockedAt.has(s.rut)).sort(sortByName).map((s) => ({ student: s, at: unlockedAt.get(s.rut) as Date })),
         total: students.length,
         played: played.length,
         unlocked: students.filter((s) => unlockedMini.has(s.rut)).length,
@@ -127,6 +137,13 @@ const genSummary: ChartDef = {
         text: (s: (typeof summaries)[number]) => number(s.played),
         hint: (s: (typeof summaries)[number]) =>
           s.total === 0 ? undefined : `${number(percentOf(s.played, s.total) as number)} % de los habilitados`,
+        lists: (s: (typeof summaries)[number]) => [
+          {
+            title: "Quiénes no han jugado",
+            columns: ["Estudiante", "RUT", "Paralelo", "Universidad"],
+            rows: s.notPlayed.map((student) => baseCells(student)),
+          },
+        ],
       },
       {
         label: "Con Mini casos desbloqueado",
@@ -134,6 +151,14 @@ const genSummary: ChartDef = {
         text: (s: (typeof summaries)[number]) => number(s.unlocked),
         hint: (s: (typeof summaries)[number]) =>
           s.total === 0 ? undefined : `${number(percentOf(s.unlocked, s.total) as number)} % de los habilitados`,
+        lists: (s: (typeof summaries)[number]) => [
+          { title: "Quiénes no lo han desbloqueado", columns: miniCasesColumns, rows: s.locked.map(miniCasesCells) },
+          {
+            title: "Quiénes ya lo desbloquearon",
+            columns: ["Estudiante", "RUT", "Paralelo", "Universidad", "Desbloqueado el"],
+            rows: s.unlockedList.map(({ student, at }) => [...baseCells(student), chileDate(at)]),
+          },
+        ],
       },
       {
         label: "Nivel típico en Seriación (mediana)",
@@ -173,6 +198,7 @@ const genSummary: ChartDef = {
           label: item.label,
           value: item.text(s),
           ...(item.hint(s) ? { hint: item.hint(s) as string } : {}),
+          ...("lists" in item && item.lists ? { lists: item.lists(s) } : {}),
         })),
       });
     }
@@ -458,5 +484,5 @@ export function chartsGeneral(
   activity: ChartDef,
   abandonment: ChartDef,
 ): ChartDef[] {
-  return [genSummary, participation, activity, genPartidas, genOutcomes, genWhen, abandonment, genNoPlay];
+  return [genSummary, participation, activity, genPartidas, genOutcomes, genWhen, abandonment, genNoPlay, ...LIST_CHARTS];
 }
