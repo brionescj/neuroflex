@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
 import { RutInput } from "@/components/forms/RutInput";
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/Field";
 import { DASHBOARD_BY_ROLE, ROUTES } from "@/config/routes";
 import { useAuth } from "@/context";
+import { takeSessionNotice } from "@/lib/sessionNotice";
 
 import { loginAction } from "../actions/login.action";
 import { PasswordField } from "../components";
@@ -30,6 +32,13 @@ export default function LoginPage() {
       password: "",
     },
   });
+
+  // Si la sesion se cerro porque la cuenta entro desde otro dispositivo, se explica aqui.
+  useEffect(() => {
+    const notice = takeSessionNotice();
+
+    if (notice) toast.info(notice, { duration: 8000 });
+  }, []);
 
   async function onSubmit(data: LoginInput) {
     const result = await loginAction(data);

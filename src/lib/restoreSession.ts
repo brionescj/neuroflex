@@ -1,10 +1,14 @@
 import type { SessionUser, UserRole } from "@/types";
 
 import { api } from "./axios";
+import { setSessionNotice } from "./sessionNotice";
 
 const HINT_COOKIE = "neuroflex_hint";
 
-type EarlyResponse = { status: number; body: { data?: SessionUser } | null } | null;
+type EarlyResponse = {
+  status: number;
+  body: { data?: SessionUser; code?: string; message?: string } | null;
+} | null;
 
 declare global {
   interface Window {
@@ -78,6 +82,11 @@ export function restoreSession(): Promise<SessionUser | null> {
     ? early.then((response) => {
         // Sin respuesta (fallo de red): se vuelve a preguntar por el camino normal.
         if (!response) return askServer();
+
+        // Entraron con esta cuenta desde otro dispositivo: la pantalla de inicio lo explica.
+        if (response.status === 401 && response.body?.code === "session-replaced" && response.body.message) {
+          setSessionNotice(response.body.message);
+        }
 
         return response.status === 200 ? (response.body?.data ?? null) : null;
       })

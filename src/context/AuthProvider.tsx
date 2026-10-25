@@ -12,6 +12,7 @@ import { forgetGranted, rememberGranted } from "@/lib/gameAccessMemory";
 import { forgetRequests } from "@/lib/sharedRequest";
 import { clearTabMemory } from "@/lib/tabMemory";
 import { hasSessionHint, restoreSession } from "@/lib/restoreSession";
+import { SESSION_REPLACED_EVENT } from "@/lib/sessionNotice";
 import type { SessionUser } from "@/types";
 
 import { AuthContext, type AuthContextValue } from "./auth.context";
@@ -90,6 +91,22 @@ export function AuthProvider({ children }: Props) {
     clearTabMemory();
     currentRut.current = null;
     setUser(null);
+  }, []);
+
+  // Entraron con esta cuenta desde otro dispositivo: la sesion de aqui ya no vale y se cierra sin avisar al
+  // servidor (ya la reemplazo). La pantalla de inicio explica por que.
+  useEffect(() => {
+    function onReplaced() {
+      forgetRequests();
+      forgetGranted();
+      clearTabMemory();
+      currentRut.current = null;
+      setUser(null);
+    }
+
+    window.addEventListener(SESSION_REPLACED_EVENT, onReplaced);
+
+    return () => window.removeEventListener(SESSION_REPLACED_EVENT, onReplaced);
   }, []);
 
   const value = useMemo<AuthContextValue>(
