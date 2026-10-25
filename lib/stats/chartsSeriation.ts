@@ -88,8 +88,12 @@ const csReach: ChartDef = {
         return {
           value: mode === "percent" ? percentOf(count, group.length) : count,
           n: group.length,
+          part: count,
+          total: group.length,
         };
       }),
+      partLabel: "que superaron el nivel",
+      totalLabel: "del grupo",
       notes: [
         ...contextNotes(ctx),
         "Cuenta a quienes superaron ese nivel; el porcentaje es sobre todos los que jugaron.",

@@ -13,10 +13,11 @@ export function useSingleStudent(): boolean {
 }
 
 /**
- * Si el número entre paréntesis (o «Total de…») aporta algo. Con un grupo siempre;
- * con un solo estudiante solo en los repartos (qué parte de un total), donde es la
- * cantidad real de niveles, errores o partidas detrás del porcentaje.
+ * Si el número entre paréntesis (o «Total de…») aporta algo. Con un grupo siempre; con un
+ * solo estudiante solo en los repartos (qué parte de un total), donde es la cantidad real de
+ * niveles, errores o partidas detrás del porcentaje, y en la evolución en el tiempo, donde dice
+ * con cuántas partidas se calculó el promedio de cada semana o mes.
  */
 export function showsCounts(result: ChartResult, single: boolean): boolean {
-  return !single || (result.views.includes("stacked") && result.unit === "percent");
+  return !single || result.chart.startsWith("ev-") || (result.views.includes("stacked") && result.unit === "percent");
 }

@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 
 import { seriesColor } from "../../utils/colors";
 import { formatNumber, formatValue } from "../../utils/format";
+import { readPoint } from "../../utils/reading";
 import type { ChartResult } from "../../types";
 import { percentParts, shares } from "./composition";
 import { usePrintMode } from "./printMode";
@@ -121,7 +122,8 @@ export function PieChart({ result }: { result: ChartResult }) {
                       strokeWidth={2}
                     >
                       <title>
-                        {result.categories[i]}: {formatNumber(percents[i] ?? 0)} % ({series.ns[i] ?? 0})
+                        {result.categories[i]}: {formatNumber(percents[i] ?? 0)} % ·{" "}
+                        {readPoint(result, series, i, true, { part: series.ns[i] ?? 0, total }).detail}
                       </title>
                     </path>
                   );
@@ -164,8 +166,8 @@ export function PieChart({ result }: { result: ChartResult }) {
                   <span className="tabular-nums text-[var(--viz-text)]">
                     {drawable ? `${formatNumber(percents[i] ?? 0)} %` : "—"}
                   </span>
-                  <span className="w-12 text-right tabular-nums text-[var(--viz-muted)]">
-                    ({series.ns[i] ?? 0})
+                  <span className="w-20 text-right tabular-nums text-[var(--viz-muted)]">
+                    ({formatNumber(series.ns[i] ?? 0)} de {formatNumber(total)})
                   </span>
                 </li>
               ))}

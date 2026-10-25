@@ -137,8 +137,10 @@ const csPassRate: ChartDef = {
           }
         }
 
-        return { value: percentOf(passed, played), n: played };
+        return { value: percentOf(passed, played), n: played, part: passed, total: played };
       }),
+      partLabel: "que lo superaron",
+      totalLabel: "que jugaron el nivel",
       notes: [
         ...contextNotes(ctx),
         "En cada nivel solo cuentan quienes lo jugaron; por eso los niveles altos tienen pocos datos.",
@@ -343,9 +345,13 @@ const participation: ChartDef = {
           return {
             value: asCount ? count : percentOf(count, group.length),
             n: group.length,
+            part: count,
+            total: group.length,
           };
         },
       ),
+      partLabel: finishedOnly ? "que terminaron el juego" : "que comenzaron el juego",
+      totalLabel: "habilitados",
       notes: [
         "Aquí los grupos salen de la ficha actual del estudiante, no de la foto de cada partida.",
         finishedOnly

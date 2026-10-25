@@ -4,6 +4,7 @@ import { ROUTES } from "@/config/routes";
 
 import { seriesColor } from "../../utils/colors";
 import { formatNumber, formatValue } from "../../utils/format";
+import { consideredHeader, hasParts, totalHeader, valueIsCount } from "../../utils/reading";
 import type { ChartResult } from "../../types";
 import { showsCounts, useSingleStudent } from "./singleStudent";
 
@@ -92,7 +93,8 @@ function OwnTable({ result }: { result: ChartResult }) {
 /** La version en tabla de cualquier grafico: todos los valores, sin pasar el cursor. */
 export function ChartTable({ result }: { result: ChartResult }) {
   const single = useSingleStudent();
-  const counts = showsCounts(result, single);
+  const counts = showsCounts(result, single) && !valueIsCount(result);
+  const parted = hasParts(result);
 
   if (result.table) return <OwnTable result={result} />;
 
@@ -120,6 +122,7 @@ export function ChartTable({ result }: { result: ChartResult }) {
                     />
                     {series.label}
                   </span>
+                  {result.yLabel !== "" && <span className="block font-normal">{result.yLabel}</span>}
                   {!single && (
                     <span className="block font-normal">
                       Total de estudiantes: {formatNumber(series.n)}
@@ -148,7 +151,13 @@ export function ChartTable({ result }: { result: ChartResult }) {
                       <span className="text-[var(--viz-text)]">
                         {value === null ? "—" : formatValue(value, result.unit)}
                       </span>
-                      {counts && <span className="ml-1.5 text-[var(--viz-muted)]">({series.ns[i] ?? 0})</span>}
+                      {counts && (
+                        <span className="ml-1.5 text-[var(--viz-muted)]">
+                          {parted && result.unit === "percent"
+                            ? `(${formatNumber(series.part?.[i] ?? 0)} de ${formatNumber(series.total?.[i] ?? 0)})`
+                            : `(${formatNumber(parted ? (series.total?.[i] ?? 0) : (series.ns[i] ?? 0))})`}
+                        </span>
+                      )}
                     </td>
                   );
                 })}
@@ -160,7 +169,11 @@ export function ChartTable({ result }: { result: ChartResult }) {
 
       {counts && (
         <p className="text-[11px] leading-snug text-[var(--viz-muted)]">
-          Entre paréntesis, el total de {result.unitLabel} detrás de cada valor.
+          {parted && result.unit === "percent"
+            ? `Entre paréntesis, cuántos de cuántos hay detrás de cada porcentaje: ${totalHeader(result).toLowerCase()}.`
+            : parted
+              ? `Entre paréntesis: ${totalHeader(result).toLowerCase()}.`
+              : `Entre paréntesis, ${consideredHeader(result).toLowerCase()} (con cuántos se calculó cada valor).`}
         </p>
       )}
     </div>

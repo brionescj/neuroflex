@@ -135,6 +135,12 @@ export type ChartSeries = {
   values: (number | null)[];
   /** Cuantos datos hay detras de cada valor. */
   ns: number[];
+  /**
+   * Cuando el valor es la parte de un total («22 de 29»): la parte y el total de cada categoria.
+   * Los graficos de tiempo, pasos o niveles (promedios, medianas) no los llevan.
+   */
+  part?: (number | null)[];
+  total?: (number | null)[];
 };
 
 /** Tabla propia de un grafico que no cabe en categorias por series (listas, resumenes). */
@@ -177,6 +183,12 @@ export type ChartResult = {
   unit: ChartUnit;
   /** Para el tooltip y la tabla: "estudiantes" o "partidas". */
   unitLabel: string;
+  /**
+   * Frases que completan «estudiantes …» cuando el valor es una parte de un total: «que lo superaron» y
+   * «que jugaron el nivel» dan «Estudiantes que lo superaron» y «22 estudiantes de un total de 29 que jugaron el nivel».
+   */
+  partLabel?: string;
+  totalLabel?: string;
   categories: string[];
   series: ChartSeries[];
   /** Avisos para mostrar junto al grafico (n bajo, datos faltantes...). */

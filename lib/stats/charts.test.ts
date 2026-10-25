@@ -389,6 +389,33 @@ describe("Seriacion: nivel maximo superado", () => {
     expect(seriesOf(chart).values[0]).toBe(100);
   });
 
+  it("la aprobacion por nivel dice cuantos de cuantos: la parte y el total de cada punto", () => {
+    const chart = run(colorData(), { chart: "cs-pass-rate", partida: "" });
+    const series = seriesOf(chart);
+
+    // Nivel 1: los 3 jugaron y los 3 lo superaron (100 % = 3 de 3).
+    expect(series.part?.[0]).toBe(3);
+    expect(series.total?.[0]).toBe(3);
+    expect(chart.partLabel).toBe("que lo superaron");
+    expect(chart.totalLabel).toBe("que jugaron el nivel");
+
+    // En todos los niveles el porcentaje sale de esa parte y ese total.
+    series.values.forEach((value, i) => {
+      const part = series.part?.[i] ?? 0;
+      const total = series.total?.[i] ?? 0;
+
+      expect(value).toBe(total === 0 ? null : Math.round((part / total) * 1000) / 10);
+    });
+  });
+
+  it("los repartos (composición) dejan la parte y el total sobre el que se calculó el porcentaje", () => {
+    const chart = run(colorData(), { chart: "cs-tries" });
+    const series = seriesOf(chart);
+
+    expect(series.part).toEqual(series.ns);
+    series.total?.forEach((total) => expect(total).toBe(series.ns.reduce((sum, n) => sum + n, 0)));
+  });
+
   it("al comparar usa porcentaje por defecto y no avisa de grupos chicos", () => {
     const chart = run(colorData(), { chart: "cs-max-level", groupBy: "paralelo" });
 

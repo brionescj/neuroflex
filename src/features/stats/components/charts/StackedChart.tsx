@@ -1,5 +1,6 @@
 import { seriesColor } from "../../utils/colors";
 import { formatNumber, formatValue } from "../../utils/format";
+import { readPoint } from "../../utils/reading";
 import type { ChartResult } from "../../types";
 import { percentParts, shares } from "./composition";
 import { useSingleStudent } from "./singleStudent";
@@ -44,7 +45,7 @@ export function StackedChart({ result }: { result: ChartResult }) {
                   part > 0 ? (
                     <div
                       key={result.categories[i]}
-                      title={`${result.categories[i]}: ${formatNumber(percents[i] ?? 0)} % (${series.ns[i] ?? 0})`}
+                      title={`${result.categories[i]}: ${formatNumber(percents[i] ?? 0)} % · ${readPoint(result, series, i, true, { part: series.ns[i] ?? 0, total: series.ns.reduce((sum, n) => sum + n, 0) }).detail}`}
                       className="flex min-w-0 items-center justify-center text-[11px] font-semibold text-white"
                       style={{ width: `${part * 100}%`, background: seriesColor(result.categorySlots?.[i] ?? i) }}
                     >

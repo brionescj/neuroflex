@@ -53,7 +53,7 @@ export type Built = Pick<
   | "notes"
   | "studentsTotal"
 > &
-  Partial<Pick<ChartResult, "table" | "cards">>;
+  Partial<Pick<ChartResult, "table" | "cards" | "partLabel" | "totalLabel">>;
 
 export type ChartDef = {
   id: ChartId;
@@ -133,11 +133,12 @@ export function seriesOf<T>(
   grouped: Grouped<T>,
   rutOf: (item: T) => string,
   categoryCount: number,
-  cell: (items: T[], category: number) => { value: number | null; n: number },
+  cell: (items: T[], category: number) => { value: number | null; n: number; part?: number; total?: number },
 ): ChartSeries[] {
   return grouped.specs.map((spec) => {
     const items = grouped.byGroup.get(spec.key) ?? [];
     const cells = Array.from({ length: categoryCount }, (_, i) => cell(items, i));
+    const parted = cells.some((c) => c.part !== undefined);
 
     return {
       key: spec.key,
@@ -146,6 +147,7 @@ export function seriesOf<T>(
       n: distinctStudents(items, rutOf),
       values: cells.map((c) => round(c.value)),
       ns: cells.map((c) => c.n),
+      ...(parted ? { part: cells.map((c) => c.part ?? null), total: cells.map((c) => c.total ?? null) } : {}),
     };
   });
 }
@@ -442,8 +444,12 @@ export function distribution(
             ? (splitPercent(counts, group.length)[i] as number | null)
             : count,
         n: group.length,
+        part: count,
+        total: group.length,
       };
     }),
+    partLabel: "con este nivel como máximo",
+    totalLabel: "del grupo",
     notes: [...contextNotes(ctx), ...extraNotes],
     studentsTotal: totalStudents(grouped, unitRut),
   };
@@ -684,6 +690,8 @@ export function compositionSeries<T>(
             )
           : Array.from({ length: categoryCount }, (_, i) => round(parts[i] ?? 0)),
       ns: Array.from({ length: categoryCount }, (_, i) => parts[i] ?? 0),
+      part: Array.from({ length: categoryCount }, (_, i) => parts[i] ?? 0),
+      total: Array.from({ length: categoryCount }, () => total),
     };
   });
 }

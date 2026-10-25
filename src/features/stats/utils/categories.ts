@@ -33,6 +33,8 @@ export function withoutCategories(result: ChartResult, hidden: ReadonlySet<numbe
       ...series,
       values: pick(series.values),
       ns: pick(series.ns),
+      ...(series.part ? { part: pick(series.part) } : {}),
+      ...(series.total ? { total: pick(series.total) } : {}),
     })),
   };
 }

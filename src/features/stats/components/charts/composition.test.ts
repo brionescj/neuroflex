@@ -40,8 +40,9 @@ describe("percentParts", () => {
 });
 
 describe("showsCounts", () => {
-  const base = { views: ["bars"], unit: "seconds" } as unknown as ChartResult;
-  const share = { views: ["bars", "pie", "stacked"], unit: "percent" } as unknown as ChartResult;
+  const base = { chart: "cs-time", views: ["bars"], unit: "seconds", unitLabel: "estudiantes" } as unknown as ChartResult;
+  const share = { chart: "cs-tries", views: ["bars", "pie", "stacked"], unit: "percent", unitLabel: "niveles jugados" } as unknown as ChartResult;
+  const evolution = { chart: "ev-time", views: ["lines", "bars"], unit: "seconds", unitLabel: "partidas" } as unknown as ChartResult;
 
   it("con un grupo siempre se muestran los totales", () => {
     expect(showsCounts(base, false)).toBe(true);
@@ -51,5 +52,9 @@ describe("showsCounts", () => {
   it("con un solo estudiante solo en los repartos: ahí es la cantidad real detrás del porcentaje", () => {
     expect(showsCounts(base, true)).toBe(false);
     expect(showsCounts(share, true)).toBe(true);
+  });
+
+  it("con un solo estudiante, la evolución en el tiempo sí dice con cuántas partidas se calculó", () => {
+    expect(showsCounts(evolution, true)).toBe(true);
   });
 });

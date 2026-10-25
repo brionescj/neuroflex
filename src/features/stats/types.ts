@@ -133,6 +133,9 @@ export type ChartSeries = {
   n: number;
   values: (number | null)[];
   ns: number[];
+  /** Cuando el valor es la parte de un total («22 de 29»): la parte y el total de cada categoria. */
+  part?: (number | null)[];
+  total?: (number | null)[];
 };
 
 /** Tabla propia de un grafico que no cabe en categorias por series (listas, resumenes). */
@@ -172,6 +175,9 @@ export type ChartResult = {
   yLabel: string;
   unit: ChartUnit;
   unitLabel: string;
+  /** Frases que completan «estudiantes …»: «que lo superaron», «que jugaron el nivel». */
+  partLabel?: string;
+  totalLabel?: string;
   categories: string[];
   /** Al quitar partes del grafico: el puesto original de cada categoria que queda, para que conserve su color. */
   categorySlots?: number[];
