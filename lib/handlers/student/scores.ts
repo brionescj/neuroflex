@@ -4,6 +4,7 @@ import { requireAuth } from "../../auth";
 import { connectDB } from "../../db";
 import { GameAttempt } from "../../models/GameAttempt";
 import { GameLevelResult } from "../../models/GameLevelResult";
+import { MiniCase } from "../../models/MiniCase";
 import { ensureCurrentSession } from "../../sessions";
 import {
   buildStudentScores,
@@ -32,18 +33,24 @@ export default async function handler(
 
   if (!(await ensureCurrentSession(payload, res))) return;
 
-  const [attempts, results] = await Promise.all([
+  const [attempts, results, bank] = await Promise.all([
     GameAttempt.find({ studentRut: payload.rut })
       .select("attemptId gameId attemptNumber status")
       .lean() as Promise<ScoreAttempt[]>,
     GameLevelResult.find({ studentRut: payload.rut })
       .select("attemptId gameId key index tryNumber metrics")
       .lean() as Promise<ScoreResult[]>,
+    MiniCase.find({ enabled: true }).select("caseKey").lean() as Promise<{ caseKey: string }[]>,
   ]);
+
+  // Numerados como en el banco (caso-2 antes que caso-10), para que "Caso 3" sea siempre el mismo.
+  const caseKeys = bank
+    .map((item) => item.caseKey)
+    .sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
 
   return res.status(200).json({
     success: true,
     message: "Puntuaciones obtenidas.",
-    data: buildStudentScores({ attempts, results }),
+    data: buildStudentScores({ attempts, results, caseKeys }),
   });
 }

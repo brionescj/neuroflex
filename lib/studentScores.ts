@@ -15,6 +15,10 @@ import {
   isLevelResultPassed,
   type AttemptGameId,
 } from "./gameAttempts";
+import { buildBadges, type Badge } from "./studentBadges";
+
+export { BADGE_COUNT, TIER_NAMES } from "./studentBadges";
+export type { Badge, BadgeTier } from "./studentBadges";
 
 /** Cuantos niveles tiene Conexion de nodos (src/features/games/node-connection/levels.ts). */
 export const NODE_TOTAL_LEVELS = 15;
@@ -72,6 +76,8 @@ export type AttemptBar = {
 
 export type CaseBar = {
   caseKey: string;
+  /** Si el estudiante ya respondio este caso alguna vez. Un caso sin jugar no es un 0: es un caso pendiente. */
+  played: boolean;
   /** Mejor cantidad de pasos en su lugar (0 a 4). */
   steps: number;
   complete: boolean;
@@ -81,16 +87,6 @@ export type NodeMargin = {
   level: number;
   /** Del margen de errores permitido, cuanto sobro (0 a 100). */
   marginPercent: number;
-};
-
-export type Badge = {
-  id: string;
-  name: string;
-  description: string;
-  goal: number;
-  /** Avance hacia la meta, nunca mayor que `goal`. */
-  current: number;
-  earned: boolean;
 };
 
 export type RankInfo = {
@@ -125,7 +121,8 @@ export type StudentScores = {
     attempts: AttemptBar[];
     margins: NodeMargin[];
   };
-  miniCases: { cases: CaseBar[] };
+  /** Todos los casos del banco (los sin jugar van marcados), no solo los jugados. */
+  miniCases: { cases: CaseBar[]; total: number; played: number };
   badges: Badge[];
   nextGoal: Badge | null;
 };
@@ -328,37 +325,71 @@ function buildAttemptBars(
   return bars.slice(-MAX_ATTEMPTS_SHOWN);
 }
 
-function buildCases(results: ScoreResult[]): { cases: CaseBar[]; points: number } {
+/**
+ * Mejor resultado de cada caso, entre todas las partidas. Se listan TODOS los casos del
+ * banco: uno sin jugar sale como pendiente. Mostrar solo los jugados hacia parecer un
+ * "4/4 en todos" a quien respondio pocos casos.
+ */
+function buildCases(
+  results: ScoreResult[],
+  bankKeys: string[],
+): { cases: CaseBar[]; points: number; played: number } {
   const byCase = new Map<string, CaseBar>();
 
   for (const result of results) {
     const steps = Math.min(CASE_STEPS, Math.max(0, num(result.metrics.correctSteps)));
     const complete = result.metrics.isFullyCorrect === true;
-    const entry = byCase.get(result.key) ?? { caseKey: result.key, steps: 0, complete: false };
+    const entry = byCase.get(result.key) ?? { caseKey: result.key, played: true, steps: 0, complete: false };
 
     entry.steps = Math.max(entry.steps, steps);
     entry.complete = entry.complete || complete;
     byCase.set(result.key, entry);
   }
 
-  const cases = [...byCase.values()];
+  // Primero los del banco, en su orden; despues los jugados que ya no estan en el banco.
+  const cases: CaseBar[] = bankKeys.map(
+    (key) => byCase.get(key) ?? { caseKey: key, played: false, steps: 0, complete: false },
+  );
+
+  for (const [key, entry] of byCase) {
+    if (!bankKeys.includes(key)) cases.push(entry);
+  }
+
   const points = cases.reduce(
     (sum, c) => sum + c.steps * POINTS_CASE_STEP + (c.complete ? POINTS_CASE_COMPLETE : 0),
     0,
   );
 
-  return { cases, points };
+  return { cases, points, played: byCase.size };
 }
 
-function badge(id: string, name: string, description: string, goal: number, value: number): Badge {
-  const current = Math.min(goal, value);
+/** Partidas de 5 o mas niveles superados, todos al primer intento y sin un solo intento perdido. */
+function countFlawlessRuns(results: ScoreResult[]): number {
+  const byAttempt = new Map<string, ScoreResult[]>();
 
-  return { id, name, description, goal, current, earned: current >= goal };
+  for (const result of results) {
+    const list = byAttempt.get(result.attemptId) ?? [];
+
+    list.push(result);
+    byAttempt.set(result.attemptId, list);
+  }
+
+  let runs = 0;
+
+  for (const list of byAttempt.values()) {
+    const clean = list.every((r) => r.tryNumber === 1 && isLevelResultPassed(r));
+
+    if (clean && new Set(list.map((r) => r.index)).size >= 5) runs += 1;
+  }
+
+  return runs;
 }
 
 export function buildStudentScores(input: {
   attempts: ScoreAttempt[];
   results: ScoreResult[];
+  /** Claves de los casos habilitados del banco, en el orden en que se numeran. */
+  caseKeys?: string[];
 }): StudentScores {
   const of = (gameId: AttemptGameId) => ({
     attempts: input.attempts.filter((a) => a.gameId === gameId),
@@ -374,7 +405,7 @@ export function buildStudentScores(input: {
 
   const colorLadder = buildLadder(colorSummary, COLOR_MIN_LEVELS);
   const nodeLadder = buildLadder(nodeSummary, NODE_TOTAL_LEVELS);
-  const caseData = buildCases(cases.results);
+  const caseData = buildCases(cases.results, input.caseKeys ?? []);
 
   const points = (ladder: LadderLevel[]) => ladder.reduce((sum, l) => sum + l.points, 0);
 
@@ -407,28 +438,34 @@ export function buildStudentScores(input: {
   const colorFlawless = [...colorSummary.values()].filter((l) => l.flawless).length;
   const nodeFlawless = [...nodeSummary.values()].filter((l) => l.flawless).length;
 
-  const badges: Badge[] = [
-    badge("first-step", "Primer paso", "Pasa tu primer nivel en cualquier juego.", 1, stats.levelsPassed),
-    badge("all-games", "Probaste todo", "Juega los tres juegos al menos una vez.", 3, gamesPlayed),
-    badge("memory-5", "Memoria 5", "Pasa el nivel 5 de Seriación de colores.", 5, colorLadder.bestLevel),
-    badge("memory-10", "Memoria 10", "Pasa el nivel 10 de Seriación de colores.", 10, colorLadder.bestLevel),
-    badge("route-5", "Ruta 5", "Pasa el nivel 5 de Conexión de nodos.", 5, nodeLadder.bestLevel),
-    badge("route-10", "Ruta 10", "Pasa el nivel 10 de Conexión de nodos.", 10, nodeLadder.bestLevel),
-    badge("route-15", "Maestría de rutas", "Pasa los 15 niveles de Conexión de nodos.", NODE_TOTAL_LEVELS, nodeLadder.bestLevel),
-    badge("perfect-memory", "Memoria perfecta", "Acierta todos los colores en 3 niveles.", 3, colorFlawless),
-    badge("clean-board", "Tablero limpio", "Resuelve 3 niveles de nodos sin ningún error.", 3, nodeFlawless),
-    badge("first-try", "A la primera", "Pasa 5 niveles en el primer intento.", 5, stats.firstTryLevels),
-    badge("comeback", "Insistir da frutos", "Pasa 3 niveles que antes no te habían salido.", 3, comebacks),
-    badge("ordered-mind", "Mente ordenada", "Ordena bien 5 mini casos por completo.", 5, stats.perfectCases),
-    badge("new-record", "Superaste tu marca", "Llega más lejos que en tus partidas anteriores.", 1, records),
-    badge("steady", "Constancia", "Completa 3 partidas.", 3, stats.finishedAttempts),
-  ];
+  const wideMarginNodes = [...nodeSummary.values()].filter(
+    (l) => l.passed && l.margin !== undefined && l.margin > 50,
+  ).length;
 
-  // La proxima meta es la que esta mas cerca de lograrse; con todas en cero, la primera de la lista (la mas sencilla).
+  const badges = buildBadges({
+    totalPoints,
+    levelsPassed: stats.levelsPassed,
+    firstTryLevels: stats.firstTryLevels,
+    flawlessSeriation: colorFlawless,
+    flawlessNodes: nodeFlawless,
+    wideMarginNodes,
+    seriationBest: colorLadder.bestLevel,
+    nodesBest: nodeLadder.bestLevel,
+    gamesPlayed,
+    finishedAttempts: stats.finishedAttempts,
+    comebacks,
+    records,
+    flawlessRuns: countFlawlessRuns([...color.results, ...nodes.results]),
+    perfectCases: stats.perfectCases,
+    playedCases: caseData.played,
+    totalCases: input.caseKeys?.length ?? 0,
+  });
+
+  // La proxima meta es la mas cercana de lograrse; a igual avance, la mas facil (menor nivel).
   const nextGoal =
     badges
       .filter((b) => !b.earned)
-      .sort((a, b) => b.current / b.goal - a.current / a.goal)[0] ?? null;
+      .sort((a, b) => b.current / b.goal - a.current / a.goal || a.tier - b.tier)[0] ?? null;
 
   return {
     hasPlayed: input.results.length > 0,
@@ -444,7 +481,7 @@ export function buildStudentScores(input: {
         .filter((l) => l.passed && l.margin !== undefined)
         .map((l) => ({ level: l.level, marginPercent: l.margin ?? 0 })),
     },
-    miniCases: { cases: caseData.cases },
+    miniCases: { cases: caseData.cases, total: caseData.cases.length, played: caseData.played },
     badges,
     nextGoal,
   };

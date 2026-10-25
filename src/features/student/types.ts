@@ -22,6 +22,8 @@ export type AttemptBar = {
 
 export type CaseBar = {
   caseKey: string;
+  /** Si ya respondio este caso. Uno sin jugar esta pendiente, no en 0. */
+  played: boolean;
   steps: number;
   complete: boolean;
 };
@@ -31,10 +33,13 @@ export type NodeMargin = {
   marginPercent: number;
 };
 
+export type BadgeTier = 1 | 2 | 3 | 4 | 5;
+
 export type Badge = {
   id: string;
   name: string;
   description: string;
+  tier: BadgeTier;
   goal: number;
   current: number;
   earned: boolean;
@@ -67,7 +72,7 @@ export type StudentScores = {
     attempts: AttemptBar[];
     margins: NodeMargin[];
   };
-  miniCases: { cases: CaseBar[] };
+  miniCases: { cases: CaseBar[]; total: number; played: number };
   badges: Badge[];
   nextGoal: Badge | null;
 };

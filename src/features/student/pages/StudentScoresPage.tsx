@@ -86,7 +86,7 @@ export default function StudentScoresPage() {
 
               {scores.nodes.margins.length > 0 && <NodeMarginChart margins={scores.nodes.margins} />}
 
-              {scores.miniCases.cases.length > 0 && <CaseStepsChart cases={scores.miniCases.cases} />}
+              {scores.miniCases.total > 0 && <CaseStepsChart cases={scores.miniCases.cases} played={scores.miniCases.played} total={scores.miniCases.total} />}
             </>
           )}
 

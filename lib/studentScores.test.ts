@@ -221,8 +221,8 @@ describe("buildStudentScores", () => {
     });
 
     expect(scores.miniCases.cases).toEqual([
-      { caseKey: "c1", steps: 4, complete: true },
-      { caseKey: "c2", steps: 3, complete: false },
+      { caseKey: "c1", played: true, steps: 4, complete: true },
+      { caseKey: "c2", played: true, steps: 3, complete: false },
     ]);
     expect(scores.pointsByGame.find((g) => g.gameId === "mini-cases")?.points).toBe(
       4 * 3 + 8 + 3 * 3,
@@ -283,5 +283,69 @@ describe("buildStudentScores", () => {
     });
 
     for (const b of scores.badges) expect(b.current).toBeLessThanOrEqual(b.goal);
+  });
+
+  it("mini casos: se listan TODOS los casos del banco y los sin jugar quedan pendientes, no en 4/4", () => {
+    const scores = buildStudentScores({
+      attempts: [attempt("m1", "mini-cases", 1, "in_progress")],
+      results: [miniCase("m1", "caso-2", 4, true), miniCase("m1", "caso-10", 4, true)],
+      caseKeys: ["caso-2", "caso-10", "caso-11", "caso-12"],
+    });
+
+    expect(scores.miniCases.total).toBe(4);
+    expect(scores.miniCases.played).toBe(2);
+    expect(scores.miniCases.cases.map((c) => [c.caseKey, c.played, c.steps])).toEqual([
+      ["caso-2", true, 4],
+      ["caso-10", true, 4],
+      ["caso-11", false, 0],
+      ["caso-12", false, 0],
+    ]);
+    // Quien respondio 2 de 4 casos no tiene el banco perfecto ni lo exploro completo.
+    expect(scores.badges.find((b) => b.id === "full-bank-perfect")).toMatchObject({ current: 2, goal: 4, earned: false });
+    expect(scores.badges.find((b) => b.id === "cases-explorer")).toMatchObject({ current: 2, goal: 4, earned: false });
+  });
+
+  it("un caso jugado que ya no esta en el banco igual se cuenta", () => {
+    const scores = buildStudentScores({
+      attempts: [attempt("m1", "mini-cases", 1)],
+      results: [miniCase("m1", "viejo", 3, false)],
+      caseKeys: ["nuevo"],
+    });
+
+    expect(scores.miniCases.cases.map((c) => c.caseKey)).toEqual(["nuevo", "viejo"]);
+    expect(scores.pointsByGame.find((g) => g.gameId === "mini-cases")?.points).toBe(9);
+  });
+
+  it("partida impecable: 5 o mas niveles, todos a la primera y ninguno perdido", () => {
+    const five = [1, 2, 3, 4, 5].map((l) => color("a", l, 1, l + 1, true));
+    const clean = buildStudentScores({ attempts: [attempt("a", "color-sequence", 1)], results: five });
+
+    expect(clean.badges.find((b) => b.id === "flawless-run")?.earned).toBe(true);
+
+    // Un solo intento perdido en la partida la deja de ser impecable.
+    const withRetry = buildStudentScores({
+      attempts: [attempt("a", "color-sequence", 1)],
+      results: [...five.slice(0, 4), color("a", 5, 1, 1, false), color("a", 5, 2, 6, true)],
+    });
+
+    expect(withRetry.badges.find((b) => b.id === "flawless-run")?.current).toBe(0);
+
+    // Cuatro niveles no alcanzan.
+    const four = buildStudentScores({ attempts: [attempt("a", "color-sequence", 1)], results: five.slice(0, 4) });
+
+    expect(four.badges.find((b) => b.id === "flawless-run")?.earned).toBe(false);
+  });
+
+  it("margen de oro: solo cuenta conservar MAS de la mitad del margen", () => {
+    const scores = buildStudentScores({
+      attempts: [attempt("n", "node-connection", 1)],
+      results: [
+        node("n", 1, 1, 3, 6, true), // sobra 50 %: no cuenta
+        node("n", 2, 1, 2, 6, true), // sobra 67 %: cuenta
+        node("n", 3, 1, 0, 6, true), // sobra 100 %: cuenta
+      ],
+    });
+
+    expect(scores.badges.find((b) => b.id === "margin-gold")?.current).toBe(2);
   });
 });
