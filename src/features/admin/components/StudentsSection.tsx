@@ -1,4 +1,4 @@
-import { Eye, Pencil, Plus, Save } from "lucide-react";
+import { Eye, KeyRound, Pencil, Plus, Save } from "lucide-react";
 import { Fragment, useEffect, useState, type FormEvent } from "react";
 
 import { EmailInput } from "@/components/forms/EmailInput";
@@ -28,9 +28,10 @@ import {
 } from "../actions/students.action";
 import { birthDateRange, formatBirthDate, toInputDate } from "../utils/birthDate";
 import { matchesQuery } from "../utils/matchesQuery";
-import { sanitizeNameInput } from "../utils/sanitizeInput";
+import { formatNameInput, sanitizeNameInput } from "../utils/sanitizeInput";
 import { HighlightMatch } from "./HighlightMatch";
 import { Pagination } from "./Pagination";
+import { StudentPasswordDialog } from "./StudentPasswordDialog";
 
 const EMPTY_FORM = {
   rut: "",
@@ -48,6 +49,9 @@ const EMPTY_FORM = {
 };
 
 type EditFormState = {
+  firstName: string;
+  paternalLastName: string;
+  maternalLastName: string;
   email: string;
   ciudad: string;
   region: string;
@@ -59,6 +63,9 @@ type EditFormState = {
 };
 
 const EMPTY_EDIT_FORM: EditFormState = {
+  firstName: "",
+  paternalLastName: "",
+  maternalLastName: "",
   email: "",
   ciudad: "",
   region: "",
@@ -95,6 +102,45 @@ function StudentEditForm({
       onSubmit={onSubmit}
       className={cn("gap-3", stacked ? "flex flex-col" : "grid sm:grid-cols-3")}
     >
+      <Field>
+        <FieldLabel htmlFor={`edit-firstName-${studentRut}`}>Nombres</FieldLabel>
+        <Input
+          id={`edit-firstName-${studentRut}`}
+          className="h-10"
+          value={editForm.firstName}
+          onChange={(e) =>
+            setEditForm({ ...editForm, firstName: formatNameInput(e.target.value) })
+          }
+          required
+        />
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor={`edit-paternalLastName-${studentRut}`}>Apellido paterno</FieldLabel>
+        <Input
+          id={`edit-paternalLastName-${studentRut}`}
+          className="h-10"
+          value={editForm.paternalLastName}
+          onChange={(e) =>
+            setEditForm({ ...editForm, paternalLastName: formatNameInput(e.target.value) })
+          }
+          required
+        />
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor={`edit-maternalLastName-${studentRut}`}>Apellido materno</FieldLabel>
+        <Input
+          id={`edit-maternalLastName-${studentRut}`}
+          className="h-10"
+          value={editForm.maternalLastName}
+          onChange={(e) =>
+            setEditForm({ ...editForm, maternalLastName: formatNameInput(e.target.value) })
+          }
+          required
+        />
+      </Field>
+
       <Field className="sm:col-span-3">
         <FieldLabel htmlFor={`edit-email-${studentRut}`}>Correo</FieldLabel>
         <EmailInput
@@ -270,6 +316,7 @@ function StudentActions({
   onToggle,
   onEdit,
   onView,
+  onPassword,
 }: {
   student: Student;
   isEditing: boolean;
@@ -277,6 +324,7 @@ function StudentActions({
   onToggle: () => void;
   onEdit: () => void;
   onView: () => void;
+  onPassword: () => void;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -303,6 +351,16 @@ function StudentActions({
           <Pencil className="size-4" />
         </button>
       )}
+
+      <button
+        type="button"
+        onClick={onPassword}
+        title="Generar nueva contraseña"
+        aria-label="Generar nueva contraseña"
+        className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+      >
+        <KeyRound className="size-4" />
+      </button>
 
       {!isEditing && (
         <button
@@ -339,6 +397,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
   const [editForm, setEditForm] = useState<EditFormState>(EMPTY_EDIT_FORM);
   const [editError, setEditError] = useState<string | null>(null);
   const [viewingRut, setViewingRut] = useState<string | null>(null);
+  const [passwordFor, setPasswordFor] = useState<Student | null>(null);
 
   const isCardView = !useMediaQuery("(min-width: 1024px)");
   const pageSize = isCardView ? 5 : 12;
@@ -442,6 +501,9 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
     setEditingRut(student.rut);
     setEditError(null);
     setEditForm({
+      firstName: student.firstName,
+      paternalLastName: student.paternalLastName,
+      maternalLastName: student.maternalLastName,
       email: student.email ?? "",
       ciudad: student.ciudad ?? "",
       // Las fichas antiguas pueden traerla escrita a mano: se muestra con su nombre oficial.
@@ -465,6 +527,15 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
 
     setEditError(null);
 
+    if (
+      !editForm.firstName.trim() ||
+      !editForm.paternalLastName.trim() ||
+      !editForm.maternalLastName.trim()
+    ) {
+      setEditError("Nombres y apellidos no pueden quedar vacíos.");
+      return;
+    }
+
     const emailError = optionalEmailProblem(editForm.email);
 
     if (emailError) {
@@ -484,6 +555,9 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
       editForm.region !== (normalizeRegion(current?.region ?? "") ?? "");
 
     const result = await updateStudentDetailsAction(editingRut, {
+      firstName: editForm.firstName,
+      paternalLastName: editForm.paternalLastName,
+      maternalLastName: editForm.maternalLastName,
       email: editForm.email,
       ciudad: editForm.ciudad,
       celular: editForm.celular,
@@ -541,7 +615,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
               id="firstName"
               value={form.firstName}
               onChange={(e) =>
-                setForm({ ...form, firstName: sanitizeNameInput(e.target.value) })
+                setForm({ ...form, firstName: formatNameInput(e.target.value) })
               }
               required
             />
@@ -555,7 +629,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
               onChange={(e) =>
                 setForm({
                   ...form,
-                  paternalLastName: sanitizeNameInput(e.target.value),
+                  paternalLastName: formatNameInput(e.target.value),
                 })
               }
               required
@@ -570,7 +644,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
               onChange={(e) =>
                 setForm({
                   ...form,
-                  maternalLastName: sanitizeNameInput(e.target.value),
+                  maternalLastName: formatNameInput(e.target.value),
                 })
               }
               required
@@ -776,6 +850,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
                             onToggle={() => handleToggle(student)}
                             onEdit={() => handleStartEdit(student)}
                             onView={() => handleToggleView(student)}
+                            onPassword={() => setPasswordFor(student)}
                           />
                         </td>
                       </tr>
@@ -850,6 +925,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
                       onToggle={() => handleToggle(student)}
                       onEdit={() => handleStartEdit(student)}
                       onView={() => handleToggleView(student)}
+                      onPassword={() => setPasswordFor(student)}
                     />
                   </div>
 
@@ -879,6 +955,14 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
 
           <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         </>
+      )}
+
+      {passwordFor && (
+        <StudentPasswordDialog
+          student={passwordFor}
+          onClose={() => setPasswordFor(null)}
+          onGenerated={loadStudents}
+        />
       )}
     </div>
   );

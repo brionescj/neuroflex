@@ -1,4 +1,5 @@
 import { emailProblem, normalizeEmail } from "./email";
+import { parseNameChanges, type NameField } from "./personName";
 import { normalizeRegion } from "./region";
 
 /**
@@ -54,7 +55,7 @@ export const AGE_PROBLEM = `La edad del estudiante debe estar entre ${MIN_STUDEN
 
 export type StudentDetailsChanges = {
   /** Campos con valor nuevo. */
-  set: Partial<Record<Field, string>>;
+  set: Partial<Record<Field | NameField, string>>;
   /** Campos que el admin vacio: se quitan de la ficha. */
   unset: Partial<Record<Field, 1>>;
 };
@@ -152,6 +153,12 @@ export function parseStudentDetails(
   const input = body as Record<string, unknown>;
   const set: StudentDetailsChanges["set"] = {};
   const unset: StudentDetailsChanges["unset"] = {};
+
+  const names = parseNameChanges(input);
+
+  if (!names.ok) return names;
+
+  Object.assign(set, names.set);
 
   for (const field of FIELDS) {
     const raw = input[field];

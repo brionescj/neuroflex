@@ -46,6 +46,20 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
    `firstName` + `paternalLastName` + `maternalLastName`.
 6. No se guardan cohortes como entidad; se derivan de `entryYear` + `entrySemester`.
 7. Ningún componente accede directamente a un datasource. Siempre vía repositorio.
+8. **Nombres y apellidos** se guardan con la inicial de cada palabra en mayúscula y el
+   resto en minúscula (`Camilo Andres Briones Vergara`), sin importar cómo se escriban:
+   `lib/personName.ts` en el servidor (autoritativo) y `src/utils/personName.ts` en el
+   navegador (se ve mientras se escribe); `lib/personNameParity.test.ts` comprueba que
+   coincidan. Un administrador puede corregir nombres y apellidos de estudiantes y de
+   administradores (incluido el suyo; cambio legal de nombre); el RUT nunca cambia.
+9. **Contraseñas:** mínimo 8, letras y números, una mayúscula, un carácter especial y
+   ningún dígito repetido seguido (`lib/password.ts`, copia en `src/utils/password.ts`,
+   `lib/passwordParity.test.ts`). Las generadas al azar (12 caracteres) cumplen esas
+   reglas y se guardan siempre cifradas. Quien tiene sesión cambia la suya con
+   `POST /api/auth/password` (pide la actual). Un administrador genera una nueva para un
+   estudiante con `POST /api/admin/students/:rut/password`, confirmando con su propia
+   contraseña; si el estudiante aún no se registró se le crea la cuenta (queda registrado).
+   La contraseña generada se muestra una sola vez y no se puede volver a ver.
 
 ---
 

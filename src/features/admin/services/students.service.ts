@@ -26,8 +26,14 @@ export type CreateStudentPayload = {
   birthDate?: string;
 };
 
-/** Un campo ausente no se toca; uno vacio ("") se borra de la ficha. */
+/**
+ * Un campo ausente no se toca; uno vacio ("") se borra de la ficha. Los nombres y
+ * apellidos no se pueden borrar: el servidor los rechaza vacios.
+ */
 export type UpdateStudentDetailsPayload = {
+  firstName?: string;
+  paternalLastName?: string;
+  maternalLastName?: string;
   ciudad?: string;
   region?: string;
   celular?: string;
@@ -98,6 +104,32 @@ export async function setStudentEnabled(
   } catch (error) {
     if (isAxiosError(error) && error.response) {
       return responseFromError<Student>(error.response);
+    }
+    return fail("No se pudo conectar con el servidor.");
+  }
+}
+
+/** La contraseña nueva de un estudiante, tal como la entrega el servidor (una sola vez). */
+export type GeneratedStudentPassword = {
+  password: string;
+  /** El estudiante aun no tenia cuenta: se le creo con esta contraseña. */
+  createdAccount: boolean;
+};
+
+/** Genera una contraseña aleatoria para el estudiante; pide la contraseña del administrador para confirmar. */
+export async function generateStudentPassword(
+  rut: string,
+  adminPassword: string,
+): Promise<ApiResponse<GeneratedStudentPassword>> {
+  try {
+    const response = await api.post<ApiResponse<GeneratedStudentPassword>>(
+      `/admin/students/${rut}/password`,
+      { adminPassword },
+    );
+    return response.data;
+  } catch (error) {
+    if (isAxiosError(error) && error.response) {
+      return responseFromError<GeneratedStudentPassword>(error.response);
     }
     return fail("No se pudo conectar con el servidor.");
   }

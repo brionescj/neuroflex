@@ -183,12 +183,43 @@ describe("parseStudentDetails", () => {
 
   it("al dar de alta, ningun campo es valido (todos son opcionales)", () => {
     expect(parseStudentDetails({}, { requireChanges: false })).toEqual({ ok: true, set: {}, unset: {} });
-    expect(parseStudentDetails({ rut: "1-9", firstName: "Ana" }, { requireChanges: false })).toEqual({
-      ok: true,
-      set: {},
-      unset: {},
-    });
+    // El RUT no es un dato editable de la ficha: se ignora.
+    expect(parseStudentDetails({ rut: "1-9" }, { requireChanges: false })).toEqual({ ok: true, set: {}, unset: {} });
     // ... pero lo que si viene se valida igual.
     expect(parseStudentDetails({ gender: "x" }, { requireChanges: false }).ok).toBe(false);
   });
 });
+
+describe("parseStudentDetails: nombres y apellidos", () => {
+  it("se corrigen con la inicial de cada palabra en mayuscula, sin espacios de mas", () => {
+    expect(
+      parseStudentDetails({ firstName: "  camiLo   andres ", paternalLastName: "BRIONES", maternalLastName: "vergara" }),
+    ).toEqual({
+      ok: true,
+      set: { firstName: "Camilo Andres", paternalLastName: "Briones", maternalLastName: "Vergara" },
+      unset: {},
+    });
+  });
+
+  it("solo cambia el que viene; los demas no se tocan", () => {
+    expect(parseStudentDetails({ paternalLastName: "soto" })).toEqual({
+      ok: true,
+      set: { paternalLastName: "Soto" },
+      unset: {},
+    });
+  });
+
+  it("nunca pueden quedar vacios ni llevar numeros o simbolos", () => {
+    for (const body of [
+      { firstName: "" },
+      { firstName: "   " },
+      { paternalLastName: "P3rez" },
+      { maternalLastName: "Soto#" },
+      { firstName: 5 },
+      { firstName: "a".repeat(61) },
+    ]) {
+      expect(parseStudentDetails(body).ok, JSON.stringify(body)).toBe(false);
+    }
+  });
+});
+

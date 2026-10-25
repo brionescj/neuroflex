@@ -3,11 +3,10 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { connectDB } from "../../db";
 import { requireAuth } from "../../auth";
 import { hashPassword, validatePasswordStrength } from "../../password";
+import { NAME_FIELDS, parseNameChanges } from "../../personName";
 import { isValidRut, normalizeForDatabase } from "../../rut";
 import { Admin } from "../../models/Admin";
 import { AuthUser } from "../../models/AuthUser";
-
-const TEXT_FIELDS = ["firstName", "paternalLastName", "maternalLastName"] as const;
 
 /**
  * Los administradores. Quien administra da de alta a otro con su contrasena
@@ -28,13 +27,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === "POST") {
     const body = req.body ?? {};
-    const names = TEXT_FIELDS.map((field) => (typeof body[field] === "string" ? body[field].trim() : ""));
+    const hasNames = NAME_FIELDS.every((field) => typeof body[field] === "string" && body[field].trim() !== "");
 
-    if (!body.rut || names.some((name) => !name) || typeof body.password !== "string") {
+    if (!body.rut || !hasNames || typeof body.password !== "string") {
       return res.status(400).json({
         success: false,
         message: "Rut, nombres, apellidos y contraseña son obligatorios.",
       });
+    }
+
+    const names = parseNameChanges(body);
+
+    if (!names.ok) {
+      return res.status(400).json({ success: false, message: names.message });
     }
 
     const rut = normalizeForDatabase(body.rut);
@@ -57,8 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const [firstName, paternalLastName, maternalLastName] = names;
-    const created = await Admin.create({ rut, firstName, paternalLastName, maternalLastName });
+    const created = await Admin.create({ rut, ...names.set });
 
     await AuthUser.create({ rut, password: await hashPassword(body.password), role: "admin" });
 

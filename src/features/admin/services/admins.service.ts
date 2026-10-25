@@ -58,3 +58,27 @@ export async function setAdminEnabled(
     return fail("No se pudo conectar con el servidor.");
   }
 }
+
+export type UpdateAdminNamesPayload = {
+  firstName: string;
+  paternalLastName: string;
+  maternalLastName: string;
+};
+
+export async function updateAdminNames(
+  rut: string,
+  payload: UpdateAdminNamesPayload,
+): Promise<ApiResponse<Admin>> {
+  try {
+    const response = await api.patch<ApiResponse<Admin>>(
+      `/admin/admins/${rut}`,
+      payload,
+    );
+    return response.data;
+  } catch (error) {
+    if (isAxiosError(error) && error.response) {
+      return responseFromError<Admin>(error.response);
+    }
+    return fail("No se pudo conectar con el servidor.");
+  }
+}

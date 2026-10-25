@@ -119,6 +119,30 @@ describe("POST admin/students (alta manual)", () => {
     ]);
   });
 
+  it("guarda los nombres con la inicial de cada palabra en mayuscula, sin importar como se escribieron", async () => {
+    const { status } = await run({
+      ...BASE,
+      firstName: " camiLo  ANDRES ",
+      paternalLastName: "BRIONES",
+      maternalLastName: "vergara",
+    });
+
+    expect(status).toBe(201);
+    expect(mocks.created[0]).toMatchObject({
+      firstName: "Camilo Andres",
+      paternalLastName: "Briones",
+      maternalLastName: "Vergara",
+    });
+  });
+
+  it("un nombre con numeros o simbolos responde 400 y no crea nada", async () => {
+    for (const extra of [{ firstName: "Ana3" }, { paternalLastName: "P#rez" }, { maternalLastName: "Soto_" }]) {
+      expect((await run({ ...BASE, ...extra })).status, JSON.stringify(extra)).toBe(400);
+    }
+
+    expect(mocks.created).toHaveLength(0);
+  });
+
   it("los datos opcionales no son obligatorios, y los vacios no se guardan", async () => {
     const { status } = await run({ ...BASE, ciudad: "", email: "  ", gender: "" });
 

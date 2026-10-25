@@ -1,5 +1,6 @@
 import {
   createStudent,
+  generateStudentPassword,
   listStudents,
   setStudentEnabled,
   updateStudentDetails,
@@ -24,4 +25,8 @@ export async function updateStudentDetailsAction(
   payload: UpdateStudentDetailsPayload,
 ) {
   return updateStudentDetails(rut, payload);
+}
+
+export async function generateStudentPasswordAction(rut: string, adminPassword: string) {
+  return generateStudentPassword(rut, adminPassword);
 }

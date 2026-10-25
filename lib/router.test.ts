@@ -10,6 +10,7 @@ vi.hoisted(() => {
   process.env.JWT_SECRET = "secreto-de-prueba";
 });
 
+import adminAdminDetails from "./handlers/admin/adminDetails";
 import adminAdmins from "./handlers/admin/admins";
 import adminAdminStatus from "./handlers/admin/adminStatus";
 import adminMiniCases from "./handlers/admin/miniCases";
@@ -20,10 +21,12 @@ import adminStatsStudentEvolution from "./handlers/admin/statsStudentEvolution";
 import adminStatsStudentHistory from "./handlers/admin/statsStudentHistory";
 import adminStudentDetails from "./handlers/admin/studentDetails";
 import adminStudents from "./handlers/admin/students";
+import adminStudentPassword from "./handlers/admin/studentPassword";
 import adminStudentStatus from "./handlers/admin/studentStatus";
 import authLogin from "./handlers/auth/login";
 import authLogout from "./handlers/auth/logout";
 import authMe from "./handlers/auth/me";
+import authPassword from "./handlers/auth/password";
 import authRegister from "./handlers/auth/register";
 import gamesAccess from "./handlers/games/access";
 import gamesAttempts from "./handlers/games/attempts";
@@ -36,14 +39,16 @@ import { ROUTES, dispatch, matchRoute, routeSegments, type RouteDef } from "./ro
 
 const seg = (path: string) => path.split("/").filter(Boolean);
 
-// Las 20 rutas de la API, con las URLs que usa el navegador. Si este test falla
+// Las 23 rutas de la API, con las URLs que usa el navegador. Si este test falla
 // al agregar o mover una ruta, la tabla de lib/router.ts no esta al dia.
 const EXPECTED: [string, unknown, Record<string, string>][] = [
   ["auth/login", authLogin, {}],
   ["auth/logout", authLogout, {}],
   ["auth/me", authMe, {}],
+  ["auth/password", authPassword, {}],
   ["auth/register", authRegister, {}],
   ["admin/admins", adminAdmins, {}],
+  ["admin/admins/98765432-1", adminAdminDetails, { rut: "98765432-1" }],
   ["admin/admins/98765432-1/status", adminAdminStatus, { rut: "98765432-1" }],
   ["admin/mini-cases", adminMiniCases, {}],
   ["admin/stats/catalog", adminStatsCatalog, {}],
@@ -53,6 +58,7 @@ const EXPECTED: [string, unknown, Record<string, string>][] = [
   ["admin/stats/students/12345678-9/history", adminStatsStudentHistory, { rut: "12345678-9" }],
   ["admin/students", adminStudents, {}],
   ["admin/students/12345678-9/details", adminStudentDetails, { rut: "12345678-9" }],
+  ["admin/students/12345678-9/password", adminStudentPassword, { rut: "12345678-9" }],
   ["admin/students/12345678-9/status", adminStudentStatus, { rut: "12345678-9" }],
   ["game-attempts/color-sequence", gamesAttempts, { gameId: "color-sequence" }],
   ["game-progress/node-connection", gamesProgress, { gameId: "node-connection" }],

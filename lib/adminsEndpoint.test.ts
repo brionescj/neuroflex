@@ -166,9 +166,23 @@ describe("POST admin/admins", () => {
     expect(JSON.stringify(json)).not.toContain("Segura#2026a");
   });
 
+  it("guarda los nombres con la inicial de cada palabra en mayuscula", async () => {
+    await run(adminsHandler, "POST", {
+      ...BASE,
+      firstName: " camiLo  andres ",
+      paternalLastName: "BRIONES",
+      maternalLastName: "vergara",
+    });
+
+    expect(mocks.createdAdmins).toEqual([
+      { rut: "12345678-5", firstName: "Camilo Andres", paternalLastName: "Briones", maternalLastName: "Vergara" },
+    ]);
+  });
+
   it("faltan datos, RUT invalido o clave debil: 400 y no crea nada", async () => {
     const bad = [
       { ...BASE, firstName: "  " },
+      { ...BASE, firstName: "Ana3" },
       { ...BASE, rut: "12.345.678-9" },
       { ...BASE, password: undefined },
       { ...BASE, password: "Ab#1" },

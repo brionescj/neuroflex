@@ -1,23 +1,27 @@
-import { Plus } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { Dices, Pencil, Plus } from "lucide-react";
+import { Fragment, useEffect, useState, type FormEvent } from "react";
 
 import { RutInput } from "@/components/forms/RutInput";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Button } from "@/components/ui/Button";
 import { Field, FieldLabel } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/features/auth/components";
 import { useAuth } from "@/context";
 import { cn } from "@/lib/utils";
 import type { Admin } from "@/types";
+import { generatePassword } from "@/utils/password";
 import { isValidRut } from "@/utils/rut";
 
 import {
   createAdminAction,
   listAdminsAction,
   setAdminEnabledAction,
+  updateAdminNamesAction,
 } from "../actions/admins.action";
 import { matchesQuery } from "../utils/matchesQuery";
-import { sanitizeNameInput } from "../utils/sanitizeInput";
+import { formatNameInput } from "../utils/sanitizeInput";
+import { AdminNameForm, type PersonNames } from "./AdminNameForm";
 import { HighlightMatch } from "./HighlightMatch";
 import { Pagination } from "./Pagination";
 
@@ -59,13 +63,45 @@ function AdminToggle({
   );
 }
 
+function AdminActions({
+  admin,
+  isSelf,
+  isEditing,
+  onToggle,
+  onEdit,
+}: {
+  admin: Admin;
+  isSelf: boolean;
+  isEditing: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <AdminToggle admin={admin} isSelf={isSelf} onToggle={onToggle} />
+
+      {!isEditing && (
+        <button
+          type="button"
+          onClick={onEdit}
+          title="Modificar nombre"
+          aria-label="Modificar nombre"
+          className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+        >
+          <Pencil className="size-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 type AdminsSectionProps = {
   searchQuery: string;
   isActive: boolean;
 };
 
 export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -73,6 +109,8 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [page, setPage] = useState(1);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [editingRut, setEditingRut] = useState<string | null>(null);
 
   const isCardView = !useMediaQuery("(min-width: 1024px)");
   const pageSize = isCardView ? 5 : 12;
@@ -121,6 +159,7 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
     }
 
     setForm(EMPTY_FORM);
+    setPasswordVisible(false);
     setShowForm(false);
     await loadAdmins();
   }
@@ -130,6 +169,8 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
       setShowForm(false);
       setForm(EMPTY_FORM);
       setFormError(null);
+      setPasswordVisible(false);
+      setEditingRut(null);
     }
   }, [isActive]);
 
@@ -137,8 +178,31 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
     if (showForm) {
       setForm(EMPTY_FORM);
       setFormError(null);
+      setPasswordVisible(false);
     }
     setShowForm((prev) => !prev);
+  }
+
+  function handleGeneratePassword() {
+    setForm((current) => ({ ...current, password: generatePassword() }));
+    // Se deja a la vista: quien la crea tiene que poder leerla y entregarla.
+    setPasswordVisible(true);
+  }
+
+  async function handleSaveNames(admin: Admin, names: PersonNames): Promise<string | null> {
+    const result = await updateAdminNamesAction(admin.rut, names);
+
+    if (!result.success) return result.message;
+
+    // Si el administrador se corrigio su propio nombre, el saludo de la sesion tambien cambia.
+    if (user && admin.rut === user.rut) {
+      login({ ...user, displayName: `${result.data.firstName} ${result.data.paternalLastName}` });
+    }
+
+    setEditingRut(null);
+    await loadAdmins();
+
+    return null;
   }
 
   async function handleToggle(admin: Admin) {
@@ -165,7 +229,7 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
       {showForm && (
         <form
           onSubmit={handleCreate}
-          className="grid gap-4 rounded-2xl border border-zinc-800 p-4 sm:grid-cols-2"
+          className="grid grid-cols-1 gap-4 rounded-2xl border border-zinc-800 p-4 sm:grid-cols-2"
         >
           <Field>
             <FieldLabel htmlFor="admin-rut">RUT</FieldLabel>
@@ -183,7 +247,7 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
               id="admin-firstName"
               value={form.firstName}
               onChange={(e) =>
-                setForm({ ...form, firstName: sanitizeNameInput(e.target.value) })
+                setForm({ ...form, firstName: formatNameInput(e.target.value) })
               }
               required
             />
@@ -199,7 +263,7 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
               onChange={(e) =>
                 setForm({
                   ...form,
-                  paternalLastName: sanitizeNameInput(e.target.value),
+                  paternalLastName: formatNameInput(e.target.value),
                 })
               }
               required
@@ -216,7 +280,7 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
               onChange={(e) =>
                 setForm({
                   ...form,
-                  maternalLastName: sanitizeNameInput(e.target.value),
+                  maternalLastName: formatNameInput(e.target.value),
                 })
               }
               required
@@ -225,14 +289,28 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
 
           <Field className="sm:col-span-2">
             <FieldLabel htmlFor="admin-password">Contraseña inicial</FieldLabel>
-            <Input
-              id="admin-password"
-              type="password"
-              autoComplete="new-password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-            />
+            <div className="flex min-w-0 gap-2">
+              <PasswordInput
+                id="admin-password"
+                autoComplete="new-password"
+                value={form.password}
+                onChange={(password) => setForm({ ...form, password })}
+                visible={passwordVisible}
+                onVisibleChange={setPasswordVisible}
+                copyable
+                required
+              />
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleGeneratePassword}
+                className="shrink-0 gap-2 px-4"
+              >
+                <Dices className="size-4" />
+                Generar
+              </Button>
+            </div>
             <p className="text-xs text-zinc-500">
               Mínimo 8 caracteres, con letras y números, una mayúscula y un
               carácter especial. Entréguesela a la persona: es con la que
@@ -277,34 +355,48 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
                 </thead>
                 <tbody>
                   {paginatedAdmins.map((admin) => (
-                    <tr
-                      key={admin.rut}
-                      className="border-b border-zinc-800/50 last:border-0"
-                    >
-                      <td className="p-3">{admin.rut}</td>
-                      <td className="p-3">
-                        <HighlightMatch
-                          text={`${admin.firstName} ${admin.paternalLastName} ${admin.maternalLastName}`}
-                          query={searchQuery}
-                        />
-                      </td>
-                      <td className="p-3">
-                        <span
-                          className={
-                            admin.enabled ? "text-emerald-400" : "text-rose-400"
-                          }
-                        >
-                          {admin.enabled ? "Habilitado" : "Inhabilitado"}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <AdminToggle
-                          admin={admin}
-                          isSelf={admin.rut === user?.rut}
-                          onToggle={() => handleToggle(admin)}
-                        />
-                      </td>
-                    </tr>
+                    <Fragment key={admin.rut}>
+                      <tr className="border-b border-zinc-800/50 last:border-0">
+                        <td className="p-3">{admin.rut}</td>
+                        <td className="p-3">
+                          <HighlightMatch
+                            text={`${admin.firstName} ${admin.paternalLastName} ${admin.maternalLastName}`}
+                            query={searchQuery}
+                          />
+                        </td>
+                        <td className="p-3">
+                          <span
+                            className={
+                              admin.enabled ? "text-emerald-400" : "text-rose-400"
+                            }
+                          >
+                            {admin.enabled ? "Habilitado" : "Inhabilitado"}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <AdminActions
+                            admin={admin}
+                            isSelf={admin.rut === user?.rut}
+                            isEditing={editingRut === admin.rut}
+                            onToggle={() => handleToggle(admin)}
+                            onEdit={() => setEditingRut(admin.rut)}
+                          />
+                        </td>
+                      </tr>
+
+                      {editingRut === admin.rut && (
+                        <tr className="border-b border-zinc-800/50 bg-zinc-900/50">
+                          <td colSpan={4} className="p-3">
+                            <AdminNameForm
+                              idPrefix={`edit-admin-${admin.rut}`}
+                              initial={admin}
+                              onSubmit={(names) => handleSaveNames(admin, names)}
+                              onCancel={() => setEditingRut(null)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -340,12 +432,26 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
                   </div>
 
                   <div className="mt-3">
-                    <AdminToggle
+                    <AdminActions
                       admin={admin}
                       isSelf={admin.rut === user?.rut}
+                      isEditing={editingRut === admin.rut}
                       onToggle={() => handleToggle(admin)}
+                      onEdit={() => setEditingRut(admin.rut)}
                     />
                   </div>
+
+                  {editingRut === admin.rut && (
+                    <div className="mt-3 border-t border-zinc-800 pt-3">
+                      <AdminNameForm
+                        idPrefix={`edit-admin-card-${admin.rut}`}
+                        initial={admin}
+                        onSubmit={(names) => handleSaveNames(admin, names)}
+                        onCancel={() => setEditingRut(null)}
+                        stacked
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

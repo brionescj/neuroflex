@@ -27,13 +27,7 @@ export default async function handler(
   }
 
   if (req.method === "POST") {
-    const {
-      rut,
-      firstName,
-      paternalLastName,
-      maternalLastName,
-      paralelo,
-    } = req.body ?? {};
+    const { rut, firstName, paternalLastName, maternalLastName, paralelo } = req.body ?? {};
 
     if (!rut || !firstName || !paternalLastName || !maternalLastName || !paralelo) {
       return res.status(400).json({
@@ -51,7 +45,8 @@ export default async function handler(
       });
     }
 
-    // Datos opcionales de la ficha: ciudad, region, celular, correo, genero,
+    // Nombres y apellidos (con la inicial de cada palabra en mayuscula) y datos
+    // opcionales de la ficha: ciudad, region, celular, correo, genero,
     // universidad y fecha de nacimiento. Se validan igual que al editarlos.
     const details = parseStudentDetails(req.body, { requireChanges: false });
 
@@ -70,9 +65,6 @@ export default async function handler(
 
     const created = await Student.create({
       rut: normalizedRut,
-      firstName,
-      paternalLastName,
-      maternalLastName,
       paralelo,
       ...details.set,
     });

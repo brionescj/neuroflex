@@ -2,7 +2,9 @@ import {
   createAdmin,
   listAdmins,
   setAdminEnabled,
+  updateAdminNames,
   type CreateAdminPayload,
+  type UpdateAdminNamesPayload,
 } from "../services/admins.service";
 
 export async function listAdminsAction() {
@@ -15,4 +17,8 @@ export async function createAdminAction(payload: CreateAdminPayload) {
 
 export async function setAdminEnabledAction(rut: string, enabled: boolean) {
   return setAdminEnabled(rut, enabled);
+}
+
+export async function updateAdminNamesAction(rut: string, payload: UpdateAdminNamesPayload) {
+  return updateAdminNames(rut, payload);
 }

@@ -9,6 +9,9 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/Field";
 import { EmailInput } from "@/components/forms/EmailInput";
 import { AVATARS, type AvatarId } from "@/config/avatars";
 import { useAuth } from "@/context";
+import { updateAdminNamesAction } from "@/features/admin/actions/admins.action";
+import { AdminNameForm, type PersonNames } from "@/features/admin/components/AdminNameForm";
+import { ChangePasswordForm } from "@/features/auth/components";
 import { cn } from "@/lib/utils";
 import type { ProfileDetails } from "@/services/profile.service";
 
@@ -19,28 +22,27 @@ import {
   type ProfileFormInput,
 } from "../schemas/profileForm.schema";
 
-function readOnlyFields(details: ProfileDetails) {
-  const base = [
+function nameRows(details: ProfileDetails) {
+  return [
     { label: "Nombres", value: details.firstName },
     { label: "Apellido paterno", value: details.paternalLastName },
     { label: "Apellido materno", value: details.maternalLastName },
   ];
+}
 
-  if (details.role === "student") {
-    return [
-      ...base,
-      { label: "Paralelo", value: String(details.paralelo) },
-      { label: "Año de ingreso", value: String(details.entryYear) },
-      { label: "Ciudad", value: details.ciudad || "Sin registrar" },
-      { label: "Región", value: details.region || "Sin registrar" },
-      {
-        label: "Celular",
-        value: details.celular ? `+569 ${details.celular}` : "Sin registrar",
-      },
-    ];
-  }
-
-  return base;
+/** Lo que el estudiante no edita desde el perfil. (Los nombres de un administrador los puede corregir: van aparte.) */
+function studentFields(details: Extract<ProfileDetails, { role: "student" }>) {
+  return [
+    ...nameRows(details),
+    { label: "Paralelo", value: String(details.paralelo) },
+    { label: "Año de ingreso", value: String(details.entryYear) },
+    { label: "Ciudad", value: details.ciudad || "Sin registrar" },
+    { label: "Región", value: details.region || "Sin registrar" },
+    {
+      label: "Celular",
+      value: details.celular ? `+569 ${details.celular}` : "Sin registrar",
+    },
+  ];
 }
 
 export default function ProfilePage() {
@@ -49,6 +51,7 @@ export default function ProfilePage() {
   const [details, setDetails] = useState<ProfileDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [isEditingNames, setIsEditingNames] = useState(false);
 
   const form = useForm<ProfileFormInput>({
     resolver: zodResolver(ProfileFormSchema),
@@ -103,6 +106,22 @@ export default function ProfilePage() {
     toast.success(result.message);
   }
 
+  async function saveNames(names: PersonNames): Promise<string | null> {
+    if (!user) return null;
+
+    const result = await updateAdminNamesAction(user.rut, names);
+
+    if (!result.success) return result.message;
+
+    // El saludo de la sesion se arma con el nombre: se actualiza junto con la ficha.
+    login({ ...user, displayName: `${result.data.firstName} ${result.data.paternalLastName}` });
+    setDetails((current) => (current ? { ...current, ...names } : current));
+    setIsEditingNames(false);
+    toast.success(result.message);
+
+    return null;
+  }
+
   if (!user || isLoading) {
     return <p className="text-zinc-400">Cargando perfil...</p>;
   }
@@ -118,19 +137,59 @@ export default function ProfilePage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-[28px] font-bold text-white">Mi perfil</h1>
         <p className="text-[16px] text-zinc-400">
-          Los datos institucionales no son editables. Puedes actualizar tu
-          correo y tu avatar.
+          {details.role === "admin"
+            ? "Puedes actualizar tu nombre, tu correo, tu avatar y tu contraseña."
+            : "Los datos institucionales no son editables. Puedes actualizar tu correo, tu avatar y tu contraseña."}
         </p>
       </div>
 
-      <div className="space-y-2 rounded-xl border border-zinc-800 p-4">
-        {readOnlyFields(details).map((field) => (
-          <div key={field.label} className="flex justify-between text-sm">
-            <span className="text-zinc-400">{field.label}</span>
-            <span className="text-white">{field.value}</span>
+      {details.role === "admin" && (
+        <div className="space-y-3 rounded-xl border border-zinc-800 p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm text-zinc-400">Nombre</h2>
+
+            {!isEditingNames && (
+              <button
+                type="button"
+                onClick={() => setIsEditingNames(true)}
+                title="Editar nombre"
+                aria-label="Editar nombre"
+                className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+              >
+                <Pencil className="size-4" />
+              </button>
+            )}
           </div>
-        ))}
-      </div>
+
+          {isEditingNames ? (
+            <AdminNameForm
+              idPrefix="profile"
+              initial={details}
+              onSubmit={saveNames}
+              onCancel={() => setIsEditingNames(false)}
+              stacked
+            />
+          ) : (
+            nameRows(details).map((field) => (
+              <div key={field.label} className="flex justify-between text-sm">
+                <span className="text-zinc-400">{field.label}</span>
+                <span className="text-white">{field.value}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {details.role === "student" && (
+        <div className="space-y-2 rounded-xl border border-zinc-800 p-4">
+          {studentFields(details).map((field) => (
+            <div key={field.label} className="flex justify-between text-sm">
+              <span className="text-zinc-400">{field.label}</span>
+              <span className="text-white">{field.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         <Controller
@@ -216,6 +275,8 @@ export default function ProfilePage() {
           {form.formState.isSubmitting ? "Guardando..." : "Guardar cambios"}
         </Button>
       </form>
+
+      <ChangePasswordForm />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
+import adminAdminDetails from "./handlers/admin/adminDetails";
 import adminAdmins from "./handlers/admin/admins";
 import adminAdminStatus from "./handlers/admin/adminStatus";
 import adminMiniCases from "./handlers/admin/miniCases";
@@ -10,10 +11,12 @@ import adminStatsStudentEvolution from "./handlers/admin/statsStudentEvolution";
 import adminStatsStudentHistory from "./handlers/admin/statsStudentHistory";
 import adminStudentDetails from "./handlers/admin/studentDetails";
 import adminStudents from "./handlers/admin/students";
+import adminStudentPassword from "./handlers/admin/studentPassword";
 import adminStudentStatus from "./handlers/admin/studentStatus";
 import authLogin from "./handlers/auth/login";
 import authLogout from "./handlers/auth/logout";
 import authMe from "./handlers/auth/me";
+import authPassword from "./handlers/auth/password";
 import authRegister from "./handlers/auth/register";
 import gamesAccess from "./handlers/games/access";
 import gamesAttempts from "./handlers/games/attempts";
@@ -47,9 +50,11 @@ export const ROUTES: RouteDef[] = [
   { pattern: "auth/login", handler: authLogin },
   { pattern: "auth/logout", handler: authLogout },
   { pattern: "auth/me", handler: authMe },
+  { pattern: "auth/password", handler: authPassword },
   { pattern: "auth/register", handler: authRegister },
 
   { pattern: "admin/admins", handler: adminAdmins },
+  { pattern: "admin/admins/:rut", handler: adminAdminDetails },
   { pattern: "admin/admins/:rut/status", handler: adminAdminStatus },
   { pattern: "admin/mini-cases", handler: adminMiniCases },
   { pattern: "admin/stats/catalog", handler: adminStatsCatalog },
@@ -59,6 +64,7 @@ export const ROUTES: RouteDef[] = [
   { pattern: "admin/stats/students/:rut/history", handler: adminStatsStudentHistory },
   { pattern: "admin/students", handler: adminStudents },
   { pattern: "admin/students/:rut/details", handler: adminStudentDetails },
+  { pattern: "admin/students/:rut/password", handler: adminStudentPassword },
   { pattern: "admin/students/:rut/status", handler: adminStudentStatus },
 
   { pattern: "game-attempts/:gameId", handler: gamesAttempts },
