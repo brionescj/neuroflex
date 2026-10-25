@@ -11,7 +11,7 @@ export function InputGroupInput({
   return (
     <input
       className={cn(
-        "h-full flex-1 bg-transparent px-4 text-white outline-none placeholder:text-zinc-500",
+        "h-full min-w-0 flex-1 bg-transparent px-4 text-white outline-none placeholder:text-zinc-500",
         className,
       )}
       {...props}

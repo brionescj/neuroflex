@@ -12,7 +12,7 @@ export function InputGroupAddon({
   return (
     <div
       className={cn(
-        "flex h-full items-center justify-center px-4 text-zinc-400",
+        "flex h-full shrink-0 items-center justify-center px-4 text-zinc-400",
         className,
       )}
       {...props}
