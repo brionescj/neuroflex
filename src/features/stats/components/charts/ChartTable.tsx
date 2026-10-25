@@ -95,6 +95,7 @@ export function ChartTable({ result }: { result: ChartResult }) {
   const single = useSingleStudent();
   const counts = showsCounts(result, single) && !valueIsCount(result);
   const parted = hasParts(result);
+  const alone = result.series.length === 1 && result.series[0]?.key === "all";
 
   if (result.table) return <OwnTable result={result} />;
 
@@ -114,14 +115,17 @@ export function ChartTable({ result }: { result: ChartResult }) {
 
               {result.series.map((series) => (
                 <th key={series.key} scope="col" className="px-3 py-2 text-right font-medium">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span
-                      aria-hidden="true"
-                      className="inline-block size-2 rounded-sm"
-                      style={{ background: seriesColor(series.slot) }}
-                    />
-                    {series.label}
-                  </span>
+                  {/* Con un solo grupo («Todos los estudiantes») su nombre no aporta: solo enreda la lectura. */}
+                  {!alone && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span
+                        aria-hidden="true"
+                        className="inline-block size-2 rounded-sm"
+                        style={{ background: seriesColor(series.slot) }}
+                      />
+                      {series.label}
+                    </span>
+                  )}
                   {result.yLabel !== "" && <span className="block font-normal">{result.yLabel}</span>}
                   {!single && (
                     <span className="block font-normal">
