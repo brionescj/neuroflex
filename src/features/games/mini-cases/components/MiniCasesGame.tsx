@@ -54,6 +54,8 @@ export function MiniCasesGame() {
     proceedToOrdering,
     registerDistractor,
     toggleOption,
+    canSubmit,
+    submitOrder,
     retrySubmit,
     nextCase,
   } = useMiniCasesGame();
@@ -271,7 +273,7 @@ export function MiniCasesGame() {
             </p>
 
             <Button onClick={proceedToOrdering} className="self-center">
-              Entendido, reestructurar plan
+              Entendido, estructurar plan
             </Button>
           </div>
         </div>
@@ -329,6 +331,24 @@ export function MiniCasesGame() {
                 Toca una opción para asignarle el siguiente paso. Tócala de
                 nuevo para quitarla del orden.
               </p>
+            )}
+
+            {phase === "ordering" && (
+              <div className="flex flex-col items-center gap-2">
+                <Button
+                  onClick={submitOrder}
+                  disabled={!canSubmit}
+                  className="w-full sm:w-auto"
+                >
+                  Enviar respuesta
+                </Button>
+
+                {canSubmit && (
+                  <p className="text-xs text-zinc-500">
+                    Puedes cambiar el orden antes de enviar.
+                  </p>
+                )}
+              </div>
             )}
 
             {phase === "submitting" && (

@@ -370,16 +370,18 @@ export function useMiniCasesGame() {
     [phase, currentCase, clock, setSelection],
   );
 
-  // Detecta que se completaron las 4 selecciones y pasa a "submitting".
-  // Solo mira la fase "ordering" a proposito: si un envio fallo, la fase
-  // pasa a "submit-error" (no vuelve a "ordering"), asi este efecto no
-  // reintenta solo en loop con el mismo arreglo ya completo.
-  useEffect(() => {
-    if (phase !== "ordering" || !currentCase) return;
-    if (selectedOptionIds.length === currentCase.options.length) {
-      setPhase("submitting");
-    }
-  }, [selectedOptionIds, phase, currentCase]);
+  // Con las opciones ya ordenadas el envio NO es automatico: el estudiante puede
+  // retractarse (tocar una opcion para quitarla) hasta que presiona "Enviar respuesta".
+  const canSubmit =
+    phase === "ordering" &&
+    currentCase !== undefined &&
+    selectedOptionIds.length === currentCase.options.length;
+
+  const submitOrder = useCallback(() => {
+    if (!canSubmit) return;
+
+    setPhase("submitting");
+  }, [canSubmit]);
 
   // Ejecuta el envio real cada vez que se entra a "submitting" (ya sea
   // la primera vez o por un reintento explicito del usuario).
@@ -476,6 +478,8 @@ export function useMiniCasesGame() {
     proceedToOrdering,
     registerDistractor,
     toggleOption,
+    canSubmit,
+    submitOrder,
     retrySubmit,
     nextCase,
   };
