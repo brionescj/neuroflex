@@ -96,9 +96,18 @@ export type NodeEvent =
 export type NodeLevelResult = {
   level: number;
 
+  /** Intento dentro del nivel (1 a 3). Cada intento es el mismo tablero, con los errores en cero. */
+  tryNumber: number;
+
+  /** El tablero quedo resuelto (un intento que agoto sus errores termina sin resolver). */
+  solved: boolean;
+
+  /** Resuelto sin superar los errores que se permiten en el nivel. */
+  passed: boolean;
+
   pairCount: number;
 
-  /** Tiempo activo hasta completar el nivel, incluido el de antes de un F5. */
+  /** Tiempo activo hasta completar (o perder) el intento, incluido el de antes de un F5. */
   timeMs: number;
 
   /** Veces que uso "Deshacer" en el nivel. */

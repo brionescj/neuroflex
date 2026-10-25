@@ -14,6 +14,14 @@ import {
 } from "../board";
 import { createNodeEventLog, type NodeEventLog } from "../events";
 import { getLevel, TOTAL_LEVELS } from "../levels";
+import {
+  MAX_TRIES_PER_LEVEL,
+  allowedErrors,
+  errorsOf,
+  isOverLimit,
+  isTryPassed,
+  nextStepAfter,
+} from "../rules";
 import { emptyStats, removedCells } from "../stats";
 import {
   buildNodeConnectionSnapshot,
@@ -40,7 +48,18 @@ const HISTORY_LIMIT = 100;
 
 const BLOCKED_FLASH_MS = 250;
 
-type GamePhase = "idle" | "playing" | "level-complete" | "finished";
+type GamePhase =
+  | "idle"
+  | "playing"
+  | "level-complete"
+  | "level-failed"
+  | "finished"
+  | "failed";
+
+/** Nivel mas alto que se paso (0 si ninguno). */
+function maxLevelPassedOf(results: NodeLevelResult[]): number {
+  return results.reduce((max, r) => (r.passed ? Math.max(max, r.level) : max), 0);
+}
 
 const CONTENT_VERSION = nodeContentVersion();
 
@@ -64,6 +83,9 @@ function samePaths(a: NodePaths, b: NodePaths): boolean {
 export function useNodeConnectionGame() {
   const [phase, setPhase] = useState<GamePhase>("idle");
   const [level, setLevel] = useState(1);
+  const [tryNumber, setTryNumber] = useState(1);
+  // Errores del intento en curso (choques + rehacer tablero x 2), para el contador en pantalla.
+  const [errors, setErrors] = useState(0);
   const [results, setResults] = useState<NodeLevelResult[]>([]);
 
   // Una partida ya terminada que se esta archivando antes de empezar otra.
@@ -94,6 +116,8 @@ export function useNodeConnectionGame() {
   const blockedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const archivedRef = useRef(false);
+  // El intento en curso ya se resolvio (paso o se agoto): ignora lo que llegue despues.
+  const resolvedRef = useRef(false);
 
   // Reloj del nivel: bruto (pestana visible) y neto (sin inactividad de mas
   // de 80 s). Se pausa solo cuando la pestana queda oculta.
@@ -137,6 +161,7 @@ export function useNodeConnectionGame() {
   const beginLevel = useCallback(
     (
       levelNumber: number,
+      tryNumberValue: number,
       seed?: {
         paths: NodePaths;
         elapsedMs: number;
@@ -157,6 +182,13 @@ export function useNodeConnectionGame() {
       undoCountRef.current = seed?.undoCount ?? 0;
       resetCountRef.current = seed?.resetCount ?? 0;
       statsRef.current = seed?.stats ? { ...seed.stats } : emptyStats();
+      resolvedRef.current = false;
+      setErrors(
+        errorsOf({
+          blockedCount: statsRef.current.blockedCount,
+          resetCount: resetCountRef.current,
+        }),
+      );
       gestureBacktrackedRef.current = false;
       gestureBackCellsRef.current = 0;
       eventLogRef.current = createNodeEventLog(
@@ -171,9 +203,47 @@ export function useNodeConnectionGame() {
       clock.start();
 
       setLevel(levelNumber);
+      setTryNumber(tryNumberValue);
       setPhase("playing");
     },
     [commitPaths, clock],
+  );
+
+  // Registra el resultado de un intento y decide que sigue segun las reglas:
+  // siguiente nivel, reintento, o fin de la partida (fallida o terminada).
+  const finalizeTry = useCallback(
+    (result: NodeLevelResult, previous: NodeLevelResult[]) => {
+      void attempt.reportLevel(
+        toNodeReport(result, result.completedAt ?? new Date().toISOString()),
+      );
+
+      setResults([...previous, result]);
+      setLevel(result.level);
+      setTryNumber(result.tryNumber);
+
+      const step = nextStepAfter(result);
+
+      if (step === "next-level" || step === "complete") {
+        setPhase("level-complete");
+        return;
+      }
+
+      if (step === "retry") {
+        setPhase("level-failed");
+        return;
+      }
+
+      // Sin intentos: la partida termina aqui. En un nivel obligatorio (1 a
+      // 10) cuenta como fallida; desde el 11, como terminada.
+      const status = step === "restart" ? "failed" : "finished";
+
+      setPhase(status);
+
+      void attempt.closeAttempt(status).then((closed) => {
+        if (closed) clearProgress();
+      });
+    },
+    [attempt, clearProgress],
   );
 
   // `resync` es false cuando la partida ya se intento archivar y no se pudo:
@@ -186,20 +256,40 @@ export function useNodeConnectionGame() {
         void attempt.syncResults(reportsOf(snapshot.results));
       }
 
+      const snapshotTry = snapshot.tryNumber ?? 1;
+
       setResults(snapshot.results);
 
       if (snapshot.phase !== "playing") {
         setLevel(snapshot.level);
+        setTryNumber(snapshotTry);
         setPhase(snapshot.phase);
         return;
       }
 
-      // Si lo guardado ya era un tablero resuelto, el nivel esta terminado.
-      if (isSnapshotSolved(snapshot)) {
+      const pairCount = getLevel(snapshot.level).pairs.length;
+      const solved = isSnapshotSolved(snapshot);
+      const overLimit = isOverLimit(snapshot.level, pairCount, {
+        blockedCount: snapshot.stats?.blockedCount ?? 0,
+        resetCount: snapshot.resetCount,
+      });
+
+      // Si lo guardado ya era un tablero resuelto, o sin margen de errores, el
+      // intento esta terminado.
+      if (solved || overLimit) {
         const completedAt = new Date().toISOString();
         const result: NodeLevelResult = {
           level: snapshot.level,
-          pairCount: getLevel(snapshot.level).pairs.length,
+          tryNumber: snapshotTry,
+          solved,
+          passed: isTryPassed({
+            level: snapshot.level,
+            pairCount,
+            solved,
+            blockedCount: snapshot.stats?.blockedCount ?? 0,
+            resetCount: snapshot.resetCount,
+          }),
+          pairCount,
           timeMs: snapshot.elapsedMs,
           undoCount: snapshot.undoCount,
           resetCount: snapshot.resetCount,
@@ -214,14 +304,11 @@ export function useNodeConnectionGame() {
             : {}),
         };
 
-        void attempt.reportLevel(toNodeReport(result, completedAt));
-        setResults([...snapshot.results, result]);
-        setLevel(snapshot.level);
-        setPhase("level-complete");
+        finalizeTry(result, snapshot.results);
         return;
       }
 
-      beginLevel(snapshot.level, {
+      beginLevel(snapshot.level, snapshotTry, {
         paths: deserializePaths(snapshot.paths),
         elapsedMs: snapshot.elapsedMs,
         netMs: snapshot.netMs,
@@ -232,7 +319,7 @@ export function useNodeConnectionGame() {
         eventsDropped: snapshot.eventsDropped,
       });
     },
-    [beginLevel, attempt],
+    [beginLevel, attempt, finalizeTry],
   );
 
   // Una partida terminada es definitiva: se archiva en la base (por si el
@@ -243,7 +330,9 @@ export function useNodeConnectionGame() {
   // que el reloj corra antes de que este mirando la pantalla.
   useEffect(() => {
     if (phase !== "idle" || progressStatus !== "ready") return;
-    if (resumeSnapshot?.phase !== "finished") return;
+    if (resumeSnapshot?.phase !== "finished" && resumeSnapshot?.phase !== "failed") {
+      return;
+    }
     if (archivedRef.current) return;
 
     archivedRef.current = true;
@@ -258,7 +347,10 @@ export function useNodeConnectionGame() {
     }
 
     void attempt
-      .syncResults(reportsOf(resumeSnapshot.results), "finished")
+      .syncResults(
+        reportsOf(resumeSnapshot.results),
+        resumeSnapshot.phase === "failed" ? "failed" : "finished",
+      )
       .then((archived) => {
         setArchiving(false);
 
@@ -283,14 +375,17 @@ export function useNodeConnectionGame() {
   const hasResumable =
     phase === "idle" &&
     resumeSnapshot !== null &&
-    resumeSnapshot.phase !== "finished";
+    resumeSnapshot.phase !== "finished" &&
+    resumeSnapshot.phase !== "failed";
 
   // No se puede empezar de cero mientras exista un avance guardado, ni
   // mientras no se sepa si existe.
   const canStart = progressStatus === "ready" && resumeSnapshot === null;
 
+  // Con la partida terminada o fallida ya se puede salir.
   const isGameInProgress =
-    (phase !== "idle" && phase !== "finished") || hasResumable;
+    (phase !== "idle" && phase !== "finished" && phase !== "failed") ||
+    hasResumable;
 
   const start = useCallback(() => {
     if (!canStart) return;
@@ -299,7 +394,7 @@ export function useNodeConnectionGame() {
     archivedRef.current = false;
 
     setResults([]);
-    beginLevel(1);
+    beginLevel(1, 1);
   }, [canStart, attempt, beginLevel]);
 
   const resume = useCallback(() => {
@@ -308,11 +403,11 @@ export function useNodeConnectionGame() {
 
   const returnToStart = useCallback(() => {
     // El cierre sale en cola y se reintenta aunque se cambie de pantalla.
-    void attempt.closeAttempt("finished");
+    void attempt.closeAttempt(phase === "failed" ? "failed" : "finished");
     clearProgress();
     archivedRef.current = false;
     setPhase("idle");
-  }, [attempt, clearProgress]);
+  }, [phase, attempt, clearProgress]);
 
   // Guarda el estado actual. Lo leen los efectos y los gestos; los trazos y
   // los contadores salen de refs (siempre al dia), la fase y los resultados
@@ -320,11 +415,14 @@ export function useNodeConnectionGame() {
   // a guardar).
   const persist = useCallback(() => {
     if (phase === "idle") return;
+    // Un intento ya resuelto espera su cambio de fase: no se guarda como "en curso".
+    if (phase === "playing" && resolvedRef.current) return;
 
     saveProgress(
       buildNodeConnectionSnapshot({
         phase,
         level,
+        tryNumber,
         paths: pathsRef.current,
         elapsedMs: currentElapsed(),
         undoCount: undoCountRef.current,
@@ -337,7 +435,16 @@ export function useNodeConnectionGame() {
         attempt: attempt.current() ?? undefined,
       }),
     );
-  }, [phase, level, results, saveProgress, currentElapsed, clock, attempt]);
+  }, [
+    phase,
+    level,
+    tryNumber,
+    results,
+    saveProgress,
+    currentElapsed,
+    clock,
+    attempt,
+  ]);
 
   // Punto de control al empezar cada nivel, al terminarlo y al final.
   useEffect(() => {
@@ -416,35 +523,61 @@ export function useNodeConnectionGame() {
     });
   }, [levelData, record]);
 
-  const completeLevel = useCallback(() => {
-    recordStrokeEnd();
-    endGesture();
-    clock.stop();
-    const { grossMs, netMs } = clock.read();
-    const completedAt = new Date().toISOString();
+  // Cierra el intento en curso, resuelto o sin margen de errores. Es lo unico
+  // que lo termina: una vez resuelto, los gestos que lleguen despues se ignoran.
+  const resolveTry = useCallback(
+    (solved: boolean) => {
+      if (resolvedRef.current) return;
+      resolvedRef.current = true;
 
-    const result: NodeLevelResult = {
-      level,
-      pairCount: levelData.pairs.length,
-      timeMs: grossMs,
-      undoCount: undoCountRef.current,
+      recordStrokeEnd();
+      endGesture();
+      clock.stop();
+      const { grossMs, netMs } = clock.read();
+      const completedAt = new Date().toISOString();
+
+      const result: NodeLevelResult = {
+        level,
+        tryNumber,
+        solved,
+        passed: isTryPassed({
+          level,
+          pairCount: levelData.pairs.length,
+          solved,
+          blockedCount: statsRef.current.blockedCount,
+          resetCount: resetCountRef.current,
+        }),
+        pairCount: levelData.pairs.length,
+        timeMs: grossMs,
+        undoCount: undoCountRef.current,
+        resetCount: resetCountRef.current,
+        activeMsNet: netMs,
+        completedAt,
+        stats: { ...statsRef.current },
+        events: eventLogRef.current.events(),
+        eventsDropped: eventLogRef.current.dropped(),
+      };
+
+      activeColorRef.current = null;
+      setActiveColor(null);
+      strokeBaseRef.current = null;
+
+      finalizeTry(result, results);
+    },
+    [level, tryNumber, levelData, clock, results, endGesture, recordStrokeEnd, finalizeTry],
+  );
+
+  // Cuenta un error mas en pantalla y, si se acabo el margen, termina el intento.
+  const syncErrors = useCallback(() => {
+    const total = errorsOf({
+      blockedCount: statsRef.current.blockedCount,
       resetCount: resetCountRef.current,
-      activeMsNet: netMs,
-      completedAt,
-      stats: { ...statsRef.current },
-      events: eventLogRef.current.events(),
-      eventsDropped: eventLogRef.current.dropped(),
-    };
+    });
 
-    activeColorRef.current = null;
-    setActiveColor(null);
-    strokeBaseRef.current = null;
+    setErrors(total);
 
-    void attempt.reportLevel(toNodeReport(result, completedAt));
-
-    setResults((prev) => [...prev, result]);
-    setPhase("level-complete");
-  }, [level, levelData, clock, attempt, endGesture, recordStrokeEnd]);
+    if (total > allowedErrors(level, levelData.pairs.length)) resolveTry(false);
+  }, [level, levelData, resolveTry]);
 
   const flashBlocked = useCallback((cell: Cell) => {
     const previous = blockedRef.current;
@@ -457,6 +590,7 @@ export function useNodeConnectionGame() {
         blockedCount: statsRef.current.blockedCount + 1,
       };
       record({ type: "blocked", row: cell.row, col: cell.col });
+      syncErrors();
 
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
         navigator.vibrate(12);
@@ -469,7 +603,7 @@ export function useNodeConnectionGame() {
       blockedRef.current = null;
       setBlockedCell(null);
     }, BLOCKED_FLASH_MS);
-  }, [record]);
+  }, [record, syncErrors]);
 
   /**
    * Los tres gestos reciben la posicion del puntero en unidades de celda
@@ -477,7 +611,7 @@ export function useNodeConnectionGame() {
    */
   const pointerDown = useCallback(
     (fx: number, fy: number) => {
-      if (phase !== "playing") return;
+      if (phase !== "playing" || resolvedRef.current) return;
 
       const cell = pointToCell(levelData, fx, fy);
       const started = startStroke(levelData, pathsRef.current, cell);
@@ -519,7 +653,7 @@ export function useNodeConnectionGame() {
   const pointerMove = useCallback(
     (fx: number, fy: number) => {
       const color = activeColorRef.current;
-      if (phase !== "playing" || !color) return;
+      if (phase !== "playing" || resolvedRef.current || !color) return;
 
       const cells = pathsRef.current[color];
       const head = cells?.[cells.length - 1];
@@ -552,13 +686,13 @@ export function useNodeConnectionGame() {
       }
       if (blockedAt) flashBlocked(blockedAt);
 
-      if (isSolved(levelData, next)) completeLevel();
+      if (isSolved(levelData, next)) resolveTry(true);
     },
-    [phase, levelData, commitPaths, flashBlocked, completeLevel],
+    [phase, levelData, commitPaths, flashBlocked, resolveTry],
   );
 
   const pointerUp = useCallback(() => {
-    if (!activeColorRef.current) return;
+    if (!activeColorRef.current || resolvedRef.current) return;
 
     const base = strokeBaseRef.current;
 
@@ -576,7 +710,7 @@ export function useNodeConnectionGame() {
   }, [persist, endGesture, recordStrokeEnd]);
 
   const undo = useCallback(() => {
-    if (phase !== "playing") return;
+    if (phase !== "playing" || resolvedRef.current) return;
 
     const previous = historyRef.current[historyRef.current.length - 1];
     if (!previous) return;
@@ -591,7 +725,7 @@ export function useNodeConnectionGame() {
 
   // Reiniciar tambien se puede deshacer: un toque por error no pierde el trabajo.
   const reset = useCallback(() => {
-    if (phase !== "playing") return;
+    if (phase !== "playing" || resolvedRef.current) return;
     if (Object.keys(pathsRef.current).length === 0) return;
 
     historyRef.current = [...historyRef.current, pathsRef.current].slice(
@@ -608,14 +742,22 @@ export function useNodeConnectionGame() {
     record({ type: "reset", cells: erased });
     setCanUndo(true);
     commitPaths({});
-    persist();
-  }, [phase, levelData, commitPaths, persist, record]);
+    syncErrors();
+    if (!resolvedRef.current) persist();
+  }, [phase, levelData, commitPaths, persist, record, syncErrors]);
 
   const continueToNextLevel = useCallback(() => {
     if (level >= TOTAL_LEVELS) return;
 
-    beginLevel(level + 1);
+    beginLevel(level + 1, 1);
   }, [level, beginLevel]);
+
+  // Mismo tablero, intento nuevo y errores en cero.
+  const retryLevel = useCallback(() => {
+    if (tryNumber >= MAX_TRIES_PER_LEVEL) return;
+
+    beginLevel(level, tryNumber + 1);
+  }, [level, tryNumber, beginLevel]);
 
   const finish = useCallback(() => {
     setPhase("finished");
@@ -639,8 +781,14 @@ export function useNodeConnectionGame() {
     hasResumable,
     isGameInProgress,
     resumeLevel: resumeSnapshot?.level ?? null,
+    resumeTry: resumeSnapshot?.tryNumber ?? 1,
     phase,
     level,
+    tryNumber,
+    maxTries: MAX_TRIES_PER_LEVEL,
+    errors,
+    errorsAllowed: allowedErrors(level, levelData.pairs.length),
+    maxLevelPassed: maxLevelPassedOf(results),
     totalLevels: TOTAL_LEVELS,
     levelData,
     paths,
@@ -658,6 +806,7 @@ export function useNodeConnectionGame() {
     undo,
     reset,
     continueToNextLevel,
+    retryLevel,
     finish,
     flushProgress,
   };

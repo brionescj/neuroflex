@@ -1,4 +1,5 @@
 import { isColorSequenceResultPassed } from "./gameAttempts";
+import { isNodeResultPassed } from "./nodeRules";
 import {
   MINI_CASES_RULE_VERSION,
   MINI_CASES_UNLOCK_LEVEL,
@@ -30,18 +31,20 @@ export async function collectMiniCasesEvidence(
     .filter(isColorSequenceResultPassed)
     .reduce((max, r) => Math.max(max, r.index), 0);
 
-  // En nodos solo se guarda un resultado cuando el nivel se completa.
-  const node = (await GameLevelResult.findOne({
+  // En nodos tambien se guardan los intentos perdidos: solo cuenta el que se paso.
+  const node = (await GameLevelResult.find({
     studentRut: rut,
     gameId: "node-connection",
     index: { $gte: MINI_CASES_UNLOCK_LEVEL },
-  })
-    .sort({ index: -1 })
-    .lean()) as { index: number } | null;
+  }).lean()) as { index: number; metrics: Record<string, unknown> }[];
+
+  const nodeMaxLevelPassed = node
+    .filter(isNodeResultPassed)
+    .reduce((max, r) => Math.max(max, r.index), 0);
 
   return {
     colorSequenceMaxLevelPassed,
-    nodeMaxLevelCompleted: node?.index ?? 0,
+    nodeMaxLevelPassed,
   };
 }
 

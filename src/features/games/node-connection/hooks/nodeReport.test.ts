@@ -10,6 +10,9 @@ describe("toNodeReport", () => {
     const report = toNodeReport(
       {
         level: 2,
+        tryNumber: 1,
+        solved: true,
+        passed: true,
         pairCount: 3,
         timeMs: 20_000,
         undoCount: 1,
@@ -36,6 +39,9 @@ describe("toNodeReport", () => {
     const report = toNodeReport(
       {
         level: 1,
+        tryNumber: 1,
+        solved: true,
+        passed: true,
         pairCount: 2,
         timeMs: 8_000,
         undoCount: 0,
@@ -60,6 +66,9 @@ describe("toNodeReport", () => {
     const report = toNodeReport(
       {
         level: 1,
+        tryNumber: 1,
+        solved: true,
+        passed: true,
         pairCount: 2,
         timeMs: 8_000,
         undoCount: 0,
@@ -74,7 +83,7 @@ describe("toNodeReport", () => {
 
   it("un nivel antiguo (sin bitacora) no inventa eventos", () => {
     const report = toNodeReport(
-      { level: 1, pairCount: 2, timeMs: 8_000, undoCount: 0, resetCount: 0 },
+      { level: 1, tryNumber: 1, solved: true, passed: true, pairCount: 2, timeMs: 8_000, undoCount: 0, resetCount: 0 },
       FALLBACK,
     );
 
@@ -84,7 +93,7 @@ describe("toNodeReport", () => {
 
   it("sin neto ni fecha usa el tiempo activo y la fecha de respaldo", () => {
     const report = toNodeReport(
-      { level: 1, pairCount: 2, timeMs: 8_000, undoCount: 0, resetCount: 0 },
+      { level: 1, tryNumber: 1, solved: true, passed: true, pairCount: 2, timeMs: 8_000, undoCount: 0, resetCount: 0 },
       FALLBACK,
     );
 
@@ -96,6 +105,9 @@ describe("toNodeReport", () => {
     const report = toNodeReport(
       {
         level: 1,
+        tryNumber: 1,
+        solved: true,
+        passed: true,
         pairCount: 2,
         timeMs: 8_000,
         undoCount: 0,
@@ -114,6 +126,9 @@ describe("toNodeReport con contadores", () => {
     const report = toNodeReport(
       {
         level: 1,
+        tryNumber: 1,
+        solved: true,
+        passed: true,
         pairCount: 2,
         timeMs: 9_000,
         undoCount: 1,
@@ -144,7 +159,7 @@ describe("toNodeReport con contadores", () => {
 
   it("sin contadores no inventa ceros", () => {
     const report = toNodeReport(
-      { level: 1, pairCount: 2, timeMs: 1, undoCount: 2, resetCount: 0 },
+      { level: 1, tryNumber: 1, solved: true, passed: true, pairCount: 2, timeMs: 1, undoCount: 2, resetCount: 0 },
       FALLBACK,
     );
 
@@ -154,12 +169,92 @@ describe("toNodeReport con contadores", () => {
   });
 });
 
+describe("toNodeReport: intentos y errores", () => {
+  const stats = {
+    strokesStarted: 5,
+    backtrackCells: 0,
+    backtrackGestures: 0,
+    routeRestarts: 0,
+    restartCells: 0,
+    resetCells: 4,
+    blockedCount: 3,
+  };
+
+  it("un intento perdido lleva su numero, su clave y los errores", () => {
+    const report = toNodeReport(
+      {
+        level: 4,
+        tryNumber: 2,
+        solved: false,
+        passed: false,
+        pairCount: 4,
+        timeMs: 9_000,
+        undoCount: 0,
+        resetCount: 2,
+        stats,
+      },
+      FALLBACK,
+    );
+
+    expect(report.key).toBe("4.2");
+    expect(report.index).toBe(4);
+    expect(report.tryNumber).toBe(2);
+    // 3 choques + 2 rehacer tablero x 2 = 7; en el nivel 4 se permiten 4 pares x 3 = 12.
+    expect(report.metrics).toMatchObject({
+      solved: false,
+      passed: false,
+      errors: 7,
+      errorsAllowed: 12,
+    });
+  });
+
+  it("el primer intento conserva la clave de siempre", () => {
+    const report = toNodeReport(
+      {
+        level: 7,
+        tryNumber: 1,
+        solved: true,
+        passed: true,
+        pairCount: 5,
+        timeMs: 9_000,
+        undoCount: 0,
+        resetCount: 0,
+        stats: { ...stats, blockedCount: 1 },
+      },
+      FALLBACK,
+    );
+
+    expect(report.key).toBe("7");
+    expect(report.metrics).toMatchObject({ errors: 1, errorsAllowed: 10, passed: true });
+  });
+
+  it("sin contadores (partida antigua) no inventa errores", () => {
+    const report = toNodeReport(
+      {
+        level: 2,
+        tryNumber: 1,
+        solved: true,
+        passed: true,
+        pairCount: 3,
+        timeMs: 9_000,
+        undoCount: 0,
+        resetCount: 0,
+      },
+      FALLBACK,
+    );
+
+    expect(report.metrics).not.toHaveProperty("errors");
+    expect(report.metrics).not.toHaveProperty("errorsAllowed");
+    expect(report.metrics.passed).toBe(true);
+  });
+});
+
 describe("nodeContentVersion", () => {
   it("es estable entre llamadas", () => {
     expect(nodeContentVersion()).toBe(nodeContentVersion());
   });
 
   it("incluye la cantidad de niveles", () => {
-    expect(nodeContentVersion()).toMatch(new RegExp(`^nodes-${LEVELS.length}-[0-9a-f]+$`));
+    expect(nodeContentVersion()).toMatch(new RegExp(`^nodes-${LEVELS.length}-[0-9a-f]+-r\\d+$`));
   });
 });

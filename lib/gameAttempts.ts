@@ -11,6 +11,7 @@ import {
   reconcileColorSequenceEvents,
   sanitizeNodeEvents,
 } from "./attemptEvents";
+import { NODE_MAX_TRIES, isNodeResultPassed } from "./nodeRules";
 
 export const ATTEMPT_GAME_IDS = [
   "color-sequence",
@@ -86,6 +87,8 @@ const NODE_OPTIONAL_COUNTERS = [
   "blockedCount",
   "cellsErased",
   "eventsDropped",
+  "errors",
+  "errorsAllowed",
 ] as const;
 
 /** Intentos por nivel en Seriacion de colores. */
@@ -262,6 +265,12 @@ function parseMetrics(
         return fail(`metrics de nodos invalido: ${key}.`);
       }
     }
+
+    for (const key of ["solved", "passed"]) {
+      if (raw[key] !== undefined && typeof raw[key] !== "boolean") {
+        return fail(`metrics de nodos invalido: ${key}.`);
+      }
+    }
   }
 
   return { ok: true, value: raw };
@@ -285,6 +294,10 @@ export function parseLevelReport(
 
   if (gameId === "color-sequence" && tryNumber > COLOR_SEQUENCE_MAX_TRIES) {
     return fail("tryNumber de seriacion invalido.");
+  }
+
+  if (gameId === "node-connection" && tryNumber > NODE_MAX_TRIES) {
+    return fail("tryNumber de nodos invalido.");
   }
 
   if (!isTimeMs(raw.activeMsGross) || !isTimeMs(raw.activeMsNet)) {
@@ -503,6 +516,37 @@ export function isColorSequenceResultPassed(result: {
   ).passed;
 }
 
+/**
+ * Si el resultado de un nivel es un nivel pasado, segun el juego. Mini casos
+ * no tiene niveles que se aprueben: siempre cuenta.
+ */
+export function isLevelResultPassed(result: {
+  gameId: string;
+  index: number;
+  metrics: Record<string, unknown>;
+}): boolean {
+  if (result.gameId === "color-sequence") return isColorSequenceResultPassed(result);
+  if (result.gameId === "node-connection") return isNodeResultPassed(result);
+
+  return true;
+}
+
+/**
+ * Si el resultado mide cuanto tardo en resolver un nivel al primer intento. En
+ * nodos solo el primer intento que se paso: uno perdido termina antes de
+ * resolver el tablero, y su tiempo no es el de resolverlo.
+ */
+export function isFirstTryTime(result: {
+  gameId: string;
+  index: number;
+  tryNumber: number;
+  metrics: Record<string, unknown>;
+}): boolean {
+  if (result.tryNumber !== 1) return false;
+
+  return result.gameId !== "node-connection" || isNodeResultPassed(result);
+}
+
 /** Resumen del intento, recalculado SIEMPRE desde los resultados guardados. */
 export function summarizeResults(
   gameId: AttemptGameId,
@@ -540,9 +584,17 @@ export function summarizeResults(
   }
 
   if (gameId === "node-connection") {
+    const passedRows = results.filter(isNodeResultPassed);
+
     return {
       ...common,
+      // Nivel mas alto al que llego (aunque no lo pasara).
       maxLevel: results.reduce((max, r) => Math.max(max, r.index), 0),
+      // Nivel mas alto que paso (tablero resuelto dentro de los errores permitidos).
+      maxLevelPassed: passedRows.reduce((max, r) => Math.max(max, r.index), 0),
+      levelsPassed: new Set(passedRows.map((r) => r.index)).size,
+      failedTries: results.length - passedRows.length,
+      totalErrors: results.reduce((s, r) => s + num(r.metrics.errors), 0),
       totalUndo: results.reduce((s, r) => s + num(r.metrics.undoCount), 0),
       totalReset: results.reduce((s, r) => s + num(r.metrics.resetCount), 0),
     };

@@ -22,6 +22,7 @@ import {
   isPermutationOfOptions,
   type TextOption,
 } from "./miniCaseScoring";
+import { scoreNodeTry } from "./nodeRules";
 import { GameAttempt } from "./models/GameAttempt";
 import { GameLevelResult } from "./models/GameLevelResult";
 import { MiniCase } from "./models/MiniCase";
@@ -179,6 +180,12 @@ async function upsertResult(
   }
 
   if (gameId === "node-connection") {
+    // Si paso el nivel lo decide el servidor con los errores permitidos: lo
+    // que diga el navegador sobre errores o aprobacion se ignora.
+    const score = scoreNodeTry(report.index, metrics);
+
+    if (score) metrics = { ...metrics, ...score };
+
     const clean = sanitizeNodeEvents(report.events);
 
     if (clean.length > 0) {

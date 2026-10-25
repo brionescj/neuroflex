@@ -8,6 +8,7 @@ import { arePathsValid, isSolved } from "./board";
 import { NODE_COLORS } from "./colors";
 import { cleanDroppedCount, cleanNodeEvents } from "./events";
 import { LEVELS, TOTAL_LEVELS } from "./levels";
+import { replayFlow } from "./rules";
 import { cleanStats } from "./stats";
 import type {
   Cell,
@@ -18,7 +19,19 @@ import type {
   NodeStats,
 } from "./types";
 
-export type NodeConnectionSavedPhase = "playing" | "level-complete" | "finished";
+/**
+ * - playing: intento en curso.
+ * - level-complete: paso el nivel, espera "Siguiente nivel".
+ * - level-failed: se acabo el margen de errores y le quedan intentos: espera "Reintentar".
+ * - finished: la partida termino (completo los 15 niveles o agoto los intentos desde el 11).
+ * - failed: agoto los intentos en un nivel obligatorio (1 a 10).
+ */
+export type NodeConnectionSavedPhase =
+  | "playing"
+  | "level-complete"
+  | "level-failed"
+  | "finished"
+  | "failed";
 
 type SerializedPath = { color: NodeColorId; cells: [number, number][] };
 
@@ -35,6 +48,8 @@ export type NodeConnectionProgress = {
   phase: NodeConnectionSavedPhase;
   /** Nivel en curso o recien terminado, desde 1. */
   level: number;
+  /** Intento del nivel en curso o recien terminado (ausente en avances anteriores a los reintentos: 1). */
+  tryNumber?: number;
   /** Trazos del nivel en curso. Vacio fuera de "playing". */
   paths: SerializedPath[];
   elapsedMs: number;
@@ -60,7 +75,9 @@ export type NodeConnectionProgress = {
 const SAVED_PHASES: NodeConnectionSavedPhase[] = [
   "playing",
   "level-complete",
+  "level-failed",
   "finished",
+  "failed",
 ];
 
 const COLOR_IDS = new Set<string>(NODE_COLORS.map((c) => c.id));
@@ -92,14 +109,23 @@ function isResult(value: unknown): value is NodeLevelResult {
     isCount(r.pairCount) &&
     isTime(r.timeMs) &&
     isCount(r.undoCount) &&
-    isCount(r.resetCount)
+    isCount(r.resetCount) &&
+    (r.tryNumber === undefined || (isCount(r.tryNumber) && r.tryNumber >= 1)) &&
+    (r.solved === undefined || typeof r.solved === "boolean") &&
+    (r.passed === undefined || typeof r.passed === "boolean")
   );
 }
 
 /** Conserva solo los campos opcionales que vienen bien formados. */
 function cleanResult(result: NodeLevelResult): NodeLevelResult {
+  // Un resultado guardado antes de los errores permitidos solo existia si el
+  // nivel se completo: fue el primer intento y se paso.
+  const solved = result.solved ?? true;
   const clean: NodeLevelResult = {
     level: result.level,
+    tryNumber: result.tryNumber ?? 1,
+    solved,
+    passed: result.passed ?? solved,
     pairCount: result.pairCount,
     timeMs: result.timeMs,
     undoCount: result.undoCount,
@@ -194,24 +220,45 @@ export function parseNodeConnectionProgress(
   if (!Array.isArray(r.results) || !r.results.every(isResult)) return null;
   const results = (r.results as NodeLevelResult[]).map(cleanResult);
 
-  const expectedResults = phase === "playing" ? level - 1 : level;
-  if (results.length !== expectedResults) return null;
+  // Cada resultado debe ser el nivel e intento que correspondia por posicion.
+  const flow = replayFlow(results);
+  if (!flow.ok) return null;
 
-  if (phase === "finished" && level !== TOTAL_LEVELS) return null;
+  for (const result of results) {
+    const expected = LEVELS[result.level - 1];
 
-  // Cada resultado debe ser del nivel que le corresponde por posicion.
-  for (let i = 0; i < results.length; i++) {
-    const result = results[i];
-    const expected = LEVELS[i];
+    if (!expected || result.pairCount !== expected.pairs.length) return null;
+    // Un intento pasado es un tablero resuelto.
+    if (result.passed && !result.solved) return null;
+  }
 
-    if (
-      !result ||
-      !expected ||
-      result.level !== i + 1 ||
-      result.pairCount !== expected.pairs.length
-    ) {
+  const last = results[results.length - 1];
+  const tryNumber = r.tryNumber === undefined ? 1 : r.tryNumber;
+
+  if (!isCount(tryNumber) || tryNumber < 1) return null;
+
+  if (phase === "playing") {
+    // Toca jugar justo lo que sigue a los resultados.
+    if (flow.terminal !== null) return null;
+    if (flow.level !== level || flow.tryNumber !== tryNumber) return null;
+  } else if (phase === "level-complete") {
+    if (!last?.passed || last.level !== level || last.tryNumber !== tryNumber) {
       return null;
     }
+    if (flow.terminal !== null && flow.terminal !== "complete") return null;
+  } else if (phase === "level-failed") {
+    if (!last || last.passed || last.level !== level || last.tryNumber !== tryNumber) {
+      return null;
+    }
+    if (flow.terminal !== null) return null;
+  } else if (phase === "finished") {
+    if (!last || (flow.terminal !== "complete" && flow.terminal !== "close")) {
+      return null;
+    }
+    if (last.level !== level || last.tryNumber !== tryNumber) return null;
+  } else {
+    if (!last || flow.terminal !== "restart") return null;
+    if (last.level !== level || last.tryNumber !== tryNumber) return null;
   }
 
   if (!isCount(r.undoCount) || !isCount(r.resetCount) || !isTime(r.elapsedMs)) {
@@ -240,6 +287,7 @@ export function parseNodeConnectionProgress(
     version: 1,
     phase,
     level,
+    tryNumber,
     paths,
     elapsedMs: r.elapsedMs,
     undoCount: r.undoCount,
@@ -257,6 +305,7 @@ export function parseNodeConnectionProgress(
 export function buildNodeConnectionSnapshot(input: {
   phase: NodeConnectionSavedPhase;
   level: number;
+  tryNumber?: number;
   paths: NodePaths;
   elapsedMs: number;
   undoCount: number;
@@ -274,6 +323,7 @@ export function buildNodeConnectionSnapshot(input: {
     version: 1,
     phase: input.phase,
     level: input.level,
+    tryNumber: input.tryNumber ?? 1,
     paths: keepPaths ? serializePaths(input.paths) : [],
     elapsedMs: keepPaths ? Math.round(input.elapsedMs) : 0,
     undoCount: keepPaths ? input.undoCount : 0,

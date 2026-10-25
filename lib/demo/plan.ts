@@ -6,6 +6,7 @@ import {
   summarizeResults,
   type StudentSnapshot,
 } from "../gameAttempts";
+import { NODE_MAX_TRIES, NODE_MIN_LEVELS, nodeAllowedErrors, nodeErrorsOf } from "../nodeRules";
 import {
   MINI_CASES_UNLOCK_LEVEL,
   meetsMiniCasesRule,
@@ -39,7 +40,7 @@ export type DemoGameId = "color-sequence" | "node-connection" | "mini-cases";
 
 /** Copias de lo que define el navegador; demoPlan.test.ts comprueba que no se desfasen. */
 export const COLOR_SEQUENCE_VERSION = "color-sequence-2";
-export const NODE_VERSION = "nodes-15-4827409f";
+export const NODE_VERSION = "nodes-15-4827409f-r2";
 
 /** Tamano del tablero y pares de cada uno de los 15 niveles de Conexion de nodos. */
 export const NODE_LEVELS: readonly { board: number; pairs: number }[] = [
@@ -378,53 +379,83 @@ function playNodes(rng: Rng, skill: Skill, sessionIndex: number, abandonAfterLev
   const offsets: number[] = [];
   const base = new Date(0);
   let clock = 0;
-  let status: "in_progress" | "finished" = "in_progress";
+  let status: "in_progress" | "finished" | "failed" = "in_progress";
 
-  for (let level = 1; level <= NODE_LEVELS.length; level++) {
+  levels: for (let level = 1; level <= NODE_LEVELS.length; level++) {
     const { board, pairs } = NODE_LEVELS[level - 1] as { board: number; pairs: number };
+    const allowed = nodeAllowedErrors(level, pairs);
     // Cada partida se juega un poco mas rapido que la anterior.
-    const seconds =
+    const baseSeconds =
       (10 + 6 * Math.pow(level, 1.35)) * skill.slow * Math.pow(0.97, sessionIndex) * Math.exp(normal(rng) * 0.25);
-    const { gross, net } = withIdle(rng, seconds * 1000);
+    // Un mal dia: mas choques de lo habitual en todos los intentos del nivel.
+    const badDay = Math.exp(normal(rng) * 0.45);
 
-    const undo = poisson(rng, skill.care * (0.3 + 0.18 * pairs));
-    const reset = poisson(rng, skill.care * 0.08 * Math.pow(level, 0.6));
-    const backtrackGestures = undo;
-    const backtrackCells = undo * int(rng, 1, 3);
-    const routeRestarts = Math.min(reset, poisson(rng, 0.2));
-    const restartCells = routeRestarts * int(rng, 2, 6);
-    const resetCells = reset * int(rng, 4, 12);
+    for (let tryNumber = 1; tryNumber <= NODE_MAX_TRIES; tryNumber++) {
+      // Con el tablero ya visto, el reintento sale algo mejor.
+      const carelessness = skill.care * badDay * (tryNumber === 1 ? 1 : 0.8);
+      let reset = poisson(rng, carelessness * 0.08 * Math.pow(level, 0.6));
+      let blocked = poisson(rng, carelessness * 0.3 * level);
+      const failed = nodeErrorsOf({ blockedCount: blocked, resetCount: reset }) > allowed;
 
-    clock += gross;
+      if (failed) {
+        // El intento termina en cuanto los errores superan lo permitido.
+        reset = Math.min(reset, Math.floor((allowed + 1) / 2));
+        blocked = Math.max(0, allowed + 1 - 2 * reset);
+      }
 
-    results.push({
-      key: String(level),
-      index: level,
-      tryNumber: 1,
-      metrics: {
-        pairCount: pairs,
-        boardSize: board,
-        undoCount: undo,
-        resetCount: reset,
-        corrections: undo + reset,
-        strokesStarted: pairs + undo + routeRestarts + int(rng, 0, pairs),
-        backtrackCells,
-        backtrackGestures,
-        routeRestarts,
-        restartCells,
-        resetCells,
-        blockedCount: poisson(rng, skill.care * 0.3 * level),
-        cellsErased: backtrackCells + restartCells + resetCells,
-        eventsDropped: 0,
-      },
-      events: [],
-      activeMsGross: gross,
-      activeMsNet: net,
-      completedAt: new Date(base.getTime() + clock),
-    });
-    offsets.push(clock);
+      const seconds = baseSeconds * (failed ? between(rng, 0.35, 0.8) : 1) * (tryNumber === 1 ? 1 : 0.85);
+      const { gross, net } = withIdle(rng, seconds * 1000);
 
-    clock += Math.round(between(rng, 3000, 8000));
+      const undo = poisson(rng, skill.care * (0.3 + 0.18 * pairs) * (failed ? 0.6 : 1));
+      const backtrackGestures = undo;
+      const backtrackCells = undo * int(rng, 1, 3);
+      const routeRestarts = Math.min(reset, poisson(rng, 0.2));
+      const restartCells = routeRestarts * int(rng, 2, 6);
+      const resetCells = reset * int(rng, 4, 12);
+
+      clock += gross;
+
+      results.push({
+        key: tryNumber <= 1 ? String(level) : `${level}.${tryNumber}`,
+        index: level,
+        tryNumber,
+        metrics: {
+          solved: !failed,
+          passed: !failed,
+          errors: nodeErrorsOf({ blockedCount: blocked, resetCount: reset }),
+          errorsAllowed: allowed,
+          pairCount: pairs,
+          boardSize: board,
+          undoCount: undo,
+          resetCount: reset,
+          corrections: undo + reset,
+          strokesStarted: pairs + undo + routeRestarts + int(rng, 0, pairs),
+          backtrackCells,
+          backtrackGestures,
+          routeRestarts,
+          restartCells,
+          resetCells,
+          blockedCount: blocked,
+          cellsErased: backtrackCells + restartCells + resetCells,
+          eventsDropped: 0,
+        },
+        events: [],
+        activeMsGross: gross,
+        activeMsNet: net,
+        completedAt: new Date(base.getTime() + clock),
+      });
+      offsets.push(clock);
+
+      clock += Math.round(between(rng, 3000, 8000));
+
+      if (!failed) break;
+
+      if (tryNumber === NODE_MAX_TRIES) {
+        // Sin intentos: en un nivel obligatorio (1 a 10) la partida cuenta como fallida; despues, como terminada.
+        status = level <= NODE_MIN_LEVELS ? "failed" : "finished";
+        break levels;
+      }
+    }
 
     if (abandonAfterLevel !== null && level >= abandonAfterLevel) break;
 
@@ -570,14 +601,16 @@ export function planStudent(input: PlanInput): DemoPlan {
         if (result.index >= MINI_CASES_UNLOCK_LEVEL) seriationPassedTen = true;
       }
 
-      if (draft.gameId === "node-connection") nodeMax = Math.max(nodeMax, result.index);
+      if (draft.gameId === "node-connection" && result.metrics.passed === true) {
+        nodeMax = Math.max(nodeMax, result.index);
+      }
 
       if (
         !unlocked.at &&
-        meetsMiniCasesRule({ colorSequenceMaxLevelPassed: seriationMax, nodeMaxLevelCompleted: nodeMax })
+        meetsMiniCasesRule({ colorSequenceMaxLevelPassed: seriationMax, nodeMaxLevelPassed: nodeMax })
       ) {
         unlocked.at = { clock: draft.clock, offsetMs: draft.offsets[index] as number };
-        unlocked.evidence = { colorSequenceMaxLevelPassed: seriationMax, nodeMaxLevelCompleted: nodeMax };
+        unlocked.evidence = { colorSequenceMaxLevelPassed: seriationMax, nodeMaxLevelPassed: nodeMax };
       }
     });
   };

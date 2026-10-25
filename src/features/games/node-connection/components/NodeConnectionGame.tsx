@@ -12,8 +12,10 @@ import { useLockNavigation } from "@/features/games/hooks/useLockNavigation";
 import { GAME_GUARD_CLASS, useScreenshotDeterrents } from "@/features/games/hooks/useScreenshotDeterrents";
 import { sounds, unlockSound } from "@/lib/gameSound";
 import { useWarnBeforeUnload } from "@/features/games/hooks/useWarnBeforeUnload";
-import { cellsErased, corrections } from "../stats";
+import { allowedErrors, errorsOf } from "../rules";
+import { corrections } from "../stats";
 import { useNodeConnectionGame } from "../hooks/useNodeConnectionGame";
+import { ErrorMeter } from "./ErrorMeter";
 import { NodeBoard } from "./NodeBoard";
 
 export function NodeConnectionGame() {
@@ -27,8 +29,14 @@ export function NodeConnectionGame() {
     hasResumable,
     isGameInProgress,
     resumeLevel,
+    resumeTry,
     phase,
     level,
+    tryNumber,
+    maxTries,
+    errors,
+    errorsAllowed,
+    maxLevelPassed,
     totalLevels,
     levelData,
     paths,
@@ -46,6 +54,7 @@ export function NodeConnectionGame() {
     undo,
     reset,
     continueToNextLevel,
+    retryLevel,
     finish,
     flushProgress,
   } = useNodeConnectionGame();
@@ -61,7 +70,7 @@ export function NodeConnectionGame() {
 
   // Advertencia (no bloqueo real, un navegador no lo permite) al intentar
   // cerrar la pestana o recargar mientras hay una partida en curso.
-  useWarnBeforeUnload(phase !== "idle" && phase !== "finished");
+  useWarnBeforeUnload(phase !== "idle" && phase !== "finished" && phase !== "failed");
 
   // Sonidos: tomar un nodo, unir un par (cada par unido suena mas agudo), chocar con otra linea
   // y completar el nivel.
@@ -96,6 +105,7 @@ export function NodeConnectionGame() {
 
   useEffect(() => {
     if (phase === "level-complete") sounds.levelUp();
+    if (phase === "level-failed" || phase === "failed") sounds.levelMissed();
   }, [phase]);
 
   // El navegador solo deja sonar despues de un toque: Comenzar, Continuar y el tablero lo habilitan.
@@ -127,6 +137,16 @@ export function NodeConnectionGame() {
   const lastResult = results[results.length - 1];
   const isLastLevel = level >= totalLevels;
   const totalPairs = levelData.pairs.length;
+  const lastErrors = lastResult
+    ? errorsOf({
+        blockedCount: lastResult.stats?.blockedCount ?? 0,
+        resetCount: lastResult.resetCount,
+      })
+    : 0;
+  const lastAllowed = lastResult
+    ? allowedErrors(lastResult.level, lastResult.pairCount)
+    : 0;
+  const triesLeft = maxTries - tryNumber;
 
   return (
     <div className={`${GAME_GUARD_CLASS} flex w-full flex-col items-center gap-4`}>
@@ -142,17 +162,28 @@ export function NodeConnectionGame() {
         <div className="flex w-full max-w-md flex-col items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-6 text-center">
           <p className="text-sm text-zinc-300">
             {hasResumable
-              ? `Tienes una partida en curso: vas en el nivel ${resumeLevel} de ${totalLevels}.`
+              ? `Tienes una partida en curso: vas en el nivel ${resumeLevel} de ${totalLevels} (intento ${resumeTry} de ${maxTries}).`
               : "Une cada par de nodos del mismo color sin que las líneas se crucen."}
           </p>
 
           {!hasResumable && (
-            <ul className="flex list-disc flex-col gap-1 pl-5 text-left text-sm text-zinc-400">
+            <ul className="flex list-disc flex-col gap-1.5 pl-5 text-left text-sm text-zinc-400">
               <li>Toca un nodo y arrastra hasta su pareja.</li>
               <li>Una línea no puede pasar por otro trazo ni por otro nodo.</li>
               <li>
-                Si una ruta bloquea a otra, toca su trazo para acortarlo o usa
-                Deshacer.
+                Cada choque con una línea u otro nodo cuenta como un error, y
+                Rehacer tablero cuenta como dos. Deshacer, acortar un trazo
+                tocándolo o retroceder sobre tu propia línea no cuentan.
+              </li>
+              <li>
+                Cada nivel tiene un margen de errores que se achica a medida que
+                avanzas. Si lo agotas, repites el mismo tablero: tienes{" "}
+                {maxTries} intentos por nivel.
+              </li>
+              <li>
+                Si no pasas un nivel en {maxTries} intentos, la partida termina.
+                Del nivel 1 al 10 se vuelve a empezar desde el 1; desde el 11 se
+                guarda hasta dónde llegaste.
               </li>
             </ul>
           )}
@@ -200,20 +231,27 @@ export function NodeConnectionGame() {
 
       {phase === "playing" && (
         <>
-          <p
-            className="text-center text-sm text-zinc-400"
-            aria-live="polite"
+          <div
+            className="flex w-full flex-col gap-2"
+            style={{ maxWidth: "min(34rem, 62vh)" }}
           >
-            Nivel {level} de {totalLevels} — pares conectados {connected} de{" "}
-            {totalPairs}
-          </p>
+            <p
+              className="text-center text-sm text-zinc-400"
+              aria-live="polite"
+            >
+              Nivel {level} de {totalLevels} · Intento {tryNumber} de {maxTries}{" "}
+              — pares conectados {connected} de {totalPairs}
+            </p>
+
+            <ErrorMeter errors={errors} allowed={errorsAllowed} />
+          </div>
 
           <div
             className="w-full"
             style={{ maxWidth: "min(34rem, 62vh)" }}
           >
             <NodeBoard
-              key={level}
+              key={`${level}-${tryNumber}`}
               level={levelData}
               paths={paths}
               activeColor={activeColor}
@@ -260,6 +298,12 @@ export function NodeConnectionGame() {
             Nivel completado
           </p>
 
+          <p className="text-sm text-zinc-300">
+            {lastErrors === 0
+              ? "¡Sin ningún error!"
+              : `Usaste ${lastErrors} de ${lastAllowed} errores permitidos.`}
+          </p>
+
           <button
             type="button"
             onClick={isLastLevel ? finish : continueToNextLevel}
@@ -270,32 +314,112 @@ export function NodeConnectionGame() {
         </div>
       )}
 
+      {phase === "level-failed" && lastResult && (
+        <div className="flex w-full max-w-sm flex-col items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-6 text-center">
+          <p className="text-sm text-zinc-400">
+            Nivel {lastResult.level} de {totalLevels} · Intento {lastResult.tryNumber} de{" "}
+            {maxTries}
+          </p>
+
+          <p className="text-lg font-semibold text-white">
+            Se acabó el margen de errores
+          </p>
+
+          <p className="text-sm text-zinc-300">
+            Superaste los {lastAllowed} errores permitidos en este nivel.{" "}
+            {triesLeft === 1
+              ? "Te queda 1 intento"
+              : `Te quedan ${triesLeft} intentos`}{" "}
+            con el mismo tablero: ahora que lo conoces, planifica las rutas
+            antes de trazar.
+          </p>
+
+          <button
+            type="button"
+            onClick={retryLevel}
+            className="mt-1 min-h-12 rounded-full bg-white px-8 py-3 text-base font-semibold text-black shadow-lg hover:bg-zinc-200"
+          >
+            Reintentar nivel
+          </button>
+        </div>
+      )}
+
+      {phase === "failed" && lastResult && (
+        <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-6 text-center">
+          <p className="text-lg font-semibold text-white">Fin de la partida</p>
+
+          <p className="text-sm text-zinc-300">
+            No lograste pasar el nivel {lastResult.level} en {maxTries} intentos.
+          </p>
+
+          <p className="text-sm text-zinc-400">
+            Para seguir avanzando hay que empezar de nuevo desde el nivel 1.
+            {maxLevelPassed > 0 && ` Nivel máximo superado: ${maxLevelPassed}.`}
+          </p>
+
+          <div className="mt-2 flex flex-wrap justify-center gap-3">
+            <button
+              type="button"
+              onClick={returnToStart}
+              className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
+            >
+              Volver a empezar
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.STUDENT)}
+              className="rounded-lg border border-zinc-700 bg-transparent px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            >
+              Salir del juego
+            </button>
+          </div>
+        </div>
+      )}
+
       {phase === "finished" && (
         <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-4 text-center sm:max-w-md lg:max-w-lg">
           <p className="text-lg font-semibold text-white">
-            Entrenamiento completo
+            {maxLevelPassed >= totalLevels
+              ? "Entrenamiento completo"
+              : "Fin de la partida"}
           </p>
+
+          {maxLevelPassed < totalLevels && (
+            <p className="text-sm text-zinc-300">
+              Nivel máximo superado: {maxLevelPassed}.
+            </p>
+          )}
 
           <table className="w-full text-left text-sm text-zinc-400">
             <thead>
               <tr className="border-b border-zinc-800 text-zinc-500">
                 <th className="py-1 font-normal">Nivel</th>
-                <th className="py-1 font-normal">Pares</th>
+                <th className="py-1 font-normal">Errores</th>
                 <th className="py-1 font-normal">Correcciones</th>
-                <th className="py-1 font-normal">Borradas</th>
+                <th className="py-1 font-normal">Resultado</th>
               </tr>
             </thead>
             <tbody>
               {results.map((r) => (
                 <tr
-                  key={r.level}
+                  key={`${r.level}-${r.tryNumber}`}
                   className="border-b border-zinc-800/50 last:border-0"
                 >
-                  <td className="py-1 text-white">{r.level}</td>
-                  <td className="py-1">{r.pairCount}</td>
-                  <td className="py-1">{corrections(r)}</td>
+                  <td className="py-1 text-white">
+                    {r.level}
+                    {r.tryNumber > 1 && (
+                      <span className="text-zinc-500"> (intento {r.tryNumber})</span>
+                    )}
+                  </td>
                   <td className="py-1">
-                    {r.stats ? cellsErased(r.stats) : "—"}
+                    {r.stats
+                      ? `${errorsOf({ blockedCount: r.stats.blockedCount, resetCount: r.resetCount })} de ${allowedErrors(r.level, r.pairCount)}`
+                      : "—"}
+                  </td>
+                  <td className="py-1">{corrections(r)}</td>
+                  <td className={r.passed ? "py-1 text-emerald-400" : "py-1 text-zinc-500"}>
+                    {r.passed ? "Superado" : "No superado"}
                   </td>
                 </tr>
               ))}
@@ -322,9 +446,14 @@ export function NodeConnectionGame() {
         </div>
       )}
 
-      {(phase === "idle" || phase === "playing" || phase === "level-complete") && (
+      {(phase === "idle" ||
+        phase === "playing" ||
+        phase === "level-complete" ||
+        phase === "level-failed") && (
         <div className="flex flex-wrap items-center justify-center gap-3">
-          {(phase === "playing" || phase === "level-complete") && (
+          {(phase === "playing" ||
+            phase === "level-complete" ||
+            phase === "level-failed") && (
             <SaveAndExitButton onSave={flushProgress} />
           )}
 

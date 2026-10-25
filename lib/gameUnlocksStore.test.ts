@@ -94,7 +94,7 @@ describe("collectMiniCasesEvidence", () => {
   it("sin partidas todo es 0", async () => {
     expect(await collectMiniCasesEvidence(RUT)).toEqual({
       colorSequenceMaxLevelPassed: 0,
-      nodeMaxLevelCompleted: 0,
+      nodeMaxLevelPassed: 0,
     });
   });
 
@@ -103,7 +103,7 @@ describe("collectMiniCasesEvidence", () => {
 
     expect(await collectMiniCasesEvidence(RUT)).toEqual({
       colorSequenceMaxLevelPassed: 12,
-      nodeMaxLevelCompleted: 15,
+      nodeMaxLevelPassed: 15,
     });
   });
 
@@ -128,7 +128,7 @@ describe("collectMiniCasesEvidence", () => {
 
     expect(await collectMiniCasesEvidence(RUT)).toEqual({
       colorSequenceMaxLevelPassed: 0,
-      nodeMaxLevelCompleted: 0,
+      nodeMaxLevelPassed: 0,
     });
   });
 });
@@ -160,8 +160,8 @@ describe("resolveMiniCasesAccess", () => {
       studentRut: RUT,
       gameId: "mini-cases",
       source: "rule",
-      rule: "mini-cases-v1",
-      evidence: { colorSequenceMaxLevelPassed: 10, nodeMaxLevelCompleted: 10 },
+      rule: "mini-cases-v2",
+      evidence: { colorSequenceMaxLevelPassed: 10, nodeMaxLevelPassed: 10 },
     });
     expect(db.unlocks[0]?.unlockedAt).toBeInstanceOf(Date);
   });

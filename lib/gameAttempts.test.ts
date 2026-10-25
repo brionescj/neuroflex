@@ -114,18 +114,11 @@ describe("parseLevelReport", () => {
     }
 
     expect(parseLevelReport("color-sequence", { ...seriacion, tryNumber: 4 }, NOW).ok).toBe(false);
-    // la regla de 3 intentos es solo de seriacion
-    expect(
-      parseLevelReport(
-        "node-connection",
-        {
-          ...seriacion,
-          tryNumber: 4,
-          metrics: { pairCount: 3, undoCount: 0, resetCount: 0 },
-        },
-        NOW,
-      ).ok,
-    ).toBe(true);
+    // nodos tambien tiene 3 intentos por nivel; Mini casos no tiene reintentos
+    const nodos = { ...seriacion, metrics: { pairCount: 3, undoCount: 0, resetCount: 0 } };
+
+    expect(parseLevelReport("node-connection", { ...nodos, tryNumber: 3 }, NOW).ok).toBe(true);
+    expect(parseLevelReport("node-connection", { ...nodos, tryNumber: 4 }, NOW).ok).toBe(false);
   });
 
   describe("eventos finos", () => {

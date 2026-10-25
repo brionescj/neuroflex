@@ -1,5 +1,6 @@
 import { LEVELS } from "../levels";
 import type { LevelReport, MetricValue } from "../../attempts/types";
+import { allowedErrors, errorsOf, nodeResultKey } from "../rules";
 import { cellsErased, corrections } from "../stats";
 import type { NodeEvent, NodeLevelResult } from "../types";
 
@@ -15,7 +16,7 @@ function eventRecord(event: NodeEvent): Record<string, MetricValue> {
 }
 
 /**
- * Convierte el resultado de un nivel al formato del registro de partidas.
+ * Convierte el resultado de un intento de nivel al formato del registro de partidas.
  * Si falta el tiempo neto (partida guardada antes del registro) se usa el
  * tiempo activo, y si falta la fecha, `fallbackDate`.
  */
@@ -28,10 +29,22 @@ export function toNodeReport(
   const hasEvents = (result.events?.length ?? 0) > 0;
 
   return {
-    key: String(result.level),
+    key: nodeResultKey(result.level, result.tryNumber),
     index: result.level,
-    tryNumber: 1,
+    tryNumber: result.tryNumber,
     metrics: {
+      solved: result.solved,
+      passed: result.passed,
+      // Sin contadores (partida anterior a registrarlos) no se inventan errores.
+      ...(result.stats
+        ? {
+            errors: errorsOf({
+              blockedCount: result.stats.blockedCount,
+              resetCount: result.resetCount,
+            }),
+            errorsAllowed: allowedErrors(result.level, result.pairCount),
+          }
+        : {}),
       pairCount: result.pairCount,
       boardSize: level ? level.rows : 0,
       undoCount: result.undoCount,
@@ -52,8 +65,15 @@ export function toNodeReport(
 }
 
 /**
- * Cambia cuando cambian los tableros: sin ella no se pueden comparar
- * partidas jugadas con tableros distintos.
+ * Revision de las reglas de aprobacion. Sube si cambian los errores permitidos
+ * o los intentos: una partida jugada sin errores permitidos ("r1", la unica
+ * hasta entonces) no se puede comparar con una jugada con ellos.
+ */
+const RULES_REVISION = 2;
+
+/**
+ * Cambia cuando cambian los tableros o las reglas: sin ella no se pueden
+ * comparar partidas jugadas con tableros o reglas distintos.
  */
 export function nodeContentVersion(): string {
   const text = JSON.stringify(
@@ -68,5 +88,5 @@ export function nodeContentVersion(): string {
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
 
-  return `nodes-${LEVELS.length}-${hash.toString(16)}`;
+  return `nodes-${LEVELS.length}-${hash.toString(16)}-r${RULES_REVISION}`;
 }

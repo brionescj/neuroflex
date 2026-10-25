@@ -6,6 +6,7 @@ import { LEVELS } from "../../src/features/games/node-connection/levels";
 import { nodeContentVersion } from "../../src/features/games/node-connection/hooks/nodeReport";
 import { parseLevelReport } from "../gameAttempts";
 import { meetsMiniCasesRule } from "../gameUnlocks";
+import { nodeAllowedErrors, nodeErrorsOf } from "../nodeRules";
 import { chileLocalToUtc } from "./chileTime";
 import {
   COLOR_SEQUENCE_VERSION,
@@ -236,11 +237,39 @@ describe("partidas de prueba", () => {
     }
   });
 
-  it("Nodos termina solo al completar los 15 niveles; Mini casos trae los 10 casos", () => {
+  it("Nodos usa los errores permitidos y la regla de cierre reales", () => {
+    const { attempts } = plan(0);
+
+    for (const attempt of attempts.filter((a) => a.gameId === "node-connection")) {
+      for (const r of attempt.results) {
+        const errors = nodeErrorsOf({
+          blockedCount: Number(r.metrics.blockedCount),
+          resetCount: Number(r.metrics.resetCount),
+        });
+
+        expect(r.tryNumber).toBeLessThanOrEqual(3);
+        expect(r.key).toBe(r.tryNumber === 1 ? String(r.index) : `${r.index}.${r.tryNumber}`);
+        expect(r.metrics.errors).toBe(errors);
+        expect(r.metrics.errorsAllowed).toBe(nodeAllowedErrors(r.index, Number(r.metrics.pairCount)));
+        // Un intento perdido termina apenas se superan los errores permitidos.
+        expect(r.metrics.passed).toBe(errors <= Number(r.metrics.errorsAllowed));
+        expect(r.metrics.solved).toBe(r.metrics.passed);
+      }
+    }
+  });
+
+  it("Nodos termina al completar los 15 niveles o al agotar los intentos; Mini casos trae los 10 casos", () => {
     const { attempts } = plan(0);
 
     for (const attempt of closed(attempts, "node-connection")) {
-      expect(attempt.results.map((r) => r.index)).toEqual(Array.from({ length: 15 }, (_, i) => i + 1));
+      const last = attempt.results[attempt.results.length - 1]!;
+
+      if (last.metrics.passed === true) {
+        expect(last.index).toBe(15);
+      } else {
+        expect(last.tryNumber).toBe(3);
+        expect(attempt.status).toBe(last.index <= 10 ? "failed" : "finished");
+      }
     }
 
     for (const attempt of closed(attempts, "mini-cases")) {

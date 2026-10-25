@@ -61,7 +61,7 @@ describe("nodos: el reporte del cliente pasa el validador del servidor", () => {
 
   it("ningun evento se pierde ni se altera", () => {
     const report = toNodeReport(
-      { level: 1, pairCount: 2, timeMs: 8000, undoCount: 1, resetCount: 1, events, eventsDropped: 3 },
+      { level: 1, tryNumber: 1, solved: true, passed: true, pairCount: 2, timeMs: 8000, undoCount: 1, resetCount: 1, events, eventsDropped: 3 },
       NOW.toISOString(),
     );
     const parsed = parseLevelReport("node-connection", report, NOW);

@@ -15,6 +15,9 @@ const c = (row: number, col: number): Cell => ({ row, col });
 function result(level: number): NodeLevelResult {
   return {
     level,
+    tryNumber: 1,
+    solved: true,
+    passed: true,
     pairCount: getLevel(level).pairs.length,
     timeMs: 12_000,
     undoCount: 1,
@@ -380,5 +383,103 @@ describe("registro de partida en el avance", () => {
     const snap = { ...playing(1, partial, []), attempt: { attemptId: "x" } };
 
     expect(parseNodeConnectionProgress(snap)?.attempt).toBeUndefined();
+  });
+});
+
+describe("reintentos y partida perdida en el avance guardado", () => {
+  const lost = (level: number, tryNumber: number): NodeLevelResult => ({
+    ...result(level),
+    tryNumber,
+    solved: false,
+    passed: false,
+  });
+
+  const snap = (
+    phase: "playing" | "level-complete" | "level-failed" | "finished" | "failed",
+    level: number,
+    tryNumber: number,
+    results: NodeLevelResult[],
+  ) =>
+    buildNodeConnectionSnapshot({
+      phase,
+      level,
+      tryNumber,
+      paths: {},
+      elapsedMs: 0,
+      undoCount: 0,
+      resetCount: 0,
+      results,
+    });
+
+  it("un intento perdido espera el reintento y el siguiente es del mismo nivel", () => {
+    const failed = snap("level-failed", 2, 1, [result(1), lost(2, 1)]);
+
+    expect(parseNodeConnectionProgress(failed)).toEqual(failed);
+
+    const retrying = playing(2, {}, [result(1), lost(2, 1)]);
+
+    // sigue el intento 2 del nivel 2, no el nivel 3
+    expect(parseNodeConnectionProgress({ ...retrying, tryNumber: 2 })).not.toBeNull();
+    expect(parseNodeConnectionProgress({ ...retrying, tryNumber: 1 })).toBeNull();
+    expect(parseNodeConnectionProgress({ ...retrying, level: 3, tryNumber: 1 })).toBeNull();
+  });
+
+  it("level-failed exige que el ultimo intento sea perdido y que queden intentos", () => {
+    expect(parseNodeConnectionProgress(snap("level-failed", 1, 1, [result(1)]))).toBeNull();
+    expect(
+      parseNodeConnectionProgress(
+        snap("level-failed", 1, 3, [lost(1, 1), lost(1, 2), lost(1, 3)]),
+      ),
+    ).toBeNull();
+  });
+
+  it("failed: tres intentos perdidos en un nivel obligatorio", () => {
+    const results = [result(1), lost(2, 1), lost(2, 2), lost(2, 3)];
+    const failed = snap("failed", 2, 3, results);
+
+    expect(parseNodeConnectionProgress(failed)).toEqual(failed);
+    expect(parseNodeConnectionProgress(snap("failed", 2, 2, results.slice(0, 3)))).toBeNull();
+  });
+
+  it("finished: tambien al agotar los intentos desde el nivel 11", () => {
+    const passed = Array.from({ length: 10 }, (_, i) => result(i + 1));
+    const results = [...passed, lost(11, 1), lost(11, 2), lost(11, 3)];
+    const closed = snap("finished", 11, 3, results);
+
+    expect(parseNodeConnectionProgress(closed)).toEqual(closed);
+    // en el nivel 10 agotar los intentos es una partida perdida, no terminada
+    const tenLost = [...passed.slice(0, 9), lost(10, 1), lost(10, 2), lost(10, 3)];
+
+    expect(parseNodeConnectionProgress(snap("finished", 10, 3, tenLost))).toBeNull();
+    expect(parseNodeConnectionProgress(snap("failed", 10, 3, tenLost))).not.toBeNull();
+  });
+
+  it("rechaza un intento pasado cuyo tablero no se resolvio", () => {
+    const bad = { ...result(1), solved: false, passed: true };
+
+    expect(parseNodeConnectionProgress(snap("level-complete", 1, 1, [bad]))).toBeNull();
+  });
+
+  it("un avance anterior a los reintentos se lee como primeros intentos pasados", () => {
+    const old = {
+      version: 1,
+      phase: "level-complete",
+      level: 2,
+      paths: [],
+      elapsedMs: 0,
+      undoCount: 0,
+      resetCount: 0,
+      results: [
+        { level: 1, pairCount: 2, timeMs: 5000, undoCount: 0, resetCount: 0 },
+        { level: 2, pairCount: 3, timeMs: 7000, undoCount: 0, resetCount: 0 },
+      ],
+    };
+    const parsed = parseNodeConnectionProgress(old);
+
+    expect(parsed?.tryNumber).toBe(1);
+    expect(parsed?.results.map((r) => [r.tryNumber, r.solved, r.passed])).toEqual([
+      [1, true, true],
+      [1, true, true],
+    ]);
   });
 });
