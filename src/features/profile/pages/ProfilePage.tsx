@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/Field";
 import { EmailInput } from "@/components/forms/EmailInput";
 import { AVATARS, type AvatarId } from "@/config/avatars";
-import { genderLabel, universityLabel } from "@/config/studentOptions";
+import { universityLabel } from "@/config/studentOptions";
 import { useAuth } from "@/context";
 import { updateAdminNamesAction } from "@/features/admin/actions/admins.action";
 import { AdminNameForm, type PersonNames } from "@/features/admin/components/AdminNameForm";
@@ -42,7 +42,6 @@ function studentFields(details: Extract<ProfileDetails, { role: "student" }>) {
     { label: "RUT", value: details.rut },
     { label: "Universidad", value: universityLabel(details.university) },
     { label: "Fecha de nacimiento", value: formatBirthDate(details.birthDate) },
-    { label: "Género", value: genderLabel(details.gender) },
     { label: "Ciudad", value: details.ciudad },
     { label: "Región", value: details.region },
     {
