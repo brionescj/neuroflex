@@ -22,9 +22,10 @@ export function LogoutButton() {
       onClick={handleLogout}
       disabled={isLocked}
       title={isLocked ? "Termina la partida para cerrar sesion" : undefined}
-      className="gap-2 bg-zinc-800 text-white hover:bg-zinc-700"
+      size="sm"
+      className="shrink-0 gap-2 whitespace-nowrap bg-zinc-800 px-3 text-sm text-white hover:bg-zinc-700 sm:px-4"
     >
-      <LogOut className="size-4" />
+      <LogOut className="size-4 shrink-0" />
       Cerrar sesion
     </Button>
   );

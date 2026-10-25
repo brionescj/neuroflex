@@ -13,13 +13,13 @@ export default function DashboardLayout() {
 
   return (
     <GameLockProvider>
-      <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="min-h-dvh bg-zinc-950 text-white">
         <Sidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
 
-        <div className="flex min-h-screen flex-col md:pl-64">
+        <div className="flex min-h-dvh flex-col md:pl-64">
           <Navbar onMenuClick={() => setIsSidebarOpen(true)} />
 
           <main className="flex-1 space-y-4 p-6">
