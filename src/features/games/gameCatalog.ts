@@ -18,10 +18,13 @@ export type GameCatalogEntry = {
   icon: LucideIcon;
 
   /**
-   * Si el juego se desbloquea jugando otros: hasta que el servidor confirme
-   * el desbloqueo, ni aparece en el menu.
+   * Si el juego se desbloquea jugando otros: hasta que el servidor confirme el
+   * desbloqueo se ve tenue en el menu y no abre (el servidor tambien lo exige).
    */
   unlockKey?: UnlockKey;
+
+  /** Texto positivo que explica como desbloquearlo (solo para juegos con `unlockKey`). */
+  unlockHint?: string;
 
   /** Clase de fondo Tailwind para la portada del juego (no hay assets de imagen en el proyecto todavia). */
   accentClassName: string;
@@ -58,6 +61,8 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     path: ROUTES.STUDENT_GAME_MINI_CASES,
     icon: ListOrdered,
     unlockKey: "miniCases",
+    unlockHint:
+      "¡Ya casi! Se abre cuando llegues al nivel 10 en Seriación de colores y también en Conexión de nodos. Sigue jugando, cada nivel te acerca.",
     accentClassName: "bg-violet-500",
   },
 ];
