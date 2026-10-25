@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,11 @@ type StudentTableProps = {
   selected: string;
   /** Se llama al tocar una fila. */
   onSelect: (rut: string) => void;
+  /** Lo escrito en el buscador y la página, que guarda quien usa la tabla para recordarlos al volver. */
+  query: string;
+  page: number;
+  onQueryChange: (query: string) => void;
+  onPageChange: (page: number) => void;
 };
 
 const PAGE_SIZE = 10;
@@ -31,9 +36,7 @@ function State({ enabled }: { enabled: boolean }) {
  * que la filtra. Se ve de 10 en 10. En el celular el paralelo y la universidad pasan a la
  * segunda línea del nombre para que no haga falta desplazar hacia el lado.
  */
-export function StudentTable({ students, selected, onSelect }: StudentTableProps) {
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(0);
+export function StudentTable({ students, selected, onSelect, query, page, onQueryChange, onPageChange }: StudentTableProps) {
   const inputId = useId();
 
   const found = useMemo(() => {
@@ -64,8 +67,8 @@ export function StudentTable({ students, selected, onSelect }: StudentTableProps
           type="text"
           value={query}
           onChange={(e) => {
-            setQuery(e.target.value);
-            setPage(0);
+            onQueryChange(e.target.value);
+            onPageChange(0);
           }}
           placeholder="Ej.: Soto"
           autoComplete="off"
@@ -147,7 +150,7 @@ export function StudentTable({ students, selected, onSelect }: StudentTableProps
           <span className="flex gap-2">
             <button
               type="button"
-              onClick={() => setPage(current - 1)}
+              onClick={() => onPageChange(current - 1)}
               disabled={current === 0}
               className="flex min-h-11 items-center gap-1 rounded-lg border border-zinc-700 px-3 text-zinc-200 enabled:hover:bg-zinc-800 disabled:opacity-40"
             >
@@ -156,7 +159,7 @@ export function StudentTable({ students, selected, onSelect }: StudentTableProps
             </button>
             <button
               type="button"
-              onClick={() => setPage(current + 1)}
+              onClick={() => onPageChange(current + 1)}
               disabled={current >= pages - 1}
               className="flex min-h-11 items-center gap-1 rounded-lg border border-zinc-700 px-3 text-zinc-200 enabled:hover:bg-zinc-800 disabled:opacity-40"
             >

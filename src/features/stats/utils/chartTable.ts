@@ -30,9 +30,16 @@ export function chartTable(result: ChartResult, options: { single?: boolean } = 
   return { columns, rows };
 }
 
+/** El dia (del reloj de quien descarga) como AAAA-MM-DD, para los nombres de archivo. */
+export function chartDay(now: Date = new Date()): string {
+  const two = (value: number) => String(value).padStart(2, "0");
+
+  return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
+}
+
 /** «neuroflex-cs-time-2026-10-21»: el grafico y el dia, sin la extension. */
 export function exportFileName(result: ChartResult, now: Date = new Date()): string {
-  return `neuroflex-${result.chart}-${now.toISOString().slice(0, 10)}`;
+  return `neuroflex-${result.chart}-${chartDay(now)}`;
 }
 
 /** El nombre de la hoja de Excel: maximo 31 caracteres y sin \ / ? * [ ] : */

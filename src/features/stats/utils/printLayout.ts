@@ -1,7 +1,8 @@
 /**
- * Como se reparte una hoja carta en el PDF de un grafico: encabezado, grafico y notas, uno bajo
- * otro. El grafico nunca pasa del 40 % del alto de la hoja (se achica sin deformarse) y todo
- * cabe en una sola pagina.
+ * Como se reparte el PDF de un grafico sobre hojas carta: encabezado, grafico, listas y notas,
+ * uno bajo otro. El grafico nunca pasa del 40 % del alto de la hoja (se achica sin deformarse).
+ * Lo normal es una sola hoja; si las listas de estudiantes no caben, el resto sigue en las
+ * hojas siguientes, siempre cortando entre bloques y nunca por la mitad de una fila.
  */
 
 /** Hoja carta en puntos (1 pt = 1/72 de pulgada). */
@@ -15,49 +16,53 @@ export const PLOT_MAX_SHARE = 0.4;
 /** Ancho, en pixeles, con que se dibuja la hoja antes de pasarla al PDF. */
 export const SHEET_WIDTH_PX = 720;
 
-/** Marca de cada parte de la hoja, para medirlas y pasarlas al PDF una por una. */
-export const SHEET_PARTS = { header: "header", plot: "plot", notes: "notes" } as const;
+/**
+ * Filas de una lista por trozo: asi una lista larga pasa a la hoja siguiente sin cortarse por la
+ * mitad de una fila. Las tablas anchas (con textos que se parten en dos lineas) llevan menos filas.
+ */
+export function listRowsPerBlock(columnCount: number): number {
+  return columnCount > 5 ? 6 : 12;
+}
 
-const GAP = 14;
+const GAP = 12;
 
 export type Box = { x: number; y: number; width: number; height: number };
 
-export type SheetPlacement = { header: Box | null; plot: Box | null; notes: Box | null };
+/** Una parte de la hoja ya dibujada: `plot` es el grafico (con tope de alto) y `text` todo lo demas. */
+export type FlowBlock = { id: string; kind: "plot" | "text"; height: number };
 
-/** Alto (en pixeles, con la hoja dibujada a SHEET_WIDTH_PX) de cada parte; 0 si no lleva. */
-export type SheetHeights = { header: number; plot: number; notes: number };
+export type PlacedBlock = { id: string; page: number; box: Box };
 
-export function placeSheet(heights: SheetHeights): SheetPlacement {
+/** Pone cada bloque (alto en pixeles, con la hoja dibujada a SHEET_WIDTH_PX) en su hoja y posicion. */
+export function flowSheet(blocks: FlowBlock[]): PlacedBlock[] {
   const contentWidth = LETTER.width - MARGIN * 2;
   const contentHeight = LETTER.height - MARGIN * 2;
   const pt = contentWidth / SHEET_WIDTH_PX;
+  const placed: PlacedBlock[] = [];
+  let page = 0;
+  let y = 0;
 
-  // El grafico: nunca mas del 40 % del alto de la hoja, achicado en ancho y alto por igual.
-  const plotNatural = heights.plot * pt;
-  const plotScale = plotNatural > 0 ? Math.min(1, (LETTER.height * PLOT_MAX_SHARE) / plotNatural) : 1;
+  for (const block of blocks) {
+    if (block.height <= 0) continue;
 
-  const sizes = {
-    header: { width: contentWidth, height: heights.header * pt },
-    plot: { width: contentWidth * plotScale, height: plotNatural * plotScale },
-    notes: { width: contentWidth, height: heights.notes * pt },
-  };
-  const present = (Object.keys(sizes) as (keyof typeof sizes)[]).filter((key) => heights[key] > 0);
-  const gaps = Math.max(0, present.length - 1) * GAP;
-  const total = present.reduce((sum, key) => sum + sizes[key].height, 0);
+    const natural = block.height * pt;
+    // El grafico: como mucho el 40 % del alto de la hoja; cualquier bloque: como mucho la hoja entera.
+    const cap = Math.min(contentHeight, block.kind === "plot" ? LETTER.height * PLOT_MAX_SHARE : contentHeight);
+    const scale = Math.min(1, cap / natural);
+    const width = contentWidth * scale;
+    const height = natural * scale;
 
-  // Si aun asi no cabe en la pagina, se achica todo por igual.
-  const fit = total + gaps > contentHeight ? (contentHeight - gaps) / total : 1;
-  const placement: SheetPlacement = { header: null, plot: null, notes: null };
-  let y = MARGIN;
-
-  for (const key of present) {
-    const width = sizes[key].width * fit;
-    const height = sizes[key].height * fit;
+    if (y > 0 && y + height > contentHeight) {
+      page += 1;
+      y = 0;
+    }
 
     // El grafico va centrado; el texto, pegado al margen.
-    placement[key] = { x: key === "plot" ? MARGIN + (contentWidth - width) / 2 : MARGIN, y, width, height };
+    const x = block.kind === "plot" ? MARGIN + (contentWidth - width) / 2 : MARGIN;
+
+    placed.push({ id: block.id, page, box: { x, y: MARGIN + y, width, height } });
     y += height + GAP;
   }
 
-  return placement;
+  return placed;
 }

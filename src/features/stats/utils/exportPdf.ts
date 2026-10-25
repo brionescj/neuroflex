@@ -3,9 +3,8 @@ import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 
 import { PrintSheet, type PrintSheetProps } from "../components/PrintSheet";
-import { exportFileName } from "./chartTable";
 import { saveBlob } from "./download";
-import { LETTER, SHEET_PARTS, SHEET_WIDTH_PX, placeSheet, type Box, type SheetHeights } from "./printLayout";
+import { LETTER, SHEET_WIDTH_PX, flowSheet, type FlowBlock } from "./printLayout";
 
 /** Lo que define el aspecto de un trazo o un texto dentro de un SVG. */
 const SVG_PROPERTIES = [
@@ -51,15 +50,19 @@ const MAX_CANVAS_AREA = 16_000_000;
 /** 3 pixeles por pixel: unos 290 ppp en la hoja, de sobra para imprimir. */
 const PIXEL_RATIO = 3;
 
-export type PdfInput = Omit<PrintSheetProps, "single"> & { single: boolean };
+export type PdfInput = PrintSheetProps & {
+  /** Nombre del archivo, sin la extension. */
+  fileName: string;
+};
 
 /**
- * El PDF de un grafico: siempre una hoja carta vertical, con el grafico como maximo al 40 %
- * del alto, el «?» y «Cómo se calculó» desplegados y fondo blanco. La hoja se dibuja fuera de
- * pantalla con un ancho fijo, se fotografia por partes (encabezado, grafico, notas) con
- * html-to-image (no html2canvas: no entiende los colores oklch de Tailwind v4) y se arma con jsPDF.
+ * El PDF de un grafico o de un resumen: hojas carta verticales (casi siempre una), con el
+ * grafico como maximo al 40 % del alto, el «?» y «Cómo se calculó» desplegados, las listas de
+ * estudiantes al final del resumen y fondo blanco. La hoja se dibuja fuera de pantalla con un
+ * ancho fijo, se fotografia por partes con html-to-image (no html2canvas: no entiende los
+ * colores oklch de Tailwind v4) y se arma con jsPDF.
  */
-export async function downloadPdf(input: PdfInput): Promise<void> {
+export async function downloadPdf({ fileName, ...sheet }: PdfInput): Promise<void> {
   const [{ toPng }, { jsPDF }] = await Promise.all([import("html-to-image"), import("jspdf")]);
 
   const host = document.createElement("div");
@@ -71,46 +74,45 @@ export async function downloadPdf(input: PdfInput): Promise<void> {
   const root = createRoot(host);
 
   try {
-    flushSync(() => root.render(createElement(PrintSheet, input)));
+    flushSync(() => root.render(createElement(PrintSheet, sheet)));
     await nextFrames();
     await document.fonts?.ready;
     await nextFrames();
     freezeSvgStyles(host);
 
-    const part = (name: string) => host.querySelector<HTMLElement>(`[data-sheet-part="${name}"]`);
-    const header = part(SHEET_PARTS.header);
-    const plot = part(SHEET_PARTS.plot);
-    const notes = part(SHEET_PARTS.notes);
+    const parts = Array.from(host.querySelectorAll<HTMLElement>("[data-sheet-part]"));
 
-    if (!header || !plot || !notes) throw new Error("No se pudo armar la hoja del PDF.");
+    if (parts.length === 0) throw new Error("No se pudo armar la hoja del PDF.");
 
-    const heights: SheetHeights = {
-      header: header.getBoundingClientRect().height,
-      plot: plot.getBoundingClientRect().height,
-      notes: notes.getBoundingClientRect().height,
-    };
-    const placement = placeSheet(heights);
+    const blocks: FlowBlock[] = parts.map((element, i) => ({
+      id: String(i),
+      kind: element.dataset.sheetKind === "plot" ? "plot" : "text",
+      height: element.getBoundingClientRect().height,
+    }));
+    const placed = flowSheet(blocks);
 
     const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: [LETTER.width, LETTER.height], compress: true });
+    let page = 0;
 
-    const parts: [HTMLElement, Box | null][] = [
-      [header, placement.header],
-      [plot, placement.plot],
-      [notes, placement.notes],
-    ];
+    for (const block of placed) {
+      const element = parts[Number(block.id)];
 
-    for (const [element, box] of parts) {
-      if (box === null) continue;
+      if (!element) continue;
+
+      while (page < block.page) {
+        pdf.addPage([LETTER.width, LETTER.height], "portrait");
+        page += 1;
+      }
 
       const { width, height } = element.getBoundingClientRect();
       const ratio = Math.min(PIXEL_RATIO, Math.sqrt(MAX_CANVAS_AREA / (width * height)));
       const image = await toPng(element, { pixelRatio: ratio, skipFonts: true, backgroundColor: "#ffffff" });
 
-      pdf.addImage(image, "PNG", box.x, box.y, box.width, box.height);
+      pdf.addImage(image, "PNG", block.box.x, block.box.y, block.box.width, block.box.height);
     }
 
-    pdf.setProperties({ title: input.result.title });
-    saveBlob(pdf.output("blob"), `${exportFileName(input.full)}.pdf`);
+    pdf.setProperties({ title: sheet.title });
+    saveBlob(pdf.output("blob"), `${fileName}.pdf`);
   } finally {
     root.unmount();
     host.remove();

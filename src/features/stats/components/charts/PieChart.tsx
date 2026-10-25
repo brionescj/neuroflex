@@ -1,7 +1,10 @@
+import { cn } from "@/lib/utils";
+
 import { seriesColor } from "../../utils/colors";
 import { formatNumber, formatValue } from "../../utils/format";
 import type { ChartResult } from "../../types";
 import { percentParts, shares } from "./composition";
+import { usePrintMode } from "./printMode";
 import { useSingleStudent } from "./singleStudent";
 
 const SIZE = 148;
@@ -46,12 +49,13 @@ function wrapLabel(text: string, max = 12): string[] {
  */
 export function PieChart({ result }: { result: ChartResult }) {
   const single = useSingleStudent();
+  const printing = usePrintMode();
   // Al quitar partes, cada una conserva su color original.
   const slotOf = (index: number) => result.categorySlots?.[index] ?? index;
 
   return (
     <>
-    <div className="grid gap-5 sm:grid-cols-2">
+    <div className={cn("grid gap-5", printing ? (result.series.length > 1 ? "grid-cols-2" : "grid-cols-1") : "sm:grid-cols-2")}>
       {result.series.map((series) => {
         const parts = shares(series.values);
         const percents = percentParts(series.values);

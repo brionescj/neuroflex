@@ -24,7 +24,9 @@ import {
   toggleCategory,
   withoutCategories,
 } from "../utils/categories";
+import { listsOfCards } from "../utils/cardLists";
 import { calcSummary } from "../utils/calcSummary";
+import { exportFileName } from "../utils/chartTable";
 import { groupsOf, groupsSignature, toggleGroup, withoutGroups } from "../utils/groups";
 import type { ChartResult, ViewId } from "../types";
 import { CategoryFilter } from "./CategoryFilter";
@@ -58,6 +60,8 @@ const VIEW_META: Record<ViewChoice, { label: string; Icon: typeof ChartColumn }>
   cards: { label: "Tarjetas", Icon: LayoutGrid },
   table: { label: "Tabla", Icon: Table2 },
 };
+
+const noop = () => undefined;
 
 const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
 const NO_CATEGORIES_HIDDEN: ReadonlySet<number> = new Set();
@@ -120,12 +124,17 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
         const { downloadPdf } = await import("../utils/exportPdf");
 
         await downloadPdf({
-          result,
-          full,
-          view,
-          hidden,
+          fileName: exportFileName(full),
+          title: result.title,
           subtitle,
+          basis: full.basis,
           description,
+          exploratory: result.exploratory,
+          warnings: result.warnings,
+          legend: <GroupLegend result={full} view={view} hidden={hidden} onToggle={noop} onShowAll={noop} readOnly />,
+          plot: <ChartPlot result={result} view={view} />,
+          lists: result.cards ? listsOfCards(result.cards) : [],
+          deduction: full.deduction,
           calcTitle: calcSummary(full, single, removedSomething),
           notes: [...full.notes, ...(categoriesNote ? [categoriesNote] : [])],
           single,

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { seriesColor } from "../../utils/colors";
 import type { ChartCards } from "../../types";
 import { RowsTable } from "./ChartTable";
+import { usePrintMode } from "./printMode";
 
 type CardItem = ChartCards[number]["items"][number];
 type CardList = NonNullable<CardItem["lists"]>[number];
@@ -44,6 +45,7 @@ function OpenList({ item, list, onClose }: { item: CardItem; list: CardList; onC
  * del numero (quienes si, quienes no).
  */
 export function StatCards({ cards }: { cards: ChartCards }) {
+  const printing = usePrintMode();
   // Que lista esta abierta: bloque, tarjeta y lista. Una a la vez.
   const [open, setOpen] = useState<string | null>(null);
 
@@ -63,7 +65,7 @@ export function StatCards({ cards }: { cards: ChartCards }) {
           )}
 
           {/* «dense»: la lista abierta ocupa su propia fila justo debajo de la tarjeta tocada, y la vecina rellena el hueco. */}
-          <div className="grid grid-flow-dense grid-cols-2 gap-2 lg:grid-cols-3">
+          <div className={cn("grid grid-flow-dense gap-2", printing ? "grid-cols-3" : "grid-cols-2 lg:grid-cols-3")}>
             {block.items.flatMap((item, i) => {
               const openIndex = (item.lists ?? []).findIndex((_, l) => open === `${b}|${i}|${l}`);
               const openList = openIndex === -1 ? undefined : item.lists?.[openIndex];

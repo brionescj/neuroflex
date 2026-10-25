@@ -1,8 +1,9 @@
 import { LoaderCircle } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/context";
 import { cn } from "@/lib/utils";
 
 import { getStatsCatalogAction, getStudentProfileAction } from "../actions/stats.action";
@@ -11,14 +12,17 @@ import { ChartViews } from "../components/ChartViews";
 import { GameSection } from "../components/GameSection";
 import { HistoryTable } from "../components/HistoryTable";
 import { StudentTable } from "../components/StudentTable";
+import { SummaryPdfButton } from "../components/SummaryPdfButton";
 import type { StatesByGame } from "../services/stats.service";
 import type { AttemptState, Catalog, GameId, StudentProfile } from "../types";
+import { recallDesempeno, rememberDesempeno } from "../utils/desempenoMemory";
 
 const PANEL = "viz-root rounded-2xl border border-white/10 bg-[var(--viz-surface)] p-4 text-[var(--viz-text)]";
 
 const NO_STATES: StatesByGame = {};
 
-type Loaded = { rut: string; profile: StudentProfile };
+/** `key`: las partidas elegidas con que se calculó; si cambian, hay que recalcular a la vista. */
+type Loaded = { rut: string; profile: StudentProfile; key: string };
 
 /** Las partidas que el admin dejó entrar en los gráficos de cada juego, para un estudiante. */
 type StatesChoice = { rut: string; states: StatesByGame };
@@ -33,18 +37,42 @@ function Detail({ label, value }: { label: string; value: string }) {
 }
 
 export default function StudentStatsPage() {
+  const { user } = useAuth();
+  const owner = user?.rut ?? "";
   const [params, setParams] = useSearchParams();
-  const rut = params.get("rut") ?? "";
-  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  // Lo que la vista dejó al irse a otra pestaña (el buscador, a quién miraba, lo ya calculado).
+  const [saved] = useState(() => recallDesempeno(owner));
+  const explicit = params.get("rut");
+  // El estudiante al que se vuelve mientras la dirección todavía no lleva su RUT (se escribe justo al entrar).
+  const [pending, setPending] = useState(saved?.rut ?? "");
+  const rut = explicit ?? pending;
+  const [catalog, setCatalog] = useState<Catalog | null>(saved?.catalog ?? null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [loaded, setLoaded] = useState<Loaded | null>(() => {
+    const target = explicit ?? saved?.rut ?? "";
+
+    return saved?.profile && saved.profile.rut === target ? saved.profile : null;
+  });
   // La lista se pliega al elegir a alguien; «Cambiar estudiante» la vuelve a abrir.
-  const [choosing, setChoosing] = useState(false);
+  const [choosing, setChoosing] = useState(explicit === null && saved?.choosing === true);
   const [loadingRut, setLoadingRut] = useState<string | null>(null);
   const [error, setError] = useState<{ rut: string; message: string } | null>(null);
-  const [choice, setChoice] = useState<StatesChoice>({ rut: "", states: {} });
+  const [choice, setChoice] = useState<StatesChoice>(saved?.choice ?? { rut: "", states: {} });
+  const [query, setQuery] = useState(saved?.query ?? "");
+  const [tablePage, setTablePage] = useState(saved?.page ?? 0);
   // Solo vale la ultima respuesta pedida: si se cambia de estudiante, las anteriores se descartan.
   const latest = useRef(0);
+  // Lo que ya se tiene del mismo estudiante (por ejemplo, lo que dejó la memoria) se muestra de inmediato
+  // y se actualiza por debajo, sin atenuar la pantalla.
+  const loadedRef = useRef(loaded);
+
+  loadedRef.current = loaded;
+
+  // Al volver sin elegir a nadie, se vuelve al estudiante que se miraba (antes de pintar, para que no parpadee la lista).
+  useLayoutEffect(() => {
+    if (explicit === null && pending !== "") setParams({ rut: pending }, { replace: true });
+    else if (explicit !== null && pending !== "") setPending("");
+  }, [explicit, pending, setParams]);
 
   const loadCatalog = useCallback(async () => {
     setCatalogError(null);
@@ -63,11 +91,13 @@ export default function StudentStatsPage() {
     void loadCatalog();
   }, [loadCatalog]);
 
-  const loadProfile = useCallback(async (target: string, states: StatesByGame) => {
+  const loadProfile = useCallback(async (target: string, states: StatesByGame, silent = false) => {
     const ticket = ++latest.current;
 
-    setLoadingRut(target);
-    setError(null);
+    if (!silent) {
+      setLoadingRut(target);
+      setError(null);
+    }
 
     const response = await getStudentProfileAction(target, states);
 
@@ -76,19 +106,27 @@ export default function StudentStatsPage() {
     setLoadingRut(null);
 
     if (!response.success) {
-      setError({ rut: target, message: response.message });
+      if (!silent) setError({ rut: target, message: response.message });
       return;
     }
 
-    setLoaded({ rut: target, profile: response.data });
+    setLoaded({ rut: target, profile: response.data, key: JSON.stringify(states) });
   }, []);
 
   // Los estados elegidos valen solo para el estudiante abierto: al cambiar de estudiante vuelven a «todas».
   const states = choice.rut === rut ? choice.states : NO_STATES;
 
   useEffect(() => {
-    if (rut !== "") void loadProfile(rut, states);
+    if (rut === "") return;
+
+    const have = loadedRef.current;
+
+    void loadProfile(rut, states, have !== null && have.rut === rut && have.key === JSON.stringify(states));
   }, [rut, states, loadProfile]);
+
+  useEffect(() => {
+    rememberDesempeno({ owner, rut, choosing, query, page: tablePage, catalog, profile: loaded, choice });
+  }, [owner, rut, choosing, query, tablePage, catalog, loaded, choice]);
 
   function chooseStates(game: GameId, next: AttemptState[]) {
     setChoice({ rut, states: { ...states, [game]: next } });
@@ -116,7 +154,7 @@ export default function StudentStatsPage() {
       </header>
 
       <section aria-label="Elegir estudiante" className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-        {catalogError ? (
+        {!catalog && catalogError ? (
           <div className="flex flex-col items-start gap-3">
             <p role="alert" className="text-sm text-red-300">{catalogError}</p>
             <Button variant="outline" size="sm" onClick={() => void loadCatalog()}>
@@ -129,7 +167,15 @@ export default function StudentStatsPage() {
             Cargando estudiantes…
           </p>
         ) : showTable ? (
-          <StudentTable students={catalog.studentTable} selected={rut} onSelect={select} />
+          <StudentTable
+            students={catalog.studentTable}
+            selected={rut}
+            onSelect={select}
+            query={query}
+            page={tablePage}
+            onQueryChange={setQuery}
+            onPageChange={setTablePage}
+          />
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="min-w-0 text-sm text-zinc-300">
@@ -187,7 +233,10 @@ export default function StudentStatsPage() {
           </section>
 
           <section aria-label="Resumen" className={PANEL}>
-            <h2 className="mb-3 text-base font-semibold">Resumen</h2>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold">Resumen</h2>
+              <SummaryPdfButton profile={profile} />
+            </div>
             <StatCards cards={profile.cards} />
 
             {profile.notes.length > 0 && (
