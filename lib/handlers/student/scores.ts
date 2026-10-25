@@ -38,7 +38,7 @@ export default async function handler(
       .select("attemptId gameId attemptNumber status")
       .lean() as Promise<ScoreAttempt[]>,
     GameLevelResult.find({ studentRut: payload.rut })
-      .select("attemptId gameId key index tryNumber metrics")
+      .select("attemptId gameId key index tryNumber metrics completedAt")
       .lean() as Promise<ScoreResult[]>,
     MiniCase.find({ enabled: true }).select("caseKey").lean() as Promise<{ caseKey: string }[]>,
   ]);

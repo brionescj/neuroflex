@@ -14,7 +14,7 @@ export function StatTiles({ stats }: Props) {
   ];
 
   return (
-    <ScoreCard title="Tu resumen" subtitle="Cifras que solo suben.">
+    <ScoreCard title="Tu resumen" subtitle="Cifras que solo suben." defaultOpen>
       <div className="grid grid-cols-3 gap-2">
         {tiles.map((tile) => (
           <div

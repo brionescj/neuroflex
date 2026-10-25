@@ -7,7 +7,7 @@ type Props = {
   title: string;
   /** Una linea que explica que se esta viendo; queda a la vista aunque la tarjeta este cerrada. */
   subtitle?: string;
-  /** Si nace abierta. Se puede abrir y cerrar con el titulo. */
+  /** Si nace abierta (por defecto, cerrada). Se puede abrir y cerrar con el titulo. */
   defaultOpen?: boolean;
   children: ReactNode;
 };
@@ -16,7 +16,7 @@ type Props = {
  * Una seccion de "Mis puntuaciones": el titulo (con su resumen) es un boton que
  * pliega y despliega el contenido, igual que los bloques de Estadisticas.
  */
-export function ScoreCard({ title, subtitle, defaultOpen = true, children }: Props) {
+export function ScoreCard({ title, subtitle, defaultOpen = false, children }: Props) {
   const [open, setOpen] = useState(defaultOpen);
   const bodyId = useId();
 

@@ -11,7 +11,7 @@ export function PointsByGameChart({ pointsByGame }: Props) {
   const max = Math.max(1, ...pointsByGame.map((g) => g.points));
 
   return (
-    <ScoreCard title="Puntos por juego" subtitle="Dónde has sumado más.">
+    <ScoreCard title="Puntos por juego" subtitle="Dónde has sumado más." defaultOpen>
       <ul className="flex flex-col gap-3">
         {pointsByGame.map((game) => {
           const theme = GAME_THEME[game.gameId];

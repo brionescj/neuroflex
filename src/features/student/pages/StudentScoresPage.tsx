@@ -5,7 +5,6 @@ import { ROUTES } from "@/config/routes";
 import { AttemptsChart } from "../components/AttemptsChart";
 import { BadgesSection } from "../components/BadgesSection";
 import { CaseStepsChart } from "../components/CaseStepsChart";
-import { HowPointsWork } from "../components/HowPointsWork";
 import { LevelLadder } from "../components/LevelLadder";
 import { NodeMarginChart } from "../components/NodeMarginChart";
 import { PointsByGameChart } from "../components/PointsByGameChart";
@@ -91,8 +90,6 @@ export default function StudentScoresPage() {
           )}
 
           <BadgesSection badges={scores.badges} />
-
-          <HowPointsWork />
         </>
       )}
     </div>

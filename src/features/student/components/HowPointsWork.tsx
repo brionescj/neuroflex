@@ -1,9 +1,12 @@
-import { ScoreCard } from "./ScoreCard";
-
-/** Como se ganan los puntos y las insignias, a mano: sin letra chica ni sorpresas. */
+/**
+ * Como se ganan los puntos y las insignias, a mano: sin letra chica ni sorpresas. Va dentro de la
+ * ayuda de «Tu proxima meta» (no es una tarjeta aparte).
+ */
 export function HowPointsWork() {
   return (
-    <ScoreCard title="¿Cómo se ganan los puntos?" defaultOpen={false}>
+    <div className="flex flex-col gap-2">
+      <p className="text-sm font-semibold text-white">¿Cómo se ganan los puntos?</p>
+
       <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm text-zinc-300">
         <li>
           <strong className="text-white">10 puntos</strong> por cada nivel que superas en Seriación de colores
@@ -14,7 +17,7 @@ export function HowPointsWork() {
         </li>
         <li>
           <strong className="text-white">+5</strong> si lo haces sin fallar: todos los colores bien, o el
-          tablero sin ningún error.
+          tablero sin ningún error (ni choques, ni deshacer, ni retroceder).
         </li>
         <li>
           En Mini casos, <strong className="text-white">3 puntos</strong> por cada paso en su lugar y{" "}
@@ -25,10 +28,10 @@ export function HowPointsWork() {
           aunque una partida salga distinta.
         </li>
         <li>
-          Las insignias van por niveles, de «Primeros pasos» a «Maestría»: cada nivel pide más práctica y
-          precisión que el anterior.
+          Las insignias van por niveles, de «Primeros pasos» a «Maestría»: cada nivel pide más práctica,
+          precisión y constancia (también jugar en días distintos).
         </li>
       </ul>
-    </ScoreCard>
+    </div>
   );
 }

@@ -65,14 +65,14 @@ describe("rankFor", () => {
 
     expect(rank.name).toBe("Chispa");
     expect(rank.next?.name).toBe("Destello");
-    expect(rank.pointsToNext).toBe(60);
+    expect(rank.pointsToNext).toBe(100);
     expect(rank.progressPercent).toBe(0);
   });
 
   it("sube justo al llegar al minimo y avanza dentro del rango", () => {
-    expect(rankFor(60).name).toBe("Destello");
-    expect(rankFor(59).name).toBe("Chispa");
-    expect(rankFor(120).progressPercent).toBe(50);
+    expect(rankFor(100).name).toBe("Destello");
+    expect(rankFor(99).name).toBe("Chispa");
+    expect(rankFor(200).progressPercent).toBe(50);
   });
 
   it("el ultimo rango no tiene siguiente", () => {
@@ -316,24 +316,60 @@ describe("buildStudentScores", () => {
     expect(scores.pointsByGame.find((g) => g.gameId === "mini-cases")?.points).toBe(9);
   });
 
-  it("partida impecable: 5 o mas niveles, todos a la primera y ninguno perdido", () => {
-    const five = [1, 2, 3, 4, 5].map((l) => color("a", l, 1, l + 1, true));
-    const clean = buildStudentScores({ attempts: [attempt("a", "color-sequence", 1)], results: five });
+  it("partida impecable: 10 o mas niveles, todos a la primera y ninguno perdido", () => {
+    const ten = Array.from({ length: 10 }, (_, i) => color("a", i + 1, 1, i + 2, true));
+    const clean = buildStudentScores({ attempts: [attempt("a", "color-sequence", 1)], results: ten });
 
     expect(clean.badges.find((b) => b.id === "flawless-run")?.earned).toBe(true);
 
     // Un solo intento perdido en la partida la deja de ser impecable.
     const withRetry = buildStudentScores({
       attempts: [attempt("a", "color-sequence", 1)],
-      results: [...five.slice(0, 4), color("a", 5, 1, 1, false), color("a", 5, 2, 6, true)],
+      results: [...ten.slice(0, 9), color("a", 10, 1, 1, false), color("a", 10, 2, 11, true)],
     });
 
     expect(withRetry.badges.find((b) => b.id === "flawless-run")?.current).toBe(0);
 
-    // Cuatro niveles no alcanzan.
-    const four = buildStudentScores({ attempts: [attempt("a", "color-sequence", 1)], results: five.slice(0, 4) });
+    // Nueve niveles no alcanzan.
+    const nine = buildStudentScores({ attempts: [attempt("a", "color-sequence", 1)], results: ten.slice(0, 9) });
 
-    expect(four.badges.find((b) => b.id === "flawless-run")?.earned).toBe(false);
+    expect(nine.badges.find((b) => b.id === "flawless-run")?.earned).toBe(false);
+  });
+
+  it("dias jugados: se cuentan en hora de Chile y por dia distinto", () => {
+    const at = (iso: string, base: ScoreResult): ScoreResult => ({ ...base, completedAt: iso });
+    const scores = buildStudentScores({
+      attempts: [attempt("a", "color-sequence", 1)],
+      results: [
+        at("2026-10-20T15:00:00Z", color("a", 1, 1, 2, true)),
+        // 01:30 UTC del 21 es todavia el 20 en Chile (UTC-3): mismo dia.
+        at("2026-10-21T01:30:00Z", color("a", 2, 1, 3, true)),
+        at("2026-10-22T15:00:00Z", color("a", 3, 1, 4, true)),
+      ],
+    });
+
+    expect(scores.badges.find((b) => b.id === "days-2")?.current).toBe(2);
+    expect(scores.badges.find((b) => b.id === "days-2")?.earned).toBe(true);
+    expect(scores.badges.find((b) => b.id === "days-5")?.earned).toBe(false);
+  });
+
+  it("un estudiante nuevo que pasa 10 niveles de seriacion y los 15 de nodos sin fallar no se lleva la mitad de las insignias", () => {
+    const results = [
+      ...Array.from({ length: 10 }, (_, i) => color("c", i + 1, 1, i + 2, true)),
+      ...Array.from({ length: 15 }, (_, i) => node("n", i + 1, 1, 0, 4, true)),
+    ].map((r) => ({ ...r, completedAt: "2026-10-20T15:00:00Z" }));
+    const scores = buildStudentScores({
+      attempts: [attempt("c", "color-sequence", 1), attempt("n", "node-connection", 1)],
+      results,
+      caseKeys: Array.from({ length: 10 }, (_, i) => `caso-${i + 1}`),
+    });
+    const earned = scores.badges.filter((b) => b.earned).length;
+
+    // Antes eran 18 de 34 en una sola sesion. Una sesion perfecta sigue premiandose, pero no tanto.
+    expect(earned).toBeLessThanOrEqual(13);
+    expect(earned).toBeGreaterThanOrEqual(8);
+    expect(scores.rank.name).not.toBe("Constelación");
+    expect(scores.ranks.map((r) => r.name)).toEqual(["Chispa", "Destello", "Llama", "Estrella", "Constelación"]);
   });
 
   it("margen de oro: solo cuenta conservar MAS de la mitad del margen", () => {

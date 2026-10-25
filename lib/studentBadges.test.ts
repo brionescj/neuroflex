@@ -16,6 +16,7 @@ const NONE: BadgeFacts = {
   comebacks: 0,
   records: 0,
   flawlessRuns: 0,
+  daysPlayed: 0,
   perfectCases: 0,
   playedCases: 0,
   totalCases: 12,
@@ -35,6 +36,7 @@ const EVERYTHING: BadgeFacts = {
   comebacks: 99,
   records: 99,
   flawlessRuns: 99,
+  daysPlayed: 99,
   perfectCases: 12,
   playedCases: 12,
   totalCases: 12,
@@ -66,13 +68,14 @@ describe("insignias", () => {
     for (const chain of [
       ["memory-5", "memory-10", "memory-15", "memory-20"],
       ["route-5", "route-10", "route-15"],
-      ["points-100", "points-250", "points-500", "points-750"],
-      ["clean-board", "clean-board-10"],
-      ["first-try", "first-try-15"],
+      ["points-100", "points-400", "points-700", "points-900"],
+      ["clean-board", "clean-board-12"],
+      ["days-2", "days-5"],
+      ["perfect-memory", "perfect-memory-14"],
       ["steady", "steady-5"],
       ["comeback", "comeback-10"],
       ["flawless-run", "flawless-runs-3"],
-      ["collector-10", "collector-20"],
+      ["collector-14", "collector-20"],
     ]) {
       const goals = chain.map(goalOf);
 
@@ -81,7 +84,7 @@ describe("insignias", () => {
     }
 
     // Las de nivel 5 piden mas que sus equivalentes de nivel 1.
-    expect(goalOf("points-750")).toBeGreaterThan(goalOf("points-100"));
+    expect(goalOf("points-900")).toBeGreaterThan(goalOf("points-100"));
   });
 
   it("con todo logrado se ganan las 34, incluidas las de coleccionista", () => {
@@ -99,15 +102,18 @@ describe("insignias", () => {
       finishedAttempts: 3,
       totalPoints: 100,
       comebacks: 3,
-      flawlessNodes: 3,
-      flawlessSeriation: 3,
+      flawlessNodes: 5,
+      flawlessSeriation: 6,
+      daysPlayed: 2,
+      records: 1,
+      perfectCases: 5,
     };
     const badges = buildBadges(facts);
     const ownEarned = badges.filter((b) => b.earned && !b.id.startsWith("collector")).length;
 
-    expect(badges.find((b) => b.id === "collector-10")!.current).toBe(Math.min(10, ownEarned));
-    expect(ownEarned).toBeGreaterThanOrEqual(10);
-    expect(badges.find((b) => b.id === "collector-10")!.earned).toBe(true);
+    expect(badges.find((b) => b.id === "collector-14")!.current).toBe(Math.min(14, ownEarned));
+    expect(ownEarned).toBeGreaterThanOrEqual(14);
+    expect(badges.find((b) => b.id === "collector-14")!.earned).toBe(true);
     expect(badges.find((b) => b.id === "collector-20")!.earned).toBe(false);
   });
 

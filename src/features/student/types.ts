@@ -57,6 +57,7 @@ export type StudentScores = {
   hasPlayed: boolean;
   totalPoints: number;
   rank: RankInfo;
+  ranks: { name: string; minPoints: number }[];
   pointsByGame: { gameId: ScoreGameId; points: number }[];
   stats: {
     levelsPassed: number;

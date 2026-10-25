@@ -53,6 +53,8 @@ export type ScoreResult = {
   index: number;
   tryNumber: number;
   metrics: Record<string, unknown>;
+  /** Cuando se completo; sin ella no se cuentan los dias jugados. */
+  completedAt?: Date | string | null;
 };
 
 export type LadderState = "first-try" | "retry" | "reached" | "pending";
@@ -102,6 +104,8 @@ export type StudentScores = {
   hasPlayed: boolean;
   totalPoints: number;
   rank: RankInfo;
+  /** Todos los rangos, de menor a mayor, para que el estudiante vea la escalera completa. */
+  ranks: { name: string; minPoints: number }[];
   pointsByGame: { gameId: AttemptGameId; points: number }[];
   stats: {
     levelsPassed: number;
@@ -127,12 +131,16 @@ export type StudentScores = {
   nextGoal: Badge | null;
 };
 
-const RANKS = [
+/**
+ * Rangos. El maximo posible ronda los 1000 puntos (25 niveles de Seriacion y 15 de Nodos a 20
+ * puntos, mas Mini casos): «Constelación» pide cerca del 80 % de todo lo que se puede sumar.
+ */
+export const RANKS = [
   { name: "Chispa", minPoints: 0 },
-  { name: "Destello", minPoints: 60 },
-  { name: "Llama", minPoints: 180 },
-  { name: "Estrella", minPoints: 350 },
-  { name: "Constelación", minPoints: 550 },
+  { name: "Destello", minPoints: 100 },
+  { name: "Llama", minPoints: 300 },
+  { name: "Estrella", minPoints: 550 },
+  { name: "Constelación", minPoints: 800 },
 ] as const;
 
 export function rankFor(points: number): RankInfo {
@@ -364,6 +372,26 @@ function buildCases(
 }
 
 /** Partidas de 5 o mas niveles superados, todos al primer intento y sin un solo intento perdido. */
+/** Dias distintos, en hora de Chile, en que se completo algun nivel o caso. */
+function countDaysPlayed(results: ScoreResult[]): number {
+  const days = new Set<string>();
+
+  for (const result of results) {
+    if (!result.completedAt) continue;
+
+    const date = new Date(result.completedAt);
+
+    if (Number.isNaN(date.getTime())) continue;
+
+    days.add(date.toLocaleDateString("en-CA", { timeZone: "America/Santiago" }));
+  }
+
+  return days.size;
+}
+
+/** Niveles que debe tener una partida para llamarla «impecable». */
+const FLAWLESS_RUN_LEVELS = 10;
+
 function countFlawlessRuns(results: ScoreResult[]): number {
   const byAttempt = new Map<string, ScoreResult[]>();
 
@@ -379,7 +407,7 @@ function countFlawlessRuns(results: ScoreResult[]): number {
   for (const list of byAttempt.values()) {
     const clean = list.every((r) => r.tryNumber === 1 && isLevelResultPassed(r));
 
-    if (clean && new Set(list.map((r) => r.index)).size >= 5) runs += 1;
+    if (clean && new Set(list.map((r) => r.index)).size >= FLAWLESS_RUN_LEVELS) runs += 1;
   }
 
   return runs;
@@ -456,6 +484,7 @@ export function buildStudentScores(input: {
     comebacks,
     records,
     flawlessRuns: countFlawlessRuns([...color.results, ...nodes.results]),
+    daysPlayed: countDaysPlayed(input.results),
     perfectCases: stats.perfectCases,
     playedCases: caseData.played,
     totalCases: input.caseKeys?.length ?? 0,
@@ -471,6 +500,7 @@ export function buildStudentScores(input: {
     hasPlayed: input.results.length > 0,
     totalPoints,
     rank: rankFor(totalPoints),
+    ranks: RANKS.map((rank) => ({ name: rank.name, minPoints: rank.minPoints })),
     pointsByGame,
     stats,
     colorSequence: { ...colorLadder, attempts: colorAttempts },

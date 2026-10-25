@@ -122,7 +122,7 @@ async function readChartData(def: ChartDef): Promise<StatsData> {
     if (def.id === "gen-summary") {
       resultsRequest = GameLevelResult.find()
         .select(
-          "attemptId studentRut gameId key index tryNumber activeMsNet metrics.passed metrics.solved metrics.correctCount metrics.sequenceLength metrics.percent metrics.errors metrics.errorsAllowed metrics.correctSteps metrics.isFullyCorrect",
+          "attemptId studentRut gameId key index tryNumber activeMsNet completedAt metrics.passed metrics.solved metrics.correctCount metrics.sequenceLength metrics.percent metrics.errors metrics.errorsAllowed metrics.correctSteps metrics.isFullyCorrect",
         )
         .lean() as Promise<ResultRow[]>;
       casesRequest = MiniCase.find({ enabled: true }).select("caseKey title").lean() as Promise<{ caseKey: string; title: string }[]>;

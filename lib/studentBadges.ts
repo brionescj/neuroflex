@@ -44,8 +44,10 @@ export type BadgeFacts = {
   finishedAttempts: number;
   comebacks: number;
   records: number;
-  /** Partidas de 5 o mas niveles superados todos al primer intento. */
+  /** Partidas de 10 o mas niveles superados todos al primer intento. */
   flawlessRuns: number;
+  /** Dias distintos (hora de Chile) en que jugo. */
+  daysPlayed: number;
   perfectCases: number;
   playedCases: number;
   /** Casos que tiene el banco (0 si no se conoce). */
@@ -67,7 +69,7 @@ const fixed = (n: number) => () => n;
 const bankSize = (facts: BadgeFacts) => Math.max(1, facts.totalCases);
 
 /** Insignias que se ganan por las demas (no cuentan a si mismas ni a las otras de su tipo). */
-export const COLLECTOR_IDS = ["collector-10", "collector-20"] as const;
+export const COLLECTOR_IDS = ["collector-14", "collector-20"] as const;
 
 const DEFS: BadgeDef[] = [
   // ---------------------------------------------------------------- Nivel 1: primeros pasos
@@ -81,38 +83,39 @@ const DEFS: BadgeDef[] = [
   // ---------------------------------------------------------------- Nivel 2: constancia
   { id: "memory-10", name: "Memoria 10", description: "Pasa el nivel 10 de Seriación de colores.", tier: 2, goal: fixed(10), value: (f) => f.seriationBest },
   { id: "route-10", name: "Ruta 10", description: "Pasa el nivel 10 de Conexión de nodos.", tier: 2, goal: fixed(10), value: (f) => f.nodesBest },
-  { id: "perfect-memory", name: "Memoria perfecta", description: "Acierta todos los colores en 3 niveles.", tier: 2, goal: fixed(3), value: (f) => f.flawlessSeriation },
-  { id: "clean-board", name: "Tablero limpio", description: "Resuelve 3 niveles de nodos sin ningún error.", tier: 2, goal: fixed(3), value: (f) => f.flawlessNodes },
-  { id: "first-try", name: "A la primera", description: "Pasa 5 niveles en el primer intento.", tier: 2, goal: fixed(5), value: (f) => f.firstTryLevels },
+  { id: "perfect-memory", name: "Memoria perfecta", description: "Acierta todos los colores en 6 niveles.", tier: 2, goal: fixed(6), value: (f) => f.flawlessSeriation },
+  { id: "clean-board", name: "Tablero limpio", description: "Resuelve 5 niveles de nodos sin ningún error.", tier: 2, goal: fixed(5), value: (f) => f.flawlessNodes },
+  { id: "days-2", name: "Volviste", description: "Juega en 2 días distintos.", tier: 2, goal: fixed(2), value: (f) => f.daysPlayed },
   { id: "comeback", name: "Insistir da frutos", description: "Pasa 3 niveles que antes no te habían salido.", tier: 2, goal: fixed(3), value: (f) => f.comebacks },
   { id: "ordered-mind", name: "Mente ordenada", description: "Ordena bien 5 mini casos por completo.", tier: 2, goal: fixed(5), value: (f) => f.perfectCases },
   { id: "new-record", name: "Superaste tu marca", description: "Llega más lejos que en tus partidas anteriores.", tier: 2, goal: fixed(1), value: (f) => f.records },
   { id: "cases-explorer", name: "Explorador de casos", description: "Responde todos los mini casos del banco al menos una vez.", tier: 2, goal: bankSize, value: (f) => f.playedCases },
-  { id: "collector-10", name: "Coleccionista", description: "Consigue 10 insignias.", tier: 2, goal: fixed(10), value: () => 0 },
-
+  
   // ---------------------------------------------------------------- Nivel 3: dominio
   { id: "memory-15", name: "Memoria 15", description: "Pasa el nivel 15 de Seriación de colores.", tier: 3, goal: fixed(15), value: (f) => f.seriationBest },
-  { id: "first-try-15", name: "Pulso seguro", description: "Pasa 15 niveles en el primer intento.", tier: 3, goal: fixed(15), value: (f) => f.firstTryLevels },
-  { id: "clean-board-10", name: "Maestro del tablero", description: "Resuelve 10 niveles de nodos sin ningún error.", tier: 3, goal: fixed(10), value: (f) => f.flawlessNodes },
+  { id: "days-5", name: "Una semana de práctica", description: "Juega en 5 días distintos.", tier: 3, goal: fixed(5), value: (f) => f.daysPlayed },
+  { id: "clean-board-12", name: "Maestro del tablero", description: "Resuelve 12 niveles de nodos sin ningún error.", tier: 3, goal: fixed(12), value: (f) => f.flawlessNodes },
   { id: "steady-5", name: "Constancia firme", description: "Completa 5 partidas.", tier: 3, goal: fixed(5), value: (f) => f.finishedAttempts },
-  { id: "points-250", name: "250 puntos", description: "Suma 250 puntos.", tier: 3, goal: fixed(250), value: (f) => f.totalPoints },
-  { id: "flawless-run", name: "Partida impecable", description: "Termina una partida de 5 o más niveles superando todos a la primera.", tier: 3, goal: fixed(1), value: (f) => f.flawlessRuns },
-  { id: "margin-gold", name: "Margen de oro", description: "Supera 5 niveles de nodos conservando más de la mitad de tu margen de errores.", tier: 3, goal: fixed(5), value: (f) => f.wideMarginNodes },
+  { id: "points-400", name: "400 puntos", description: "Suma 400 puntos.", tier: 3, goal: fixed(400), value: (f) => f.totalPoints },
+  { id: "flawless-run", name: "Partida impecable", description: "Termina una partida de 10 o más niveles superando todos a la primera.", tier: 3, goal: fixed(1), value: (f) => f.flawlessRuns },
+  { id: "margin-gold", name: "Margen de oro", description: "Supera 12 niveles de nodos conservando más de la mitad de tu margen de errores.", tier: 3, goal: fixed(12), value: (f) => f.wideMarginNodes },
+
+  { id: "collector-14", name: "Coleccionista", description: "Consigue 14 insignias.", tier: 3, goal: fixed(14), value: () => 0 },
 
   // ---------------------------------------------------------------- Nivel 4: experto
   { id: "route-15", name: "Maestría de rutas", description: "Pasa los 15 niveles de Conexión de nodos.", tier: 4, goal: fixed(15), value: (f) => f.nodesBest },
   { id: "perfect-cases-10", name: "Estratega", description: "Ordena perfecto 10 mini casos.", tier: 4, goal: fixed(10), value: (f) => f.perfectCases },
-  { id: "perfect-memory-8", name: "Memoria impecable", description: "Acierta todos los colores en 8 niveles.", tier: 4, goal: fixed(8), value: (f) => f.flawlessSeriation },
+  { id: "perfect-memory-14", name: "Memoria impecable", description: "Acierta todos los colores en 14 niveles.", tier: 4, goal: fixed(14), value: (f) => f.flawlessSeriation },
   { id: "comeback-10", name: "Imparable", description: "Pasa 10 niveles que antes no te habían salido.", tier: 4, goal: fixed(10), value: (f) => f.comebacks },
   { id: "records-3", name: "Rompe marcas", description: "Supera tu marca anterior 3 veces.", tier: 4, goal: fixed(3), value: (f) => f.records },
-  { id: "points-500", name: "500 puntos", description: "Suma 500 puntos.", tier: 4, goal: fixed(500), value: (f) => f.totalPoints },
+  { id: "points-700", name: "700 puntos", description: "Suma 700 puntos.", tier: 4, goal: fixed(700), value: (f) => f.totalPoints },
   { id: "collector-20", name: "Gran coleccionista", description: "Consigue 20 insignias.", tier: 4, goal: fixed(20), value: () => 0 },
 
   // ---------------------------------------------------------------- Nivel 5: maestría
   { id: "memory-20", name: "Memoria 20", description: "Pasa el nivel 20 de Seriación de colores.", tier: 5, goal: fixed(20), value: (f) => f.seriationBest },
-  { id: "flawless-runs-3", name: "Tres partidas impecables", description: "Termina 3 partidas de 5 o más niveles superando todos a la primera.", tier: 5, goal: fixed(3), value: (f) => f.flawlessRuns },
+  { id: "flawless-runs-3", name: "Tres partidas impecables", description: "Termina 3 partidas de 10 o más niveles superando todos a la primera.", tier: 5, goal: fixed(3), value: (f) => f.flawlessRuns },
   { id: "full-bank-perfect", name: "Banco perfecto", description: "Ordena perfecto todos los mini casos del banco.", tier: 5, goal: bankSize, value: (f) => f.perfectCases },
-  { id: "points-750", name: "Leyenda: 750 puntos", description: "Suma 750 puntos.", tier: 5, goal: fixed(750), value: (f) => f.totalPoints },
+  { id: "points-900", name: "Leyenda: 900 puntos", description: "Suma 900 puntos.", tier: 5, goal: fixed(900), value: (f) => f.totalPoints },
 ];
 
 export const BADGE_COUNT = DEFS.length;

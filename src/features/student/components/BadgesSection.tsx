@@ -74,7 +74,7 @@ export function BadgesSection({ badges }: Props) {
   const earned = badges.filter((b) => b.earned).length;
 
   return (
-    <ScoreCard title="Insignias" subtitle={`Llevas ${earned} de ${badges.length}.`} defaultOpen={false}>
+    <ScoreCard title="Insignias" subtitle={`Llevas ${earned} de ${badges.length}.`}>
       {TIERS.map((tier) => {
         const group = badges.filter((b) => b.tier === tier);
 
