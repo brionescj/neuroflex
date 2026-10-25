@@ -15,9 +15,11 @@ export default async function handler(
   await connectDB();
 
   if (req.method === "GET") {
-    const students = await Student.find({ isDeleted: false }).sort({
-      paternalLastName: 1,
-    });
+    // .lean(): objetos planos en vez de documentos de Mongoose. El JSON es el mismo
+    // y se evita armar cientos de documentos solo para serializarlos.
+    const students = await Student.find({ isDeleted: false })
+      .sort({ paternalLastName: 1 })
+      .lean();
 
     return res.status(200).json({
       success: true,

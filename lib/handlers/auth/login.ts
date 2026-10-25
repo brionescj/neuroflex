@@ -5,8 +5,8 @@ import { verifyPassword } from "../../password";
 import { signToken } from "../../jwt";
 import { setSessionCookie } from "../../cookies";
 import { normalizeForDatabase } from "../../rut";
-import { findProfile } from "../../findProfile";
-import { AuthUser } from "../../models/AuthUser";
+import { findAccount } from "../../findAccount";
+import { findSessionProfile } from "../../findProfile";
 
 export default async function handler(
   req: VercelRequest,
@@ -18,12 +18,17 @@ export default async function handler(
 
   await connectDB();
 
-  const { password } = req.body;
-  const rut = normalizeForDatabase(req.body.rut);
+  const { password, rut: rawRut } = req.body ?? {};
 
-  const account = await AuthUser.findOne({ rut });
+  if (typeof password !== "string" || typeof rawRut !== "string") {
+    return res.status(401).json({ success: false, message: "RUT o contraseña incorrectos." });
+  }
 
-  if (!account || !(await verifyPassword(password, account.password))) {
+  const rut = normalizeForDatabase(rawRut);
+
+  const account = await findAccount(rut);
+
+  if (!account) {
     return res.status(401).json({ success: false, message: "RUT o contraseña incorrectos." });
   }
 
@@ -33,11 +38,21 @@ export default async function handler(
     return res.status(401).json({ success: false, message: "RUT o contraseña incorrectos." });
   }
 
+  // Comprobar la contraseña (bcrypt, lo mas lento del inicio de sesion) y leer la
+  // ficha son independientes: se hacen a la vez. Si la contraseña resulta
+  // incorrecta, la ficha leida simplemente se descarta.
+  const [passwordOk, profile] = await Promise.all([
+    verifyPassword(password, account.password),
+    findSessionProfile(account.rut, account.role),
+  ]);
+
+  if (!passwordOk) {
+    return res.status(401).json({ success: false, message: "RUT o contraseña incorrectos." });
+  }
+
   if (!account.enabled) {
     return res.status(403).json({ success: false, message: "Cuenta deshabilitada." });
   }
-
-  const profile = await findProfile(account.rut, account.role);
 
   if (!profile) {
     return res.status(404).json({ success: false, message: "Ficha no encontrada." });
@@ -51,7 +66,7 @@ export default async function handler(
   }
 
   const token = signToken({ id: account.id, rut: account.rut, role: account.role });
-  setSessionCookie(res, token);
+  setSessionCookie(res, token, account.role);
 
   return res.status(200).json({
     success: true,

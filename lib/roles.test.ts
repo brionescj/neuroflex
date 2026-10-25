@@ -13,11 +13,11 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("./db", () => ({ connectDB: async () => undefined }));
 vi.mock("./password", () => ({ verifyPassword: async () => true }));
-vi.mock("./models/AuthUser", () => ({
-  AuthUser: { findOne: async () => mocks.account },
+vi.mock("./findAccount", () => ({
+  findAccount: async () => mocks.account,
 }));
 vi.mock("./findProfile", () => ({
-  findProfile: async () => {
+  findSessionProfile: async () => {
     mocks.profileCalls += 1;
 
     return { firstName: "Ana", paternalLastName: "Pérez", avatarId: "panda", enabled: true };

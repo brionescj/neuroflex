@@ -41,7 +41,11 @@ export default async function handler(
       .json({ success: false, message: "Este juego aun no esta disponible." });
   }
 
-  const cases = await MiniCase.find({ enabled: true }).sort({ caseKey: 1 });
+  // Solo los campos que se entregan (correctStep ni se lee) y como objetos planos.
+  const cases = await MiniCase.find({ enabled: true })
+    .select("caseKey baseText twistText promptText feedback options.optionKey options.text")
+    .sort({ caseKey: 1 })
+    .lean();
 
   // correctStep nunca sale de aqui, y el orden de opciones (y de los
   // casos mismos) se mezcla en cada request: si el orden correcto fuera

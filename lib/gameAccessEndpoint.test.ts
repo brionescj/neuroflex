@@ -60,7 +60,7 @@ vi.mock("./models/MiniCase", () => {
 
   return {
     MiniCase: {
-      find: () => ({ sort: async () => cases }),
+      find: () => ({ select: () => ({ sort: () => ({ lean: async () => cases }) }) }),
       findOne: async () => cases[0],
     },
   };

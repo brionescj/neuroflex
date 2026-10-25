@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { connectDB } from "../../db";
 import { verifyToken } from "../../jwt";
 import { readSessionCookie } from "../../cookies";
-import { findProfile } from "../../findProfile";
+import { findSessionProfile } from "../../findProfile";
 
 export default async function handler(
   req: VercelRequest,
@@ -18,7 +18,7 @@ export default async function handler(
 
   await connectDB();
 
-  const profile = await findProfile(payload.rut, payload.role);
+  const profile = await findSessionProfile(payload.rut, payload.role);
 
   if (!profile) {
     return res.status(404).json({ success: false, message: "Ficha no encontrada." });
