@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import { connectDB } from "../../db";
 import { requireAuth } from "../../auth";
+import { ensureCurrentSession } from "../../sessions";
 import { hashPassword, validatePasswordStrength, verifyPassword } from "../../password";
 import { AuthUser } from "../../models/AuthUser";
 
@@ -28,6 +29,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   await connectDB();
+
+  if (!(await ensureCurrentSession(payload, res))) return;
 
   const account = await AuthUser.findOne({ rut: payload.rut });
 

@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
+vi.mock("./sessions", async () => (await import("./sessionsMock")).sessionsMock);
 vi.mock("./db", () => ({ connectDB: async () => undefined }));
 vi.mock("./unlockedGames", () => ({ findUnlockedGames: async () => mocks.unlocked }));
 vi.mock("./findAccount", () => ({ findAccount: async () => mocks.account }));
@@ -37,6 +38,7 @@ vi.mock("./password", () => ({
 }));
 
 import loginHandler from "./handlers/auth/login";
+import { verifyToken } from "./jwt";
 
 function login(body: unknown) {
   let status = 0;
@@ -90,6 +92,17 @@ describe("POST auth/login", () => {
     expect(hint).toBeDefined();
     expect(hint).not.toContain("HttpOnly");
     expect(hint).not.toContain(cookies[0]!.split(";")[0]!.split("=")[1]!);
+  });
+
+  it("el token del estudiante lleva su sesion unica; el del administrador no", async () => {
+    const tokenOf = (headers: Record<string, unknown>) =>
+      ((headers["Set-Cookie"] as string[])[0] as string).split(";")[0]!.split("=")[1]!;
+
+    expect(verifyToken(tokenOf((await login(GOOD)).headers))?.sid).toBe("sesion-de-prueba");
+
+    mocks.account = { id: "a2", rut: "99999999-9", password: "hash", role: "admin", enabled: true };
+
+    expect(verifyToken(tokenOf((await login(GOOD)).headers))?.sid).toBeUndefined();
   });
 
   it("adelanta los desbloqueos ya registrados junto con la sesion; sin ellos no agrega nada", async () => {

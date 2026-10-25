@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import { requireAuth } from "../../auth";
 import { connectDB } from "../../db";
+import { ensureGameHeld } from "../../gameLease";
+import { ensureCurrentSession } from "../../sessions";
 import {
   isAttemptGameId,
   parseAttemptInfo,
@@ -120,6 +122,10 @@ export default async function handler(
   }
 
   await connectDB();
+
+  if (!(await ensureCurrentSession(payload, res))) return;
+
+  if (!(await ensureGameHeld(req, res, payload.rut, gameId))) return;
 
   if (gameId === "mini-cases" && !(await resolveMiniCasesAccess(payload.rut))) {
     return res

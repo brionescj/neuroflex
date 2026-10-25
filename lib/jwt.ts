@@ -11,6 +11,8 @@ export type TokenPayload = {
   id: string;
   rut: string;
   role: (typeof ROLES)[number];
+  /** Solo estudiantes: la sesion a la que pertenece este token (ver lib/sessions.ts). */
+  sid?: string;
 };
 
 export function signToken(payload: TokenPayload): string {

@@ -19,6 +19,7 @@ vi.mock("./auth", () => ({
   },
 }));
 
+vi.mock("./sessions", async () => (await import("./sessionsMock")).sessionsMock);
 vi.mock("./db", () => ({ connectDB: async () => undefined }));
 
 vi.mock("./gameAttemptsStore", () => ({

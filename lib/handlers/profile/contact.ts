@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import { connectDB } from "../../db";
 import { verifyToken } from "../../jwt";
+import { ensureCurrentSession } from "../../sessions";
 import { readSessionCookie } from "../../cookies";
 import { emailProblem, normalizeEmail } from "../../email";
 import { Student } from "../../models/Student";
@@ -45,6 +46,8 @@ export default async function handler(
   }
 
   await connectDB();
+
+  if (!(await ensureCurrentSession(payload, res))) return;
 
   const Model = modelFor(payload.role);
 

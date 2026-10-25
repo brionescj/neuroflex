@@ -23,6 +23,7 @@ import authPassword from "./handlers/auth/password";
 import authRegister from "./handlers/auth/register";
 import gamesAccess from "./handlers/games/access";
 import gamesAttempts from "./handlers/games/attempts";
+import gamesLease from "./handlers/games/lease";
 import gamesProgress from "./handlers/games/progress";
 import miniCasesBank from "./handlers/miniCases/bank";
 import miniCasesSubmit from "./handlers/miniCases/submit";
@@ -75,6 +76,7 @@ export const ROUTES: RouteDef[] = [
   { pattern: "game-attempts/:gameId", handler: gamesAttempts },
   { pattern: "game-progress/:gameId", handler: gamesProgress },
   { pattern: "games/access", handler: gamesAccess },
+  { pattern: "games/lease", handler: gamesLease },
 
   { pattern: "mini-cases", handler: miniCasesBank },
   { pattern: "mini-cases/:caseKey/submit", handler: miniCasesSubmit },

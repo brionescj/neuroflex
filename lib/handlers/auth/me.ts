@@ -5,6 +5,8 @@ import { verifyToken } from "../../jwt";
 import { readSessionCookie } from "../../cookies";
 import { findSessionProfile } from "../../findProfile";
 import { findUnlockedGames } from "../../unlockedGames";
+import { isCurrentSession, SESSION_REPLACED_CODE, SESSION_REPLACED_MESSAGE } from "../../sessions";
+import { clearSessionCookie } from "../../cookies";
 
 export default async function handler(
   req: VercelRequest,
@@ -19,10 +21,21 @@ export default async function handler(
 
   await connectDB();
 
-  const [profile, unlocked] = await Promise.all([
+  const [profile, unlocked, current] = await Promise.all([
     findSessionProfile(payload.rut, payload.role),
     findUnlockedGames(payload.rut, payload.role),
+    isCurrentSession(payload),
   ]);
+
+  if (!current) {
+    clearSessionCookie(res);
+
+    return res.status(401).json({
+      success: false,
+      code: SESSION_REPLACED_CODE,
+      message: SESSION_REPLACED_MESSAGE,
+    });
+  }
 
   if (!profile) {
     return res.status(404).json({ success: false, message: "Ficha no encontrada." });

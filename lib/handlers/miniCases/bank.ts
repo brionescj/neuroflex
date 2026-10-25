@@ -4,6 +4,7 @@ import { requireAuth } from "../../auth";
 import { connectDB } from "../../db";
 import { resolveMiniCasesAccess } from "../../gameUnlocksStore";
 import { MiniCase } from "../../models/MiniCase";
+import { ensureCurrentSession } from "../../sessions";
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items];
@@ -32,6 +33,8 @@ export default async function handler(
   if (!payload) return;
 
   await connectDB();
+
+  if (!(await ensureCurrentSession(payload, res))) return;
 
   // El administrador ve el banco siempre; el estudiante, solo
   // cuando desbloqueo Mini Casos.

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
+vi.mock("./sessions", async () => (await import("./sessionsMock")).sessionsMock);
 vi.mock("./db", () => ({ connectDB: async () => undefined }));
 vi.mock("./password", () => ({ verifyPassword: async () => true }));
 vi.mock("./unlockedGames", () => ({ findUnlockedGames: async () => undefined }));

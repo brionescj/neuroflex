@@ -9,6 +9,7 @@ vi.mock("./auth", () => ({
   requireAuth: () => ({ rut: "11111111-1", role: "student" }),
 }));
 
+vi.mock("./sessions", async () => (await import("./sessionsMock")).sessionsMock);
 vi.mock("./db", () => ({ connectDB: async () => undefined }));
 
 vi.mock("./gameUnlocksStore", () => ({

@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requireAuth } from "../../auth";
 import { connectDB } from "../../db";
 import { resolveMiniCasesAccess } from "../../gameUnlocksStore";
+import { ensureCurrentSession } from "../../sessions";
 
 /**
  * A que juegos con desbloqueo tiene acceso el estudiante. Solo dice si o no:
@@ -22,6 +23,8 @@ export default async function handler(
   if (!payload) return;
 
   await connectDB();
+
+  if (!(await ensureCurrentSession(payload, res))) return;
 
   return res.status(200).json({
     success: true,

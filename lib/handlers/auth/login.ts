@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { connectDB } from "../../db";
 import { verifyPassword } from "../../password";
 import { signToken } from "../../jwt";
+import { startStudentSession } from "../../sessions";
 import { setSessionCookie } from "../../cookies";
 import { normalizeForDatabase } from "../../rut";
 import { findAccount } from "../../findAccount";
@@ -67,7 +68,15 @@ export default async function handler(
     });
   }
 
-  const token = signToken({ id: account.id, rut: account.rut, role: account.role });
+  // Estudiantes: una sola sesion vigente. Abrir esta cierra la de cualquier otro navegador o dispositivo.
+  const sid = account.role === "student" ? await startStudentSession(account.rut) : undefined;
+
+  const token = signToken({
+    id: account.id,
+    rut: account.rut,
+    role: account.role,
+    ...(sid ? { sid } : {}),
+  });
   setSessionCookie(res, token, account.role);
 
   return res.status(200).json({

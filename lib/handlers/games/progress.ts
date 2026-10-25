@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import { requireAuth } from "../../auth";
 import { connectDB } from "../../db";
+import { ensureGameHeld } from "../../gameLease";
+import { ensureCurrentSession } from "../../sessions";
 import { GameProgress, type GameId } from "../../models/GameProgress";
 
 const VALID_GAME_IDS: GameId[] = [
@@ -33,6 +35,11 @@ export default async function handler(
   }
 
   await connectDB();
+
+  if (!(await ensureCurrentSession(payload, res))) return;
+
+  // Guardar o borrar el avance solo lo puede hacer el lugar donde se abrio el juego en ultimo termino.
+  if (req.method !== "GET" && !(await ensureGameHeld(req, res, payload.rut, gameId))) return;
 
   if (req.method === "GET") {
     const progress = await GameProgress.findOne({

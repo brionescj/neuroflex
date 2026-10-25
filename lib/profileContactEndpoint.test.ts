@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("./cookies", () => ({ readSessionCookie: () => (mocks.session ? "token" : undefined) }));
 vi.mock("./jwt", () => ({ verifyToken: () => mocks.session }));
+vi.mock("./sessions", async () => (await import("./sessionsMock")).sessionsMock);
 vi.mock("./db", () => ({ connectDB: async () => undefined }));
 
 function model(name: string) {

@@ -7,6 +7,8 @@ export type AuthUserDocument = {
   password: string;
   role: "student" | "admin";
   enabled: boolean;
+  /** Solo estudiantes: identificador de la unica sesion vigente. Un inicio de sesion nuevo lo reemplaza. */
+  sessionId?: string;
 };
 
 const authUserSchema = new Schema<AuthUserDocument>({
@@ -14,6 +16,7 @@ const authUserSchema = new Schema<AuthUserDocument>({
   password: { type: String, required: true },
   role: { type: String, enum: ["student", "admin"], required: true },
   enabled: { type: Boolean, required: true, default: true },
+  sessionId: { type: String },
 });
 
 export const AuthUser =

@@ -4,6 +4,7 @@ import { connectDB } from "../../db";
 import { verifyToken } from "../../jwt";
 import { readSessionCookie } from "../../cookies";
 import { findProfile } from "../../findProfile";
+import { ensureCurrentSession } from "../../sessions";
 
 export default async function handler(
   req: VercelRequest,
@@ -26,6 +27,8 @@ export default async function handler(
   }
 
   await connectDB();
+
+  if (!(await ensureCurrentSession(payload, res))) return;
 
   const profile = await findProfile(rut, payload.role);
 

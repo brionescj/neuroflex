@@ -32,6 +32,7 @@ import authPassword from "./handlers/auth/password";
 import authRegister from "./handlers/auth/register";
 import gamesAccess from "./handlers/games/access";
 import gamesAttempts from "./handlers/games/attempts";
+import gamesLease from "./handlers/games/lease";
 import gamesProgress from "./handlers/games/progress";
 import miniCasesBank from "./handlers/miniCases/bank";
 import miniCasesSubmit from "./handlers/miniCases/submit";
@@ -67,6 +68,7 @@ const EXPECTED: [string, unknown, Record<string, string>][] = [
   ["game-attempts/color-sequence", gamesAttempts, { gameId: "color-sequence" }],
   ["game-progress/node-connection", gamesProgress, { gameId: "node-connection" }],
   ["games/access", gamesAccess, {}],
+  ["games/lease", gamesLease, {}],
   ["mini-cases", miniCasesBank, {}],
   ["mini-cases/caso-4/submit", miniCasesSubmit, { caseKey: "caso-4" }],
   ["profile/12345678-9", profileOne, { rut: "12345678-9" }],
