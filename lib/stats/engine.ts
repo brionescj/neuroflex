@@ -1,3 +1,4 @@
+import { isFirstTryTime } from "../gameAttempts";
 import {
   ageOf,
   deviceOfAttempt,
@@ -484,7 +485,7 @@ export function timePerLevel(
       for (const unit of group) {
         const own = ownResults(
           unit,
-          (r) => r.index === level && (!firstTryOnly || r.tryNumber === 1),
+          (r) => r.index === level && (!firstTryOnly || isFirstTryTime(r)),
         );
 
         // Un estudiante con varias partidas aporta la mediana de sus tiempos.

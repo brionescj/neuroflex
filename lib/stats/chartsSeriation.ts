@@ -32,7 +32,7 @@ const maxPassedLevel = (unit: Unit) =>
     .reduce((max, r) => Math.max(max, r.index), 0);
 
 /** Los resultados de un nivel agrupados por partida: lo que paso en cada nivel jugado. */
-function levelPlays(unit: Unit): { level: number; results: ResultRow[] }[] {
+export function levelPlays(unit: Unit): { level: number; results: ResultRow[] }[] {
   const plays: { level: number; results: ResultRow[] }[] = [];
 
   for (const attempt of unit.attempts) {

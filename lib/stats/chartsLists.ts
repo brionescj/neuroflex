@@ -1,4 +1,4 @@
-import { isColorSequenceResultPassed } from "../gameAttempts";
+import { isColorSequenceResultPassed, isLevelResultPassed } from "../gameAttempts";
 import { MINI_CASES_UNLOCK_LEVEL } from "../gameUnlocks";
 import { cohortOf, countLabel, isAbandoned, type ChartDef, type Ctx } from "./engine";
 import { studentName } from "./pipeline";
@@ -201,8 +201,9 @@ const genInactive: ChartDef = {
 const STUCK_GAME_OPTION: ChartOptionDef = {
   id: "game",
   label: "Juego",
-  default: "color-sequence",
+  default: "all",
   choices: [
+    { value: "all", label: "Seriación y Conexión de nodos" },
     { value: "color-sequence", label: GAME_LABELS["color-sequence"] },
     { value: "node-connection", label: GAME_LABELS["node-connection"] },
   ],
@@ -210,36 +211,54 @@ const STUCK_GAME_OPTION: ChartOptionDef = {
 
 const STUCK_OPTION: ChartOptionDef = {
   id: "stuck",
-  label: "Partidas seguidas sin avanzar",
-  default: "4",
+  label: "Partidas seguidas sin superar el mismo nivel",
+  default: "3",
   choices: ["2", "3", "4", "5", "6"].map((value) => ({ value, label: `${value} o más` })),
 };
 
-/** El nivel mas alto que se logro en una partida: aprobado en Seriación, completado en Nodos. */
-function levelOfAttempt(results: ResultRow[], game: GameId): number {
-  return results
-    .filter((result) => game === "node-connection" || isColorSequenceResultPassed(result))
-    .reduce((max, result) => Math.max(max, result.index), 0);
+/**
+ * El nivel que una partida dejo sin superar: el mas alto en que llego a jugar,
+ * si no logro superarlo en ninguno de sus intentos. null si el nivel mas alto
+ * que jugo si lo supero (la partida no se trabo en ninguno), o si no jugo ninguno.
+ */
+export function unpassedLevelOf(
+  results: Pick<ResultRow, "gameId" | "index" | "metrics">[],
+): { level: number; failedTries: number } | null {
+  if (results.length === 0) return null;
+
+  const top = results.reduce((max, result) => Math.max(max, result.index), 0);
+  const atTop = results.filter((result) => result.index === top);
+
+  if (atTop.some((result) => isLevelResultPassed(result))) return null;
+
+  return { level: top, failedTries: atTop.length };
 }
 
 /**
- * Cuantas de las ultimas partidas seguidas no superaron el mejor nivel que el
- * estudiante ya tenia. Una partida que sigue en curso no cuenta: todavia puede avanzar.
+ * Cuantas de las ultimas partidas seguidas (contando desde la mas reciente hacia
+ * atras) dejaron sin superar el mismo nivel. `levels` va de la partida mas antigua
+ * a la mas reciente; null es una partida que no se trabo en ningun nivel, y corta la racha.
+ * La racha siempre termina en la ultima partida jugada: si la ultima partida no
+ * se trabo, o se trabo en otro nivel, es 0 o 1.
  */
-export function stuckStreak(levels: number[]): { streak: number; best: number } {
-  let best = 0;
-  let streak = 0;
+export function stuckRun(levels: (number | null)[]): { level: number; run: number } | null {
+  const last = levels[levels.length - 1];
 
-  for (const level of levels) {
-    if (level > best) {
-      best = level;
-      streak = 0;
-    } else {
-      streak += 1;
-    }
-  }
+  if (last === undefined || last === null) return null;
 
-  return { streak, best };
+  let run = 0;
+
+  for (let i = levels.length - 1; i >= 0 && levels[i] === last; i--) run += 1;
+
+  return { level: last, run };
+}
+
+/** «5, 6 y 7»; si son muchas, «3 a 8». */
+function partidaNumbers(numbers: number[]): string {
+  if (numbers.length > 4) return `${numbers[0]} a ${numbers[numbers.length - 1]}`;
+  if (numbers.length === 1) return String(numbers[0]);
+
+  return `${numbers.slice(0, -1).join(", ")} y ${numbers[numbers.length - 1]}`;
 }
 
 const genStuck: ChartDef = {
@@ -247,50 +266,79 @@ const genStuck: ChartDef = {
   ...LIST_BASE,
   title: "Estudiantes estancados",
   blurb:
-    "Estudiantes que juegan una y otra vez sin llegar a un nivel más alto que el que ya tenían. Sirve para saber a quién ayudar o revisar si un nivel está siendo demasiado difícil.",
+    "Estudiantes que llevan varias partidas seguidas sin superar el mismo nivel de un juego, hasta su última partida. Sirve para saber a quién ayudar o revisar si ese nivel está siendo demasiado difícil.",
   options: [STUCK_GAME_OPTION, STUCK_OPTION],
   build: (ctx) => {
-    const game = ctx.options.game as GameId;
+    const choice = ctx.options.game ?? "all";
+    const games: GameId[] = choice === "all" ? ["color-sequence", "node-connection"] : [choice as GameId];
     const needed = Number(ctx.options.stuck);
     const cohort = listCohort(ctx);
-    const attemptsBy = groupBy(
-      ctx.data.attempts.filter((attempt) => attempt.gameId === game && !(attempt.status === "in_progress" && !isAbandoned(attempt, ctx.now))),
-      (attempt) => attempt.studentRut,
-    );
-    const resultsBy = groupBy(
-      ctx.data.results.filter((result) => result.gameId === game),
-      (result) => result.attemptId,
-    );
-    const rows: { streak: number; cells: (string | number | null)[] }[] = [];
+    const resultsBy = groupBy(ctx.data.results, (result) => result.attemptId);
+    const rows: { run: number; level: number; cells: (string | number | null)[] }[] = [];
 
-    for (const student of cohort) {
-      const attempts = [...(attemptsBy.get(student.rut) ?? [])].sort((a, b) => a.attemptNumber - b.attemptNumber);
-
-      if (attempts.length === 0) continue;
-
-      const { streak, best } = stuckStreak(
-        attempts.map((attempt) => levelOfAttempt(resultsBy.get(attempt.attemptId) ?? [], game)),
+    for (const game of games) {
+      const attemptsBy = groupBy(
+        ctx.data.attempts.filter(
+          (attempt) =>
+            attempt.gameId === game && !(attempt.status === "in_progress" && !isAbandoned(attempt, ctx.now)),
+        ),
+        (attempt) => attempt.studentRut,
       );
 
-      if (streak < needed) continue;
+      for (const student of cohort) {
+        const attempts = [...(attemptsBy.get(student.rut) ?? [])].sort((a, b) => a.attemptNumber - b.attemptNumber);
 
-      const last = attempts[attempts.length - 1] as AttemptRow;
+        if (attempts.length === 0) continue;
 
-      rows.push({
-        streak,
-        cells: [...baseCells(student), best === 0 ? "Ninguno" : best, streak, attempts.length, chileDate(last.startedAt)],
-      });
+        const outcomes = attempts.map((attempt) => unpassedLevelOf(resultsBy.get(attempt.attemptId) ?? []));
+        const found = stuckRun(outcomes.map((outcome) => outcome?.level ?? null));
+
+        if (!found || found.run < needed) continue;
+
+        const inRun = attempts.slice(-found.run);
+        const failedTries = outcomes.slice(-found.run).reduce((sum, outcome) => sum + (outcome?.failedTries ?? 0), 0);
+        const best = attempts
+          .flatMap((attempt) => resultsBy.get(attempt.attemptId) ?? [])
+          .filter((result) => isLevelResultPassed(result))
+          .reduce((max, result) => Math.max(max, result.index), 0);
+        const last = inRun[inRun.length - 1] as AttemptRow;
+
+        rows.push({
+          run: found.run,
+          level: found.level,
+          cells: [
+            ...baseCells(student),
+            GAME_LABELS[game],
+            found.level,
+            found.run,
+            partidaNumbers(inRun.map((attempt) => attempt.attemptNumber)),
+            failedTries,
+            best === 0 ? "Ninguno" : best,
+            chileDate(last.startedAt),
+          ],
+        });
+      }
     }
 
-    rows.sort((a, b) => b.streak - a.streak);
+    rows.sort((a, b) => b.run - a.run || b.level - a.level);
 
     return listResult({
-      columns: [...BASE_COLUMNS, "Nivel máximo", "Partidas sin avanzar", "Partidas jugadas", "Última partida"],
+      columns: [
+        ...BASE_COLUMNS,
+        "Juego",
+        "Nivel sin superar",
+        "Partidas seguidas",
+        "N.º de partidas",
+        "Intentos fallidos",
+        "Nivel máximo superado",
+        "Fecha de la última partida",
+      ],
       rows: rows.map((row) => row.cells),
       notes: [
-        `Solo ${GAME_LABELS[game]}. El nivel máximo es el más alto ${game === "node-connection" ? "completado" : "aprobado"}, tomando todas sus partidas.`,
-        `Se cuentan las últimas partidas seguidas que no superaron el mejor nivel que ya tenía; entran quienes llevan ${needed} o más. No se cuenta una partida que sigue en curso.`,
-        "No distingue si el estudiante ya terminó todos los niveles del juego.",
+        `Entran quienes dejaron sin superar el mismo nivel en ${needed} o más partidas seguidas de un mismo juego, y la última partida que jugaron es la última de esa racha: si después superaron ese nivel, ya no aparecen.`,
+        "En cada partida, el nivel sin superar es el más alto en que se jugó cuando no se logró superarlo en ninguno de sus intentos. Una partida que terminó habiendo superado su último nivel jugado, o que se dejó antes de jugar un intento completo, corta la racha.",
+        "Cada juego se mira por separado; un estudiante puede aparecer una vez por juego. No se cuenta una partida que sigue en curso.",
+        "«Intentos fallidos» suma los intentos perdidos en ese nivel durante la racha. «Nivel máximo superado» es el más alto superado en cualquier partida del juego.",
       ],
       total: cohort.length,
     });
@@ -412,7 +460,7 @@ export type MiniCasesProgress = {
 
 /**
  * Cuanto le falta a cada estudiante para cumplir la regla de Mini casos:
- * aprobar el nivel 10 de Seriacion y completar el nivel 10 de Nodos.
+ * aprobar el nivel 10 de Seriacion y aprobar el nivel 10 de Nodos.
  */
 export function miniCasesProgress(students: StudentRow[], results: ResultRow[]): MiniCasesProgress[] {
   const seriation = new Map<string, number>();
@@ -423,7 +471,7 @@ export function miniCasesProgress(students: StudentRow[], results: ResultRow[]):
       seriation.set(result.studentRut, Math.max(seriation.get(result.studentRut) ?? 0, result.index));
     }
 
-    if (result.gameId === "node-connection") {
+    if (result.gameId === "node-connection" && isLevelResultPassed(result)) {
       nodes.set(result.studentRut, Math.max(nodes.get(result.studentRut) ?? 0, result.index));
     }
   }
@@ -448,7 +496,7 @@ export function miniCasesProgress(students: StudentRow[], results: ResultRow[]):
   });
 }
 
-export const miniCasesColumns = [...BASE_COLUMNS, "Seriación (nivel aprobado)", "Nodos (nivel completado)", "Qué le falta"];
+export const miniCasesColumns = [...BASE_COLUMNS, "Seriación (nivel aprobado)", "Nodos (nivel aprobado)", "Qué le falta"];
 
 export const miniCasesCells = (item: MiniCasesProgress) => [
   ...baseCells(item.student),
@@ -494,7 +542,8 @@ const genLocked: ChartDef = {
       columns: miniCasesColumns,
       rows: locked.map(miniCasesCells),
       notes: [
-        `Mini casos se desbloquea al aprobar el nivel ${MINI_CASES_UNLOCK_LEVEL} de Seriación de colores y completar el nivel ${MINI_CASES_UNLOCK_LEVEL} de Conexión de nodos, en partidas distintas o en la misma.`,
+        `Mini casos se desbloquea al aprobar el nivel ${MINI_CASES_UNLOCK_LEVEL} de Seriación de colores y aprobar el nivel ${MINI_CASES_UNLOCK_LEVEL} de Conexión de nodos (tablero resuelto sin agotar los errores permitidos), en partidas distintas o en la misma.`,
+        "Los niveles de Nodos jugados antes de existir los errores permitidos cuentan como aprobados.",
         "Quien ya cumple la regla pero no aparece desbloqueado se registra cuando entra a su panel.",
       ],
       total: cohort.length,

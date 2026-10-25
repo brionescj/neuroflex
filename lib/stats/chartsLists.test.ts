@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildChart } from "./charts";
-import { stuckStreak } from "./chartsLists";
+import { stuckRun, unpassedLevelOf } from "./chartsLists";
 import { parseChartRequest } from "./request";
 import type { AttemptRow, ChartResult, GameId, ResultRow, StatsData, StudentRow, UnlockRow } from "./types";
 
@@ -119,76 +119,157 @@ describe("Dejaron de jugar", () => {
   });
 });
 
-describe("stuckStreak", () => {
-  it("cuenta las últimas partidas seguidas que no superaron el mejor nivel", () => {
-    expect(stuckStreak([3, 3, 2, 3, 1, 3])).toEqual({ streak: 5, best: 3 });
-    expect(stuckStreak([1, 2, 3, 4])).toEqual({ streak: 0, best: 4 });
-    expect(stuckStreak([2, 0, 0])).toEqual({ streak: 2, best: 2 });
-    expect(stuckStreak([0, 0, 0])).toEqual({ streak: 3, best: 0 });
-    expect(stuckStreak([2, 2, 3])).toEqual({ streak: 0, best: 3 });
-    expect(stuckStreak([])).toEqual({ streak: 0, best: 0 });
+describe("unpassedLevelOf", () => {
+  const row = (index: number, passed: boolean, gameId: GameId = "color-sequence") => ({
+    gameId,
+    index,
+    metrics: { sequenceLength: index + 1, correctCount: passed ? index + 1 : 0, passed },
+  });
+
+  it("es el nivel más alto jugado, si no se superó en ningún intento", () => {
+    expect(unpassedLevelOf([row(1, true), row(2, true), row(3, false), row(3, false)])).toEqual({
+      level: 3,
+      failedTries: 2,
+    });
+  });
+
+  it("si el nivel más alto jugado sí se superó, la partida no se trabó en ninguno", () => {
+    expect(unpassedLevelOf([row(1, true), row(2, true)])).toBeNull();
+    expect(unpassedLevelOf([row(1, true), row(2, false), row(2, true)])).toBeNull();
+  });
+
+  it("sin resultados no hay nivel", () => {
+    expect(unpassedLevelOf([])).toBeNull();
+  });
+
+  it("en nodos, un resultado antiguo (sin «passed») cuenta como superado", () => {
+    expect(unpassedLevelOf([{ gameId: "node-connection", index: 4, metrics: { pairCount: 4 } }])).toBeNull();
+    expect(unpassedLevelOf([row(4, false, "node-connection")])).toEqual({ level: 4, failedTries: 1 });
+  });
+});
+
+describe("stuckRun", () => {
+  it("cuenta desde la última partida hacia atrás mientras sea el mismo nivel", () => {
+    expect(stuckRun([5, 7, 7, 7])).toEqual({ level: 7, run: 3 });
+    expect(stuckRun([7, 7, 7, 7, 7])).toEqual({ level: 7, run: 5 });
+  });
+
+  it("la racha debe terminar en la última partida", () => {
+    // fallaba el 7 tres veces pero la última partida fue otra cosa
+    expect(stuckRun([7, 7, 7, 8])).toEqual({ level: 8, run: 1 });
+    expect(stuckRun([7, 7, 7, null])).toBeNull();
+  });
+
+  it("una partida sin nivel trabado corta la racha", () => {
+    expect(stuckRun([7, null, 7, 7])).toEqual({ level: 7, run: 2 });
+  });
+
+  it("niveles distintos no se suman", () => {
+    expect(stuckRun([3, 4, 3, 4])).toEqual({ level: 4, run: 1 });
+  });
+
+  it("sin partidas no hay racha", () => {
+    expect(stuckRun([])).toBeNull();
   });
 });
 
 describe("Estudiantes estancados", () => {
+  type Play = [number, boolean][];
+
+  /** Cada partida es la lista de niveles que jugó con si los superó. */
   function stuckData(): StatsData {
     const attempts: AttemptRow[] = [];
     const results: ResultRow[] = [];
-    const play = (rut: string, levels: number[], extra: Partial<AttemptRow> = {}) =>
-      levels.forEach((n, i) => {
-        const owner = attempt(rut, "color-sequence", i + 1, extra);
+    const play = (rut: string, partidas: Play[], gameId: GameId = "color-sequence", extra: Partial<AttemptRow> = {}) =>
+      partidas.forEach((levels, i) => {
+        const owner = attempt(rut, gameId, i + 1, extra);
 
         attempts.push(owner);
-        if (n > 0) results.push(level(owner, n));
+        for (const [n, passed] of levels) results.push(level(owner, n, passed));
       });
 
-    play("1", [3, 3, 2, 3, 1, 3]);
-    play("2", [2, 0, 0]);
-    play("3", [1, 2, 3, 4]);
+    const climb = (top: number, failedAt: number | null): Play => [
+      ...Array.from({ length: top }, (_, i): [number, boolean] => [i + 1, true]),
+      ...(failedAt === null ? [] : [[failedAt, false] as [number, boolean]]),
+    ];
 
-    return empty([student("1"), student("2"), student("3"), student("4")], attempts, results);
+    // 1: tres partidas seguidas sin superar el nivel 4, justo hasta su última partida.
+    play("1", [climb(5, 6), climb(3, 4), climb(3, 4), climb(3, 4)]);
+    // 2: falló el nivel 4 tres veces, pero luego lo superó: ya no está estancada.
+    play("2", [climb(3, 4), climb(3, 4), climb(3, 4), climb(5, null)]);
+    // 3: dos partidas en el 4 y otra en el 6: no son el mismo nivel.
+    play("3", [climb(3, 4), climb(3, 4), climb(5, 6)]);
+    // 4: tres partidas sin superar el mismo nivel, pero en nodos.
+    play("4", [climb(2, 3), climb(2, 3), climb(2, 3)], "node-connection");
+    // 5: la partida del medio no se trabó en ninguno: corta la racha.
+    play("5", [climb(3, 4), climb(4, null), climb(3, 4), climb(3, 4)]);
+
+    return empty([1, 2, 3, 4, 5].map((n) => student(String(n))), attempts, results);
   }
 
-  it("por defecto, 4 partidas sin avanzar", () => {
+  it("por defecto, 3 partidas seguidas, de ambos juegos, con el juego y el nivel", () => {
     const chart = run(stuckData(), { chart: "gen-stuck" });
 
-    expect(chart.table?.columns.slice(4)).toEqual(["Nivel máximo", "Partidas sin avanzar", "Partidas jugadas", "Última partida"]);
-    expect(chart.table?.rows).toHaveLength(1);
-    expect(chart.table?.rows[0]?.slice(0, 2)).toEqual(["Nombre1 Apellido1", "1"]);
-    expect(chart.table?.rows[0]?.slice(4, 7)).toEqual([3, 5, 6]);
-    expect(chart.notes.join(" ")).toMatch(/4 o más/);
+    expect(chart.table?.columns.slice(4)).toEqual([
+      "Juego",
+      "Nivel sin superar",
+      "Partidas seguidas",
+      "N.º de partidas",
+      "Intentos fallidos",
+      "Nivel máximo superado",
+      "Fecha de la última partida",
+    ]);
+    expect(chart.table?.rows.map((row) => row[1])).toEqual(["1", "4"]);
+    expect(chart.table?.rows[0]?.slice(4, 10)).toEqual(["Seriación de colores", 4, 3, "2, 3 y 4", 3, 5]);
+    expect(chart.table?.rows[1]?.slice(4, 10)).toEqual(["Conexión de nodos", 3, 3, "1, 2 y 3", 3, 2]);
+    expect(chart.notes.join(" ")).toMatch(/3 o más partidas seguidas/);
   });
 
-  it("con 2 entra también quien lleva 2, y primero va quien lleva más", () => {
+  it("con 2 entra también quien lleva dos seguidas, hasta su última partida", () => {
     const rows = run(stuckData(), { chart: "gen-stuck", options: '{"stuck":"2"}' }).table?.rows ?? [];
 
-    expect(rows.map((row) => row[1])).toEqual(["1", "2"]);
+    expect(rows.map((row) => row[1])).toEqual(["1", "4", "5"]);
   });
 
-  it("una partida que sigue en curso no cuenta como no avanzar", () => {
+  it("se puede ver un solo juego", () => {
+    const nodes = run(stuckData(), { chart: "gen-stuck", options: '{"game":"node-connection"}' }).table?.rows ?? [];
+    const seriation = run(stuckData(), { chart: "gen-stuck", options: '{"game":"color-sequence"}' }).table?.rows ?? [];
+
+    expect(nodes.map((row) => row[1])).toEqual(["4"]);
+    expect(seriation.map((row) => row[1])).toEqual(["1"]);
+  });
+
+  it("una partida que sigue en curso no cuenta", () => {
     const data = stuckData();
 
-    data.attempts.push(attempt("2", "color-sequence", 4, { status: "in_progress", lastActivityAt: new Date("2026-10-21T14:30:00Z") }));
+    data.attempts.push(
+      attempt("2", "color-sequence", 5, { status: "in_progress", lastActivityAt: new Date("2026-10-21T14:30:00Z") }),
+    );
 
-    const rows = run(data, { chart: "gen-stuck", options: '{"stuck":"3"}' }).table?.rows ?? [];
+    const rows = run(data, { chart: "gen-stuck" }).table?.rows ?? [];
 
-    expect(rows.map((row) => row[1])).toEqual(["1"]);
+    expect(rows.map((row) => row[1])).toEqual(["1", "4"]);
   });
 
-  it("nunca avanzó del nivel 0: «Ninguno»", () => {
-    const attempts = [1, 2, 3, 4].map((n) => attempt("1", "color-sequence", n));
-    const rows = run(empty([student("1")], attempts), { chart: "gen-stuck" }).table?.rows ?? [];
+  it("una partida abandonada a mitad de un intento, sin resultado, corta la racha", () => {
+    const data = stuckData();
 
-    expect(rows[0]?.[4]).toBe("Ninguno");
-    expect(rows[0]?.[5]).toBe(4);
+    data.attempts.push(attempt("1", "color-sequence", 5, { status: "in_progress" }));
+
+    expect(run(data, { chart: "gen-stuck" }).table?.rows.map((row) => row[1])).toEqual(["4"]);
   });
 
-  it("en nodos cuenta el nivel completado", () => {
-    const attempts = [1, 2, 3, 4, 5].map((n) => attempt("1", "node-connection", n));
-    const results = [level(attempts[0] as AttemptRow, 2)];
-    const rows = run(empty([student("1")], attempts, results), { chart: "gen-stuck", options: '{"game":"node-connection"}' }).table?.rows ?? [];
+  it("quien nunca superó ningún nivel muestra «Ninguno»", () => {
+    const attempts = [1, 2, 3].map((n) => attempt("1", "color-sequence", n));
+    const results = attempts.map((owner) => level(owner, 1, false));
+    const rows = run(empty([student("1")], attempts, results), { chart: "gen-stuck" }).table?.rows ?? [];
 
-    expect(rows[0]?.slice(4, 6)).toEqual([2, 4]);
+    expect(rows[0]?.slice(5, 7)).toEqual([1, 3]);
+    expect(rows[0]?.[9]).toBe("Ninguno");
+  });
+
+  it("mini casos no es una opción", () => {
+    expect(parseChartRequest({ chart: "gen-stuck", options: '{"game":"mini-cases"}' }).ok).toBe(false);
   });
 });
 

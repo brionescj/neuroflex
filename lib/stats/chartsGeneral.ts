@@ -15,7 +15,7 @@ import {
   type ChartDef,
 } from "./engine";
 import { median, percentOf, round } from "./numbers";
-import { isColorSequenceResultPassed } from "../gameAttempts";
+import { isFirstTryTime, isLevelResultPassed } from "../gameAttempts";
 import { chileWeekdayHour } from "./time";
 import {
   GAME_IDS,
@@ -85,10 +85,7 @@ const genSummary: ChartDef = {
 
       const maxLevel = (rut: string, game: GameId) =>
         (resultsByRut.get(rut) ?? [])
-          .filter(
-            (r) =>
-              r.gameId === game && (game === "node-connection" || isColorSequenceResultPassed(r)),
-          )
+          .filter((r) => r.gameId === game && isLevelResultPassed(r))
           .reduce((max, r) => Math.max(max, r.index), 0);
 
       const levelOf = (list: StudentRow[], game: GameId) => median(list.map((s) => maxLevel(s.rut, game)));
@@ -96,7 +93,7 @@ const genSummary: ChartDef = {
         median(
           list.flatMap((s) =>
             (resultsByRut.get(s.rut) ?? [])
-              .filter((r) => r.gameId === game && r.tryNumber === 1)
+              .filter((r) => r.gameId === game && isFirstTryTime(r))
               .map((r) => r.activeMsNet / 1000),
           ),
         );
@@ -217,7 +214,7 @@ const genSummary: ChartDef = {
       },
       notes: [
         "Se cuentan los estudiantes habilitados. El nivel típico es el nivel máximo que alcanzó cada estudiante, tomando todas sus partidas; la mediana es el valor del medio.",
-        "El nivel de Seriación es el más alto que superó; el de Nodos, el más alto que completó.",
+        "El nivel de cada juego es el más alto que superó. En Nodos, superar un nivel es resolver el tablero sin agotar los errores permitidos; los niveles jugados antes de existir esos errores cuentan como superados.",
         FICHA_NOTE,
       ],
       studentsTotal: totalStudents(grouped, (s) => s.rut),

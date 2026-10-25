@@ -701,11 +701,12 @@ function nodeData(): StatsData {
 }
 
 describe("Nodos", () => {
-  it("niveles completados: el mas alto de cada estudiante", () => {
+  it("nivel maximo superado: el mas alto de cada estudiante (sin `passed`, un resultado antiguo cuenta como superado)", () => {
     const chart = run(nodeData(), { chart: "nc-levels" });
 
-    expect(chart.categories).toEqual(["1", "2", "3", "4"]);
-    expect(seriesOf(chart).values).toEqual([0, 1, 0, 1]);
+    // El nivel 0 son quienes no superaron ninguno.
+    expect(chart.categories).toEqual(["0", "1", "2", "3", "4"]);
+    expect(seriesOf(chart).values).toEqual([0, 0, 1, 0, 1]);
   });
 
   it("tiempo por nivel: mediana entre estudiantes", () => {

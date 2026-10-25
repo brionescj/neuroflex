@@ -1,6 +1,7 @@
 import { isColorSequenceResultPassed } from "../gameAttempts";
 import { deductionOf } from "./deductions";
 import { chartsGeneral } from "./chartsGeneral";
+import { chartsNodes } from "./chartsNodes";
 import { chartsSeriation } from "./chartsSeriation";
 import {
   AS_OPTION,
@@ -162,40 +163,6 @@ const csTime: ChartDef = {
   options: [],
   build: (ctx) =>
     timePerLevel(ctx, "color-sequence", true, "Solo se mide el primer intento de cada nivel."),
-};
-
-const ncLevels: ChartDef = {
-  id: "nc-levels",
-  game: "node-connection",
-  title: "Niveles completados",
-  blurb:
-    "Cuántos niveles de Conexión de nodos completó cada estudiante. Se muestra cuántos estudiantes llegaron hasta cada nivel.",
-  views: ["bars", "lines"],
-  usesPartida: true,
-  supportsDevice: true,
-  options: [AS_OPTION],
-  build: (ctx) =>
-    distribution(
-      ctx,
-      "node-connection",
-      (unit) => unit.results.reduce((max, r) => Math.max(max, r.index), 0),
-      1,
-      "Nivel más alto completado",
-      [],
-    ),
-};
-
-const ncTime: ChartDef = {
-  id: "nc-time",
-  game: "node-connection",
-  title: "Tiempo por nivel",
-  blurb:
-    "Tiempo mediano que tardan en completar cada nivel de Conexión de nodos. La mediana es el valor del medio: unos pocos tiempos muy largos no la distorsionan.",
-  views: ["lines", "bars"],
-  usesPartida: true,
-  supportsDevice: true,
-  options: [],
-  build: (ctx) => timePerLevel(ctx, "node-connection", false, "Se mide el tiempo hasta completar cada nivel."),
 };
 
 const mcSteps: ChartDef = {
@@ -513,8 +480,7 @@ const abandonment: ChartDef = {
 export const CHARTS: ChartDef[] = [
   ...chartsGeneral(participation, activity, abandonment),
   ...chartsSeriation(csMaxLevel, csPassRate, csTime),
-  ncLevels,
-  ncTime,
+  ...chartsNodes(),
   mcSteps,
   mcTime,
 ];

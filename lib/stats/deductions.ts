@@ -24,7 +24,7 @@ const GROUP: Partial<Record<ChartId, string>> = {
   "gen-inactive":
     "Cada fila es un estudiante que ya jugó pero lleva más días sin entrar que el límite elegido. Mientras más días sin jugar, más tiempo lleva sin volver.",
   "gen-stuck":
-    "Cada fila es un estudiante con varias partidas seguidas sin superar su nivel más alto. Sugiere que ese nivel le cuesta; no prueba que no pueda superarlo.",
+    "Cada fila es un estudiante que dejó sin superar el mismo nivel de un juego en varias partidas seguidas, hasta su última partida. Sugiere que ese nivel le cuesta; no prueba que no pueda superarlo, y puede deberse también a que juega poco tiempo o con prisa.",
   "gen-failed":
     "Cada fila es un estudiante con partidas cerradas por agotar los 3 intentos de un nivel. Varias partidas fallidas apuntan a un nivel que le cuesta.",
   "gen-abandoners":
@@ -52,9 +52,25 @@ const GROUP: Partial<Record<ChartId, string>> = {
   "cs-pace":
     "Un primer toque muy tardío sugiere duda al empezar; una pausa larga a mitad de la secuencia, que se perdieron en ella. Los tiempos suben con el nivel porque la secuencia es más larga.",
   "nc-levels":
-    "Cada barra cuenta los estudiantes que llegaron hasta ese nivel. Una caída fuerte entre dos niveles marca dónde se detiene el grupo.",
+    "Cada barra cuenta los estudiantes cuyo nivel más alto superado es ese. Una acumulación en un nivel marca dónde se detiene el grupo; el nivel 0 son quienes aún no superan ninguno.",
+  "nc-pass-rate":
+    "Una caída del porcentaje en un nivel marca dónde el juego se vuelve más difícil. Si pocos estudiantes jugaron ese nivel, el porcentaje es poco estable: mira también el total en la tabla.",
   "nc-time":
-    "Un nivel con un tiempo mayor es uno que costó más completar. El tiempo tiende a subir con el nivel porque cada nivel agrega más colores.",
+    "Un nivel con un tiempo mayor es uno que costó más resolver. El tiempo tiende a subir con el nivel porque los tableros son más grandes y tienen más pares. Solo cuentan quienes lo superaron al primer intento.",
+  "nc-reach":
+    "La curva solo baja: cada caída marca un nivel donde parte del grupo se queda. Una caída brusca entre dos niveles señala un salto de dificultad.",
+  "nc-tries":
+    "Si la mayor parte supera los niveles al primer intento, no necesita repetirlos. Más peso en el segundo y tercer intento, o en los niveles no superados, señala niveles que cuestan o que exigen planificar mejor.",
+  "nc-errors":
+    "Más errores en un nivel indican que el trazo choca más o que se rehace el tablero con más frecuencia. Si el margen usado se acerca al 100 %, el grupo está cerca de perder el intento en ese nivel.",
+  "nc-corrections":
+    "Corregir es normal. Muchos Deshacer o retrocesos seguidos pueden indicar que prueban caminos sin anticipar; pocos, que planifican antes de trazar. Mira siempre junto con los errores y el tiempo.",
+  "nc-correction-mix":
+    "Más peso en Deshacer y retroceder indica ajustes pequeños dentro del mismo plan. Más peso en Rehacer tablero indica que, al ver que algo no funciona, prefieren empezar de cero.",
+  "nc-pace":
+    "Un primer trazo muy rápido en tableros grandes puede indicar que empiezan sin planificar; uno muy tardío, que dudan o estudian el tablero con calma. Las pausas largas a mitad del nivel suelen marcar el momento en que se traban.",
+  "nc-improvement":
+    "Si la línea sube con el número de partida, quienes repiten llegan más lejos. Cuidado: en las partidas más altas quedan menos estudiantes (los que siguen jugando), así que la subida puede deberse a quién continúa. En la vista de cambio, más estudiantes en «mejoraron» que en «empeoraron» indica avance.",
   "mc-steps":
     "Un caso con pocos pasos correctos, o con pocos estudiantes que lo ordenan completo, es el que más cuesta ordenar.",
   "mc-time":
@@ -74,7 +90,9 @@ const SINGLE: Partial<Record<ChartId, string>> = {
   "cs-first-error":
     "Un primer fallo en el comienzo suele indicar que no retuvo los primeros colores; en la parte final, que perdió el hilo hacia el cierre de la secuencia.",
   "nc-time":
-    "Un nivel con un tiempo mayor es uno que le costó más completar. El tiempo tiende a subir con el nivel porque cada nivel agrega más colores.",
+    "Un nivel con un tiempo mayor es uno que le costó más resolver. El tiempo tiende a subir con el nivel porque los tableros son más grandes y tienen más pares.",
+  "nc-improvement":
+    "Si la línea sube, llegó más lejos en sus partidas más recientes que en las primeras. Si baja o se mantiene, su nivel más alto no ha mejorado.",
   "mc-steps":
     "Un caso con pocos pasos correctos es uno que le cuesta ordenar.",
   "mc-time":

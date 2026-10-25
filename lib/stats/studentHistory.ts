@@ -1,4 +1,4 @@
-import { isColorSequenceResultPassed } from "../gameAttempts";
+import { isLevelResultPassed } from "../gameAttempts";
 import { chileDate } from "./chartsLists";
 import { round } from "./numbers";
 import { isDateKey, rangeWindow } from "./time";
@@ -37,10 +37,10 @@ export function outcomeOf(attempt: AttemptRow, now: Date): string {
   return `Sin terminar (${days <= 0 ? "activa hoy" : `última actividad hace ${days} ${days === 1 ? "día" : "días"}`})`;
 }
 
-/** El nivel mas alto de un juego en una lista de resultados: aprobado en Seriacion, completado en Nodos. */
+/** El nivel mas alto aprobado de un juego en una lista de resultados (Seriacion y Nodos). */
 export function bestLevelOf(results: ResultRow[], game: GameId): number {
   return results
-    .filter((r) => r.gameId === game && (game !== "color-sequence" || isColorSequenceResultPassed(r)))
+    .filter((r) => r.gameId === game && isLevelResultPassed(r))
     .reduce((max, r) => Math.max(max, r.index), 0);
 }
 

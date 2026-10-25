@@ -1,3 +1,4 @@
+import { isFirstTryTime } from "../gameAttempts";
 import { buildChart } from "./charts";
 import { chileDate, fullName, miniCasesProgress, shiftText, universityText } from "./chartsLists";
 import { deductionOf } from "./deductions";
@@ -32,9 +33,9 @@ const MIN_PEERS = 3;
 
 const GAMES: GameId[] = ["color-sequence", "node-connection", "mini-cases"];
 
-/** Segundos del primer intento de cada nivel, de la lista de resultados. */
+/** Segundos del primer intento de cada nivel, de la lista de resultados (en Nodos, solo los que se pasaron). */
 function firstTrySeconds(results: ResultRow[], game: GameId): number[] {
-  return results.filter((r) => r.gameId === game && r.tryNumber === 1).map((r) => r.activeMsNet / 1000);
+  return results.filter((r) => r.gameId === game && isFirstTryTime(r)).map((r) => r.activeMsNet / 1000);
 }
 
 const STATE_ORDER: AttemptState[] = ["finished", "failed", "open"];
@@ -77,7 +78,7 @@ function secondsByLevel(attempt: AttemptRow, results: ResultRow[]): Map<number, 
   const grouped = new Map<number, number[]>();
 
   for (const r of results) {
-    if (r.attemptId !== attempt.attemptId || r.gameId !== attempt.gameId || r.tryNumber !== 1) continue;
+    if (r.attemptId !== attempt.attemptId || r.gameId !== attempt.gameId || !isFirstTryTime(r)) continue;
 
     grouped.set(r.index, [...(grouped.get(r.index) ?? []), r.activeMsNet / 1000]);
   }
@@ -158,8 +159,8 @@ function levelByAttempt(game: GameId, attempts: AttemptRow[], results: ResultRow
   const seriation = game === "color-sequence";
   const id: ChartId = seriation ? "cs-improvement" : "st-levels";
   const title = "Mejora entre partidas";
-  const verb = seriation ? "superó" : "completó";
-  const label = seriation ? "Nivel más alto superado" : "Nivel más alto completado";
+  const verb = "superó";
+  const label = "Nivel más alto superado";
   const gameName = seriation ? "Seriación de colores" : "Conexión de nodos";
 
   return {

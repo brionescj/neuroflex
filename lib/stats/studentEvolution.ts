@@ -1,3 +1,4 @@
+import { isFirstTryTime } from "../gameAttempts";
 import { SERIATION_TIME_CAUTION, deductionOf } from "./deductions";
 import { mean, round } from "./numbers";
 import { emptyResult, num } from "./profileCommon";
@@ -166,7 +167,7 @@ function metricsOf(game: GameId): Metric[] {
     ];
   }
 
-  const verb = game === "color-sequence" ? "superó" : "completó";
+  const verb = "superó";
 
   return [
     count,
@@ -191,7 +192,7 @@ function metricsOf(game: GameId): Metric[] {
       unit: "seconds",
       unitLabel: "segundos",
       yLabel: "Segundos (promedio)",
-      of: (_, own) => mean(own.filter((r) => r.tryNumber === 1).map((r) => r.activeMsNet / 1000)),
+      of: (_, own) => mean(own.filter((r) => isFirstTryTime(r)).map((r) => r.activeMsNet / 1000)),
       notes: [
         "Para cada partida se promedia el tiempo activo del primer intento de sus niveles (sin pausas largas); el punto es el promedio de esas partidas.",
         ...(game === "color-sequence"
