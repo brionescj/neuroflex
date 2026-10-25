@@ -75,7 +75,7 @@ describe("scoreNodeTry", () => {
       errorsAllowed: 99,
     });
 
-    expect(score).toEqual({ errors: 9, errorsAllowed: 6, passed: false });
+    expect(score).toEqual({ errors: 9, errorsAllowed: 3, passed: false });
   });
 
   it("sin contadores (resultado antiguo) no puntua", () => {

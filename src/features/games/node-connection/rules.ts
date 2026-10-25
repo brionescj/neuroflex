@@ -23,17 +23,29 @@ export const MIN_LEVELS = 10;
 /** Un "Rehacer tablero" cuesta lo mismo que dos choques: tirar toda la ruta es un plan que fallo. */
 export const RESET_ERROR_WEIGHT = 2;
 
-/** Errores que se permiten por cada par del tablero, segun el tramo del juego. */
-export function errorsPerPair(level: number): number {
-  if (level <= 5) return 3;
-  if (level <= 10) return 2;
+/** Los errores permitidos nunca bajan de esta cantidad, ni en el tablero mas chico. */
+export const MIN_ALLOWED_ERRORS = 3;
 
-  return 1;
+/**
+ * Errores que se permiten, como porcentaje de los pares del tablero, segun el tramo del
+ * juego: 100 % (1 a 5), 60 % (6 a 10) y 40 % (11 a 15). Es un margen estrecho a proposito:
+ * pocos choques bastan para perder el intento, asi que hay que planificar las rutas antes de trazar.
+ */
+export function allowedPercentOfPairs(level: number): number {
+  if (level <= 5) return 100;
+  if (level <= 10) return 60;
+
+  return 40;
 }
 
-/** Errores que se permiten en el nivel: por cada par, mas pares, mas margen. */
+/**
+ * Errores que se permiten en el nivel: el porcentaje de los pares, redondeado hacia arriba (con
+ * enteros, sin decimales que se desvien) y nunca menos de `MIN_ALLOWED_ERRORS`.
+ */
 export function allowedErrors(level: number, pairCount: number): number {
-  return pairCount * errorsPerPair(level);
+  const byPairs = Math.floor((pairCount * allowedPercentOfPairs(level) + 99) / 100);
+
+  return Math.max(MIN_ALLOWED_ERRORS, byPairs);
 }
 
 /** Errores cometidos en un intento. */

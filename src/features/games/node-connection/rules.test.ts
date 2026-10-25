@@ -5,7 +5,8 @@ import {
   MAX_TRIES_PER_LEVEL,
   allowedErrors,
   errorsOf,
-  errorsPerPair,
+  allowedPercentOfPairs,
+  MIN_ALLOWED_ERRORS,
   isOverLimit,
   isTryPassed,
   nextStepAfter,
@@ -14,21 +15,38 @@ import {
 } from "./rules";
 
 describe("errores permitidos", () => {
-  it("bajan por tramos: 3 por par (1 a 5), 2 (6 a 10) y 1 (11 a 15)", () => {
-    expect([1, 5].map(errorsPerPair)).toEqual([3, 3]);
-    expect([6, 10].map(errorsPerPair)).toEqual([2, 2]);
-    expect([11, 15].map(errorsPerPair)).toEqual([1, 1]);
+  it("el margen se achica por tramos: 100 % de los pares (1 a 5), 60 % (6 a 10) y 40 % (11 a 15)", () => {
+    expect([1, 5].map(allowedPercentOfPairs)).toEqual([100, 100]);
+    expect([6, 10].map(allowedPercentOfPairs)).toEqual([60, 60]);
+    expect([11, 15].map(allowedPercentOfPairs)).toEqual([40, 40]);
   });
 
-  it("crecen con los pares del tablero", () => {
-    expect(allowedErrors(1, 2)).toBe(6);
-    expect(allowedErrors(8, 6)).toBe(12);
-    expect(allowedErrors(15, 8)).toBe(8);
+  it("crecen con los pares del tablero, redondeando hacia arriba", () => {
+    expect(allowedErrors(5, 5)).toBe(5);
+    expect(allowedErrors(9, 7)).toBe(5); // 60 % de 7 = 4,2 -> 5
+    expect(allowedErrors(15, 8)).toBe(4); // 40 % de 8 = 3,2 -> 4
   });
 
-  it("nunca se permiten menos errores en un nivel mas dificil que el margen por par de su tramo", () => {
+  it("nunca bajan del minimo, ni en el tablero mas chico", () => {
+    expect(MIN_ALLOWED_ERRORS).toBe(3);
+    expect(allowedErrors(1, 2)).toBe(3);
+    expect(allowedErrors(11, 2)).toBe(3);
+  });
+
+  it("cada nivel permite entre 3 y 5 errores: poco margen, pero siempre alcanzable", () => {
     for (const level of LEVELS) {
-      expect(allowedErrors(level.id, level.pairs.length)).toBeGreaterThanOrEqual(level.pairs.length);
+      const allowed = allowedErrors(level.id, level.pairs.length);
+
+      expect(allowed).toBeGreaterThanOrEqual(3);
+      expect(allowed).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it("el margen por par nunca sube al avanzar de tramo", () => {
+    const perPair = (level: number) => allowedPercentOfPairs(level);
+
+    for (let level = 2; level <= 15; level++) {
+      expect(perPair(level)).toBeLessThanOrEqual(perPair(level - 1));
     }
   });
 });
@@ -41,21 +59,21 @@ describe("errores cometidos", () => {
   });
 
   it("se puede llegar justo al limite sin perder; el siguiente error lo pierde", () => {
-    // Nivel 1, 2 pares: 6 permitidos.
-    expect(isOverLimit(1, 2, { blockedCount: 6, resetCount: 0 })).toBe(false);
-    expect(isOverLimit(1, 2, { blockedCount: 7, resetCount: 0 })).toBe(true);
-    expect(isOverLimit(1, 2, { blockedCount: 4, resetCount: 1 })).toBe(false);
-    expect(isOverLimit(1, 2, { blockedCount: 5, resetCount: 1 })).toBe(true);
+    // Nivel 1, 2 pares: 3 permitidos (el minimo).
+    expect(isOverLimit(1, 2, { blockedCount: 3, resetCount: 0 })).toBe(false);
+    expect(isOverLimit(1, 2, { blockedCount: 4, resetCount: 0 })).toBe(true);
+    expect(isOverLimit(1, 2, { blockedCount: 1, resetCount: 1 })).toBe(false);
+    expect(isOverLimit(1, 2, { blockedCount: 2, resetCount: 1 })).toBe(true);
   });
 });
 
 describe("pasar un intento", () => {
-  const base = { level: 1, pairCount: 2, blockedCount: 6, resetCount: 0 };
+  const base = { level: 1, pairCount: 2, blockedCount: 3, resetCount: 0 };
 
   it("exige el tablero resuelto y los errores dentro del margen", () => {
     expect(isTryPassed({ ...base, solved: true })).toBe(true);
     expect(isTryPassed({ ...base, solved: false })).toBe(false);
-    expect(isTryPassed({ ...base, solved: true, blockedCount: 7 })).toBe(false);
+    expect(isTryPassed({ ...base, solved: true, blockedCount: 4 })).toBe(false);
   });
 });
 

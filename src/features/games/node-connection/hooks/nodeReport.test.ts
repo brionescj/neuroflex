@@ -199,12 +199,12 @@ describe("toNodeReport: intentos y errores", () => {
     expect(report.key).toBe("4.2");
     expect(report.index).toBe(4);
     expect(report.tryNumber).toBe(2);
-    // 3 choques + 2 rehacer tablero x 2 = 7; en el nivel 4 se permiten 4 pares x 3 = 12.
+    // 3 choques + 2 rehacer tablero x 2 = 7; en el nivel 4 se permiten 4 pares x 100 % = 4.
     expect(report.metrics).toMatchObject({
       solved: false,
       passed: false,
       errors: 7,
-      errorsAllowed: 12,
+      errorsAllowed: 4,
     });
   });
 
@@ -225,7 +225,7 @@ describe("toNodeReport: intentos y errores", () => {
     );
 
     expect(report.key).toBe("7");
-    expect(report.metrics).toMatchObject({ errors: 1, errorsAllowed: 10, passed: true });
+    expect(report.metrics).toMatchObject({ errors: 1, errorsAllowed: 3, passed: true });
   });
 
   it("sin contadores (partida antigua) no inventa errores", () => {

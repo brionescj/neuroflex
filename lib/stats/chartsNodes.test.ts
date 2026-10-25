@@ -28,7 +28,7 @@ function attempt(rut: string, attemptNumber = 1): AttemptRow {
     status: "finished",
     startedAt: new Date("2026-10-10T12:00:00Z"),
     lastActivityAt: new Date("2026-10-10T13:00:00Z"),
-    contentVersion: "nodes-15-x-r2",
+    contentVersion: "nodes-15-x-r3",
     student: null,
   };
 }

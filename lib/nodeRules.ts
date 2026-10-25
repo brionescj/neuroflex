@@ -11,15 +11,20 @@ export const NODE_MAX_TRIES = 3;
 export const NODE_MIN_LEVELS = 10;
 export const NODE_RESET_ERROR_WEIGHT = 2;
 
-export function nodeErrorsPerPair(level: number): number {
-  if (level <= 5) return 3;
-  if (level <= 10) return 2;
+export const NODE_MIN_ALLOWED_ERRORS = 3;
 
-  return 1;
+/** Copia de allowedPercentOfPairs del navegador: 100 % (1 a 5), 60 % (6 a 10) y 40 % (11 a 15). */
+export function nodeAllowedPercentOfPairs(level: number): number {
+  if (level <= 5) return 100;
+  if (level <= 10) return 60;
+
+  return 40;
 }
 
 export function nodeAllowedErrors(level: number, pairCount: number): number {
-  return pairCount * nodeErrorsPerPair(level);
+  const byPairs = Math.floor((pairCount * nodeAllowedPercentOfPairs(level) + 99) / 100);
+
+  return Math.max(NODE_MIN_ALLOWED_ERRORS, byPairs);
 }
 
 export function nodeErrorsOf(counts: {

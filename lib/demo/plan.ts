@@ -40,7 +40,7 @@ export type DemoGameId = "color-sequence" | "node-connection" | "mini-cases";
 
 /** Copias de lo que define el navegador; demoPlan.test.ts comprueba que no se desfasen. */
 export const COLOR_SEQUENCE_VERSION = "color-sequence-2";
-export const NODE_VERSION = "nodes-15-4827409f-r2";
+export const NODE_VERSION = "nodes-15-4827409f-r3";
 
 /** Tamano del tablero y pares de cada uno de los 15 niveles de Conexion de nodos. */
 export const NODE_LEVELS: readonly { board: number; pairs: number }[] = [

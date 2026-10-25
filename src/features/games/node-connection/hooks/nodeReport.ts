@@ -69,7 +69,7 @@ export function toNodeReport(
  * o los intentos: una partida jugada sin errores permitidos ("r1", la unica
  * hasta entonces) no se puede comparar con una jugada con ellos.
  */
-const RULES_REVISION = 2;
+const RULES_REVISION = 3;
 
 /**
  * Cambia cuando cambian los tableros o las reglas: sin ella no se pueden
