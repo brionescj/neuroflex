@@ -45,7 +45,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     id: "node-connection",
     name: "Conexión de nodos",
     description:
-      "Une los pares de colores sin que las líneas se crucen: planifica la ruta y corrige si se bloquea.",
+      "Une los pares de colores sin que las líneas se crucen: planifica la ruta y cuida tu margen de errores.",
     path: ROUTES.STUDENT_GAME_NODE_CONNECTION,
     icon: Waypoints,
     accentClassName: "bg-emerald-500",
@@ -62,7 +62,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     icon: ListOrdered,
     unlockKey: "miniCases",
     unlockHint:
-      "¡Ya casi! Se abre cuando llegues al nivel 10 en Seriación de colores y también en Conexión de nodos. Sigue jugando, cada nivel te acerca.",
+      "¡Ya casi! Se abre cuando superes el nivel 10 en Seriación de colores y también en Conexión de nodos. Sigue jugando, cada nivel te acerca.",
     accentClassName: "bg-violet-500",
   },
 ];

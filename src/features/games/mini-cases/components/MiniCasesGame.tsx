@@ -207,12 +207,36 @@ export function MiniCasesGame() {
 
       {phase === "idle" && (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-10 text-center">
-          <p className="max-w-md text-sm text-zinc-400">
-            Vas a leer un caso pedagógico, va a desaparecer, y vas a tener
-            unos segundos de distracción antes de que el contexto cambie.
-            Vas a tener que reordenar tu plan de acción con la información
-            nueva.
+          <p className="max-w-md text-sm text-zinc-300">
+            Lee un caso pedagógico, recuerda lo importante y, cuando el
+            contexto cambie, ordena tu plan de acción.
           </p>
+
+          {!hasResumable && (
+            <ul className="flex max-w-md list-disc flex-col gap-1.5 pl-5 text-left text-sm text-zinc-400">
+              <li>
+                Tienes {READING_MS / 1000} segundos para leer el caso. Luego
+                desaparece.
+              </li>
+              <li>
+                Verás un dibujo breve para despejar la mente y después un aviso
+                de cambio con información nueva.
+              </li>
+              <li>
+                Ordena las 4 acciones: toca primero la que harías
+                en primer lugar, luego la segunda, y así. Si tocas una de nuevo,
+                la quitas del orden.
+              </li>
+              <li>
+                Para ordenar no hay tiempo límite. Puedes cambiar el orden hasta
+                que toques «Enviar respuesta».
+              </li>
+              <li>
+                Al enviar verás cuántos pasos quedaron en su lugar y una
+                explicación. Cada caso se responde una vez.
+              </li>
+            </ul>
+          )}
 
           {(casesStatus === "error" || progressStatus === "error") && (
             <div className="flex flex-col items-center gap-2">
@@ -288,7 +312,7 @@ export function MiniCasesGame() {
               Entendido, estructurar plan
             </Button>
 
-            <SaveAndExitButton onSave={flushProgress} className="self-center" />
+            <SaveAndExitButton onSave={flushProgress} className="self-center" unit="caso" />
           </div>
         </div>
       )}
@@ -445,7 +469,7 @@ export function MiniCasesGame() {
       )}
 
       {phase !== "idle" && phase !== "finished" && phase !== "twist" && (
-        <SaveAndExitButton onSave={flushProgress} />
+        <SaveAndExitButton onSave={flushProgress} unit="caso" />
       )}
     </div>
   );

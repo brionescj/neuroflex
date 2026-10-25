@@ -12,6 +12,7 @@ import {
   MAX_TRIES_PER_LEVEL,
   useColorSequenceGame,
 } from "../hooks/useColorSequenceGame";
+import { MIN_LEVELS } from "../hooks/colorSequenceConfig";
 import { requiredCorrect } from "../hooks/colorSequenceRules";
 import { ColorGrid } from "./ColorGrid";
 import { FinishGameControl } from "./FinishGameControl";
@@ -166,7 +167,7 @@ export function ColorSequenceGame() {
       {phase === "idle" && !hasResumable && <BackToGameHub />}
 
       <h1 className="text-center text-2xl font-bold sm:text-3xl md:text-4xl">
-        Serialización de colores
+        Seriación de colores
       </h1>
       {showBoard && (
         <>
@@ -174,7 +175,7 @@ export function ColorSequenceGame() {
             {phase === "idle"
               ? hasResumable
                 ? `Tienes una partida en curso: vas en el ${levelLabel(resumeLevel ?? 1).toLowerCase()}`
-                : "Memoriza el orden en que se iluminan los colores"
+                : "Memoriza el orden en que se iluminan los colores y repítelo"
               : phase === "countdown"
                 ? `${levelLabel(level)} · Prepárate...`
                 : `${levelLabel(level)} · Intento ${tryNumber} de ${MAX_TRIES_PER_LEVEL} — recuerda ${sequence.length} colores`}
@@ -261,6 +262,33 @@ export function ColorSequenceGame() {
               </div>
             )}
           </div>
+
+          {phase === "idle" && !hasResumable && (
+            <ul className="flex w-full max-w-md list-disc flex-col gap-1.5 pl-9 pr-4 text-left text-sm text-zinc-400">
+              <li>
+                Mira cómo se iluminan los colores y luego tócalos en el mismo
+                orden. Antes de cada intento hay una cuenta regresiva.
+              </li>
+              <li>
+                Cada nivel agrega un color más a la secuencia. Cuenta cada color
+                que aciertes en su lugar.
+              </li>
+              <li>
+                Para pasar un nivel debes acertar un mínimo de colores; esa
+                exigencia sube a medida que avanzas.
+              </li>
+              <li>
+                Tienes {MAX_TRIES_PER_LEVEL} intentos por nivel, y cada intento
+                trae una secuencia nueva del mismo largo.
+              </li>
+              <li>
+                Si no pasas un nivel en {MAX_TRIES_PER_LEVEL} intentos, la
+                partida termina. Del nivel 1 al {MIN_LEVELS} se vuelve a empezar
+                desde el 1; desde el {MIN_LEVELS + 1} se guarda hasta dónde
+                llegaste y puedes elegir «Terminar juego» cuando quieras.
+              </li>
+            </ul>
+          )}
 
           {canFinish && phase !== "idle" && (
             <FinishGameControl onConfirm={finish} levelInProgress />
