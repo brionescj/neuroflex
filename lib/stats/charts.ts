@@ -2,6 +2,7 @@ import { isColorSequenceResultPassed } from "../gameAttempts";
 import { deductionOf } from "./deductions";
 import { chartsGeneral } from "./chartsGeneral";
 import { chartsNodes } from "./chartsNodes";
+import { mcOptions } from "./chartsMiniCases";
 import { chartsSeriation } from "./chartsSeriation";
 import {
   AS_OPTION,
@@ -484,6 +485,7 @@ export const CHARTS: ChartDef[] = [
   ...chartsNodes(),
   mcSteps,
   mcTime,
+  mcOptions,
 ];
 
 export function findChart(id: string): ChartDef | undefined {

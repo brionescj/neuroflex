@@ -67,6 +67,8 @@ const GROUP: Partial<Record<ChartId, string>> = {
     "Un caso con pocos pasos correctos, o con pocos estudiantes que lo ordenan completo, es el que más cuesta ordenar.",
   "mc-time":
     "Un caso con un tiempo muy superior al del resto es el que más los hizo dudar.",
+  "mc-options":
+    "Un paso con un porcentaje alto de ubicación errónea, repetido casi siempre en el mismo lugar, señala una confusión común sobre el orden de esa acción. Con pocas partidas puede ser casualidad: revisa cuántas veces se jugó antes de sacar conclusiones.",
 };
 
 /** Lo mismo cuando se mira a un solo estudiante: habla de «el» y no de un grupo. */

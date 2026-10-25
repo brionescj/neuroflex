@@ -50,6 +50,11 @@ const METRICS_BY_GAME: Record<GameId, string[]> = {
   "mini-cases": ["correctSteps", "isFullyCorrect"],
 };
 
+/** Metricas que solo necesita un grafico (pesan mas: no se piden para los demas). */
+const EXTRA_METRICS: Partial<Record<string, string[]>> = {
+  "mc-options": ["placements", "options"],
+};
+
 export async function loadStudents(): Promise<StudentRow[]> {
   return (await Student.find({ isDeleted: { $ne: true } })
     .select(STUDENT_FIELDS)
@@ -144,7 +149,7 @@ async function readChartData(def: ChartDef): Promise<StatsData> {
       completedAt: 1,
     };
 
-    for (const name of METRICS_BY_GAME[def.game]) projection[`metrics.${name}`] = 1;
+    for (const name of [...METRICS_BY_GAME[def.game], ...(EXTRA_METRICS[def.id] ?? [])]) projection[`metrics.${name}`] = 1;
 
     resultsRequest = GameLevelResult.find({ gameId: def.game }).select(projection).lean() as Promise<ResultRow[]>;
   }

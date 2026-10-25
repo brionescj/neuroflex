@@ -52,6 +52,7 @@ export type ChartId =
   | "nc-correction-mix"
   | "mc-steps"
   | "mc-time"
+  | "mc-options"
   /** Solo en la ficha de un estudiante (no estan en el catalogo). */
   | "st-time"
   | "st-levels"
