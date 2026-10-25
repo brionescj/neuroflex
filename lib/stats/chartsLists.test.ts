@@ -207,21 +207,19 @@ describe("Estudiantes estancados", () => {
     return empty([1, 2, 3, 4, 5].map((n) => student(String(n))), attempts, results);
   }
 
-  it("por defecto, 3 partidas seguidas, de ambos juegos, con el juego y el nivel", () => {
+  it("por defecto, 3 partidas seguidas, de ambos juegos, con el juego y los números de esas partidas", () => {
     const chart = run(stuckData(), { chart: "gen-stuck" });
 
     expect(chart.table?.columns.slice(4)).toEqual([
       "Juego",
-      "Nivel sin superar",
-      "Partidas seguidas",
-      "N.º de partidas",
+      "Partidas seguidas sin superar el nivel",
       "Intentos fallidos",
       "Nivel máximo superado",
       "Fecha de la última partida",
     ]);
     expect(chart.table?.rows.map((row) => row[1])).toEqual(["1", "4"]);
-    expect(chart.table?.rows[0]?.slice(4, 10)).toEqual(["Seriación de colores", 4, 3, "2, 3 y 4", 3, 5]);
-    expect(chart.table?.rows[1]?.slice(4, 10)).toEqual(["Conexión de nodos", 3, 3, "1, 2 y 3", 3, 2]);
+    expect(chart.table?.rows[0]?.slice(4, 8)).toEqual(["Seriación de colores", "2, 3 y 4", 3, 5]);
+    expect(chart.table?.rows[1]?.slice(4, 8)).toEqual(["Conexión de nodos", "1, 2 y 3", 3, 2]);
     expect(chart.notes.join(" ")).toMatch(/3 o más partidas seguidas/);
   });
 
@@ -264,8 +262,8 @@ describe("Estudiantes estancados", () => {
     const results = attempts.map((owner) => level(owner, 1, false));
     const rows = run(empty([student("1")], attempts, results), { chart: "gen-stuck" }).table?.rows ?? [];
 
-    expect(rows[0]?.slice(5, 7)).toEqual([1, 3]);
-    expect(rows[0]?.[9]).toBe("Ninguno");
+    expect(rows[0]?.slice(5, 7)).toEqual(["1, 2 y 3", 3]);
+    expect(rows[0]?.[7]).toBe("Ninguno");
   });
 
   it("mini casos no es una opción", () => {

@@ -72,7 +72,7 @@ export function buildCatalog(
     games: STAT_GAMES.map((game) => ({
       id: game,
       label: game === "general" ? "General" : GAME_LABELS[game],
-      charts: CHARTS.filter((chart) => chart.game === game).map((chart) => ({
+      charts: CHARTS.filter((chart) => chart.game === game && !chart.profileOnly).map((chart) => ({
         id: chart.id,
         title: chart.title,
         blurb: chart.blurb,

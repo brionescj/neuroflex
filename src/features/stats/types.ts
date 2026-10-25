@@ -42,7 +42,6 @@ export type ChartId =
   | "cs-tries"
   | "cs-error-type"
   | "cs-first-error"
-  | "cs-pace"
   | "nc-levels"
   | "nc-pass-rate"
   | "nc-time"
@@ -51,8 +50,6 @@ export type ChartId =
   | "nc-errors"
   | "nc-corrections"
   | "nc-correction-mix"
-  | "nc-pace"
-  | "nc-improvement"
   | "mc-steps"
   | "mc-time"
   /** Solo en la ficha de un estudiante (no estan en el catalogo). */

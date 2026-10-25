@@ -74,6 +74,8 @@ export type ChartDef = {
   /** Si se puede separar y filtrar por dispositivo (necesita partidas, no fichas). */
   supportsDevice: boolean;
   options: ChartOptionDef[];
+  /** No se ofrece en el panel de estadisticas, pero la ficha de un estudiante lo sigue usando. */
+  profileOnly?: boolean;
   build: (ctx: Ctx) => Built;
 };
 

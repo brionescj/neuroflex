@@ -11,9 +11,7 @@ import {
   groupUnits,
   inLevelBand,
   levelBandNote,
-  metricPerLevel,
   numberMetric,
-  periodNote,
   seriesOf,
   totalStudents,
   unitLabelOf,
@@ -21,7 +19,7 @@ import {
   type ChartDef,
   type Unit,
 } from "./engine";
-import { median, percentOf } from "./numbers";
+import { percentOf } from "./numbers";
 import type { ResultRow } from "./types";
 
 const GAME = "color-sequence" as const;
@@ -150,130 +148,13 @@ const csBands: ChartDef = {
   },
 };
 
-// ------------------------------------------------------------------- S4
-
-const csImprovement: ChartDef = {
-  id: "cs-improvement",
-  game: GAME,
-  title: "Mejora entre partidas",
-  blurb:
-    "Si juegan más veces, ¿llegan más lejos? Puedes ver el nivel máximo típico en cada número de partida, o cuántos estudiantes mejoraron, quedaron igual o empeoraron entre su primera y su última partida.",
-  views: (options) => (options.measure === "change" ? COMPOSITION_VIEWS : ["lines", "bars"]),
-  usesPartida: false,
-  usesPeriod: true,
-  supportsDevice: true,
-  options: [
-    {
-      id: "measure",
-      label: "Ver",
-      default: "curve",
-      choices: [
-        { value: "curve", label: "Nivel máximo en cada número de partida" },
-        { value: "change", label: "Cambio entre la primera y la última partida" },
-      ],
-    },
-  ],
-  build: (ctx) => {
-    // Siempre una partida a la vez: aqui lo que importa es el orden de las partidas.
-    const perAttempt = gameUnits(
-      { ...ctx, request: { ...ctx.request, partida: null, countBy: "attempts" } },
-      GAME,
-    );
-
-    if (ctx.options.measure === "change") {
-      const byStudent = new Map<string, Unit[]>();
-
-      for (const unit of perAttempt) {
-        const list = byStudent.get(unit.attempt.studentRut) ?? [];
-
-        list.push(unit);
-        byStudent.set(unit.attempt.studentRut, list);
-      }
-
-      const items = [...byStudent.values()]
-        .filter((list) => list.length >= 2)
-        .map((list) => {
-          const ordered = [...list].sort((a, b) => a.attempt.attemptNumber - b.attempt.attemptNumber);
-          const first = ordered[0] as Unit;
-          const last = ordered[ordered.length - 1] as Unit;
-          const delta = maxPassedLevel(last) - maxPassedLevel(first);
-
-          return { unit: last, delta };
-        });
-
-      const grouped = groupUnits(
-        ctx,
-        items.map((item) => item.unit),
-      );
-      const deltaOf = new Map(items.map((item) => [item.unit, item.delta]));
-      const mode = asOf(ctx);
-
-      return {
-        xLabel: "Cambio de nivel máximo",
-        yLabel: mode === "percent" ? "% de estudiantes" : "Estudiantes",
-        unit: mode === "percent" ? "percent" : "students",
-        unitLabel: "estudiantes",
-        categories: ["Mejoró", "Quedó igual", "Empeoró"],
-        series: compositionSeries(
-          grouped,
-          unitRut,
-          3,
-          (units) => {
-            const deltas = units.map((unit) => deltaOf.get(unit) as number);
-
-            return [
-              deltas.filter((d) => d > 0).length,
-              deltas.filter((d) => d === 0).length,
-              deltas.filter((d) => d < 0).length,
-            ];
-          },
-          mode,
-        ),
-        notes: [
-          "Compara el nivel máximo superado en la primera y en la última partida de cada estudiante.",
-          "Solo entran estudiantes con 2 o más partidas.",
-          ...(periodNote(ctx) ? [periodNote(ctx) as string] : []),
-        ],
-        studentsTotal: totalStudents(grouped, unitRut),
-      };
-    }
-
-    const grouped = groupUnits(ctx, perAttempt);
-    const top = Math.min(
-      perAttempt.reduce((max, unit) => Math.max(max, unit.attempt.attemptNumber), 0),
-      20,
-    );
-    const numbers = Array.from({ length: top }, (_, i) => i + 1);
-
-    return {
-      xLabel: "Número de partida",
-      yLabel: "Nivel máximo superado (mediana)",
-      unit: "level",
-      unitLabel: "estudiantes",
-      categories: numbers.map(String),
-      series: seriesOf(grouped, unitRut, numbers.length, (group, i) => {
-        const levels = group
-          .filter((unit) => unit.attempt.attemptNumber === numbers[i])
-          .map((unit) => maxPassedLevel(unit));
-
-        return { value: median(levels), n: levels.length };
-      }),
-      notes: [
-        "Mediana del nivel más alto superado en cada partida, según el número de partida de cada estudiante.",
-        "En cada número de partida solo cuentan quienes llegaron a jugarla.",
-        ...(periodNote(ctx) ? [periodNote(ctx) as string] : []),
-      ],
-      studentsTotal: totalStudents(grouped, unitRut),
-    };
-  },
-};
-
 // ------------------------------------------------------------------- S5
 
 const TRIES = ["A la primera", "Al 2.º intento", "Al 3.er intento", "No lo superó"];
 
 const csTries: ChartDef = {
   id: "cs-tries",
+  profileOnly: true,
   game: GAME,
   title: "Intentos para superar un nivel",
   blurb:
@@ -463,63 +344,6 @@ const csFirstError: ChartDef = {
   },
 };
 
-// ------------------------------------------------------------------- S8
-
-const csPace: ChartDef = {
-  id: "cs-pace",
-  game: GAME,
-  title: "Ritmo de respuesta",
-  blurb:
-    "Cómo responden cada nivel: cuánto tardan en dar el primer toque, el tiempo típico entre un toque y el siguiente, o la pausa más larga. Muestra si dudan al empezar o a mitad de la secuencia.",
-  views: ["lines", "bars"],
-  exploratory: true,
-  usesPartida: true,
-  supportsDevice: true,
-  options: [
-    {
-      id: "measure",
-      label: "Medir",
-      default: "between",
-      choices: [
-        { value: "between", label: "Tiempo entre toques (promedio)" },
-        { value: "first", label: "Tiempo hasta el primer toque" },
-        { value: "pause", label: "Pausa más larga" },
-      ],
-    },
-  ],
-  build: (ctx) => {
-    const metric =
-      ctx.options.measure === "first"
-        ? "firstTapMs"
-        : ctx.options.measure === "pause"
-          ? "maxPauseMs"
-          : "meanInterTapMs";
-    const label =
-      ctx.options.measure === "first"
-        ? "Segundos hasta el primer toque (mediana)"
-        : ctx.options.measure === "pause"
-          ? "Segundos de la pausa más larga (mediana)"
-          : "Segundos entre toques (mediana)";
-
-    return metricPerLevel(
-      ctx,
-      GAME,
-      (r) => {
-        const value = analysisNumber(r, metric);
-
-        return value === null ? null : value / 1000;
-      },
-      label,
-      "seconds",
-      [
-        "Solo el primer intento de cada nivel; es el tiempo de la respuesta, sin contar cuándo se mostró la secuencia.",
-        "Solo hay datos de los niveles registrados con el detalle de cada toque.",
-        EXPLORATORY_NOTE,
-      ],
-    );
-  },
-};
-
 export function chartsSeriation(
   maxLevel: ChartDef,
   passRate: ChartDef,
@@ -532,8 +356,6 @@ export function chartsSeriation(
     passRate,
     csTries,
     time,
-    csPace,
-    csImprovement,
     csErrorType,
     csFirstError,
   ];

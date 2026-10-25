@@ -17,7 +17,6 @@ import {
   levelsRange,
   metricPerLevel,
   numberMetric,
-  periodNote,
   seriesOf,
   timePerLevel,
   totalStudents,
@@ -26,7 +25,7 @@ import {
   type ChartDef,
   type Unit,
 } from "./engine";
-import { median, percentOf } from "./numbers";
+import { percentOf } from "./numbers";
 import type { ResultRow } from "./types";
 
 const GAME = "node-connection" as const;
@@ -489,186 +488,6 @@ const ncCorrectionMix: ChartDef = {
   },
 };
 
-// ------------------------------------------------------------------ ritmo
-
-const ncPace: ChartDef = {
-  id: "nc-pace",
-  game: GAME,
-  title: "Planificación y pausas",
-  blurb:
-    "Cuánto tardan en hacer el primer trazo de cada nivel (el tiempo que dedican a mirar el tablero antes de empezar), cuál fue su pausa más larga o cuántas pausas largas hicieron. Muestra si planifican antes de actuar o si dudan a mitad del nivel.",
-  views: ["lines", "bars"],
-  exploratory: true,
-  usesPartida: true,
-  supportsDevice: true,
-  options: [
-    {
-      id: "measure",
-      label: "Medir",
-      default: "first",
-      choices: [
-        { value: "first", label: "Tiempo hasta el primer trazo" },
-        { value: "pause", label: "Pausa más larga" },
-        { value: "count", label: "Cantidad de pausas largas" },
-      ],
-    },
-  ],
-  build: (ctx) => {
-    const measure = ctx.options.measure;
-
-    if (measure === "count") {
-      return metricPerLevel(
-        ctx,
-        GAME,
-        (r) => numberMetric(r, "longPauses"),
-        "Pausas largas (mediana)",
-        "count",
-        [
-          "Una pausa larga es un tiempo sin tocar nada de 5 segundos o más entre dos acciones del nivel.",
-          "Solo el primer intento de cada nivel. Solo niveles registrados con el detalle de cada acción.",
-          EXPLORATORY_NOTE,
-        ],
-      );
-    }
-
-    const metric = measure === "pause" ? "maxPauseMs" : "firstStrokeMs";
-
-    return metricPerLevel(
-      ctx,
-      GAME,
-      (r) => {
-        const value = numberMetric(r, metric);
-
-        return value === null ? null : value / 1000;
-      },
-      measure === "pause" ? "Segundos de la pausa más larga (mediana)" : "Segundos hasta el primer trazo (mediana)",
-      "seconds",
-      [
-        measure === "pause"
-          ? "La pausa más larga es el mayor tiempo seguido sin tocar nada entre dos acciones del nivel."
-          : "Es el tiempo activo desde que aparece el tablero hasta que apoya el dedo por primera vez.",
-        "Solo el primer intento de cada nivel. Solo niveles registrados con el detalle de cada acción.",
-        "Los tableros más grandes piden más tiempo para mirarlos, así que el tiempo tiende a subir con el nivel.",
-        EXPLORATORY_NOTE,
-      ],
-    );
-  },
-};
-
-// ------------------------------------------------------------------ mejora
-
-const ncImprovement: ChartDef = {
-  id: "nc-improvement",
-  game: GAME,
-  title: "Mejora entre partidas",
-  blurb:
-    "Si juegan más veces, ¿llegan más lejos? Puedes ver el nivel máximo típico en cada número de partida, o cuántos estudiantes mejoraron, quedaron igual o empeoraron entre su primera y su última partida.",
-  views: (options) => (options.measure === "change" ? COMPOSITION_VIEWS : ["lines", "bars"]),
-  usesPartida: false,
-  usesPeriod: true,
-  supportsDevice: true,
-  options: [
-    {
-      id: "measure",
-      label: "Ver",
-      default: "curve",
-      choices: [
-        { value: "curve", label: "Nivel máximo en cada número de partida" },
-        { value: "change", label: "Cambio entre la primera y la última partida" },
-      ],
-    },
-  ],
-  build: (ctx) => {
-    // Siempre una partida a la vez: aqui lo que importa es el orden de las partidas.
-    const perAttempt = gameUnits({ ...ctx, request: { ...ctx.request, partida: null, countBy: "attempts" } }, GAME);
-
-    if (ctx.options.measure === "change") {
-      const byStudent = new Map<string, Unit[]>();
-
-      for (const unit of perAttempt) {
-        const list = byStudent.get(unit.attempt.studentRut) ?? [];
-
-        list.push(unit);
-        byStudent.set(unit.attempt.studentRut, list);
-      }
-
-      const items = [...byStudent.values()]
-        .filter((list) => list.length >= 2)
-        .map((list) => {
-          const ordered = [...list].sort((a, b) => a.attempt.attemptNumber - b.attempt.attemptNumber);
-          const first = ordered[0] as Unit;
-          const last = ordered[ordered.length - 1] as Unit;
-
-          return { unit: last, delta: maxPassedLevel(last) - maxPassedLevel(first) };
-        });
-
-      const grouped = groupUnits(
-        ctx,
-        items.map((item) => item.unit),
-      );
-      const deltaOf = new Map(items.map((item) => [item.unit, item.delta]));
-      const mode = asOf(ctx);
-
-      return {
-        xLabel: "Cambio de nivel máximo",
-        yLabel: mode === "percent" ? "% de estudiantes" : "Estudiantes",
-        unit: mode === "percent" ? "percent" : "students",
-        unitLabel: "estudiantes",
-        categories: ["Mejoró", "Quedó igual", "Empeoró"],
-        series: compositionSeries(
-          grouped,
-          unitRut,
-          3,
-          (units) => {
-            const deltas = units.map((unit) => deltaOf.get(unit) as number);
-
-            return [
-              deltas.filter((d) => d > 0).length,
-              deltas.filter((d) => d === 0).length,
-              deltas.filter((d) => d < 0).length,
-            ];
-          },
-          mode,
-        ),
-        notes: [
-          "Compara el nivel máximo superado en la primera y en la última partida de cada estudiante.",
-          "Solo entran estudiantes con 2 o más partidas.",
-          ...(periodNote(ctx) ? [periodNote(ctx) as string] : []),
-        ],
-        studentsTotal: totalStudents(grouped, unitRut),
-      };
-    }
-
-    const grouped = groupUnits(ctx, perAttempt);
-    const top = Math.min(
-      perAttempt.reduce((max, unit) => Math.max(max, unit.attempt.attemptNumber), 0),
-      20,
-    );
-    const numbers = Array.from({ length: top }, (_, i) => i + 1);
-
-    return {
-      xLabel: "Número de partida",
-      yLabel: "Nivel máximo superado (mediana)",
-      unit: "level",
-      unitLabel: "estudiantes",
-      categories: numbers.map(String),
-      series: seriesOf(grouped, unitRut, numbers.length, (group, i) => {
-        const levels = group
-          .filter((unit) => unit.attempt.attemptNumber === numbers[i])
-          .map((unit) => maxPassedLevel(unit));
-
-        return { value: median(levels), n: levels.length };
-      }),
-      notes: [
-        "Mediana del nivel más alto superado en cada partida, según el número de partida de cada estudiante.",
-        "En cada número de partida solo cuentan quienes llegaron a jugarla.",
-        ...(periodNote(ctx) ? [periodNote(ctx) as string] : []),
-      ],
-      studentsTotal: totalStudents(grouped, unitRut),
-    };
-  },
-};
-
 export function chartsNodes(): ChartDef[] {
   return [
     ncLevels,
@@ -679,7 +498,5 @@ export function chartsNodes(): ChartDef[] {
     ncErrors,
     ncCorrections,
     ncCorrectionMix,
-    ncPace,
-    ncImprovement,
   ];
 }

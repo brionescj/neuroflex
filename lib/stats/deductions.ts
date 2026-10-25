@@ -18,7 +18,7 @@ const GROUP: Partial<Record<ChartId, string>> = {
   "gen-outcomes":
     "Compara cuántas partidas se cierran y cuántas se cortan. Muchas fallidas apuntan a niveles que cuestan; muchas abandonadas, a partidas largas o a dificultades para seguir jugando.",
   "gen-when":
-    "La barra más alta es el día o la hora en que más partidas comienzan. Sirve para elegir cuándo pedirles que jueguen.",
+    "La barra más alta es el día de la semana en que más partidas comienzan. Sirve para elegir cuándo pedirles que jueguen.",
   "gen-no-play":
     "Quien aparece en la lista no tiene ninguna partida registrada. No significa que no quiera jugar: puede no haber entrado todavía.",
   "gen-inactive":
@@ -41,16 +41,12 @@ const GROUP: Partial<Record<ChartId, string>> = {
     "La curva solo baja, porque para llegar a un nivel hay que haber superado los anteriores. Una caída fuerte entre dos niveles marca dónde se queda el grupo.",
   "cs-bands":
     "Cada porción es el porcentaje de estudiantes en un tramo de nivel máximo. Una porción grande en el primer tramo indica que muchos se quedan al comienzo.",
-  "cs-improvement":
-    "Si la línea sube con el número de partida, quienes repiten llegan más lejos. Cuidado: en las partidas más altas quedan menos estudiantes (los que siguen jugando), así que la subida puede deberse a quién continúa. En la vista de cambio, más estudiantes en «mejoraron» que en «empeoraron» indica avance.",
   "cs-tries":
     "Si la mayor parte supera los niveles al primer intento, no necesitan repetir. Más peso en el segundo y tercer intento, o en los niveles no superados, señala niveles que cuestan.",
   "cs-error-type":
     "Más intercambios suele indicar que recuerdan los colores pero se confunden en el orden. Más sustituciones suele indicar que no recordaron algún color.",
   "cs-first-error":
     "Un primer fallo en el comienzo suele indicar que no retuvieron los primeros colores; en la parte final, que perdieron el hilo hacia el cierre de la secuencia.",
-  "cs-pace":
-    "Un primer toque muy tardío sugiere duda al empezar; una pausa larga a mitad de la secuencia, que se perdieron en ella. Los tiempos suben con el nivel porque la secuencia es más larga.",
   "nc-levels":
     "Cada barra cuenta los estudiantes cuyo nivel más alto superado es ese. Una acumulación en un nivel marca dónde se detiene el grupo; el nivel 0 son quienes aún no superan ninguno.",
   "nc-pass-rate":
@@ -67,10 +63,6 @@ const GROUP: Partial<Record<ChartId, string>> = {
     "Corregir es normal. Muchos Deshacer o retrocesos seguidos pueden indicar que prueban caminos sin anticipar; pocos, que planifican antes de trazar. Mira siempre junto con los errores y el tiempo.",
   "nc-correction-mix":
     "Más peso en Deshacer y retroceder indica ajustes pequeños dentro del mismo plan. Más peso en Rehacer tablero indica que, al ver que algo no funciona, prefieren empezar de cero.",
-  "nc-pace":
-    "Un primer trazo muy rápido en tableros grandes puede indicar que empiezan sin planificar; uno muy tardío, que dudan o estudian el tablero con calma. Las pausas largas a mitad del nivel suelen marcar el momento en que se traban.",
-  "nc-improvement":
-    "Si la línea sube con el número de partida, quienes repiten llegan más lejos. Cuidado: en las partidas más altas quedan menos estudiantes (los que siguen jugando), así que la subida puede deberse a quién continúa. En la vista de cambio, más estudiantes en «mejoraron» que en «empeoraron» indica avance.",
   "mc-steps":
     "Un caso con pocos pasos correctos, o con pocos estudiantes que lo ordenan completo, es el que más cuesta ordenar.",
   "mc-time":
@@ -91,8 +83,6 @@ const SINGLE: Partial<Record<ChartId, string>> = {
     "Un primer fallo en el comienzo suele indicar que no retuvo los primeros colores; en la parte final, que perdió el hilo hacia el cierre de la secuencia.",
   "nc-time":
     "Un nivel con un tiempo mayor es uno que le costó más resolver. El tiempo tiende a subir con el nivel porque los tableros son más grandes y tienen más pares.",
-  "nc-improvement":
-    "Si la línea sube, llegó más lejos en sus partidas más recientes que en las primeras. Si baja o se mantiene, su nivel más alto no ha mejorado.",
   "mc-steps":
     "Un caso con pocos pasos correctos es uno que le cuesta ordenar.",
   "mc-time":

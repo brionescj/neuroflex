@@ -23,7 +23,7 @@ describe("formatTick", () => {
   it("compacta desde 1000", () => {
     expect(formatTick(0)).toBe("0");
     expect(formatTick(250)).toBe("250");
-    expect(formatTick(1000)).toBe("1K");
-    expect(formatTick(2500)).toBe("2,5K");
+    expect(formatTick(1000)).toBe("1.000");
+    expect(formatTick(2500)).toBe("2.500");
   });
 });

@@ -253,9 +253,9 @@ export function stuckRun(levels: (number | null)[]): { level: number; run: numbe
   return { level: last, run };
 }
 
-/** «5, 6 y 7»; si son muchas, «3 a 8». */
+/** «5, 6 y 7»; si son muchas, «3 a 12». */
 function partidaNumbers(numbers: number[]): string {
-  if (numbers.length > 4) return `${numbers[0]} a ${numbers[numbers.length - 1]}`;
+  if (numbers.length > 8) return `${numbers[0]} a ${numbers[numbers.length - 1]}`;
   if (numbers.length === 1) return String(numbers[0]);
 
   return `${numbers.slice(0, -1).join(", ")} y ${numbers[numbers.length - 1]}`;
@@ -309,8 +309,6 @@ const genStuck: ChartDef = {
           cells: [
             ...baseCells(student),
             GAME_LABELS[game],
-            found.level,
-            found.run,
             partidaNumbers(inRun.map((attempt) => attempt.attemptNumber)),
             failedTries,
             best === 0 ? "Ninguno" : best,
@@ -326,9 +324,7 @@ const genStuck: ChartDef = {
       columns: [
         ...BASE_COLUMNS,
         "Juego",
-        "Nivel sin superar",
-        "Partidas seguidas",
-        "N.º de partidas",
+        "Partidas seguidas sin superar el nivel",
         "Intentos fallidos",
         "Nivel máximo superado",
         "Fecha de la última partida",
@@ -336,9 +332,9 @@ const genStuck: ChartDef = {
       rows: rows.map((row) => row.cells),
       notes: [
         `Entran quienes dejaron sin superar el mismo nivel en ${needed} o más partidas seguidas de un mismo juego, y la última partida que jugaron es la última de esa racha: si después superaron ese nivel, ya no aparecen.`,
-        "En cada partida, el nivel sin superar es el más alto en que se jugó cuando no se logró superarlo en ninguno de sus intentos. Una partida que terminó habiendo superado su último nivel jugado, o que se dejó antes de jugar un intento completo, corta la racha.",
+        "«Partidas seguidas sin superar el nivel» son los números de las partidas, una tras otra, en que no logró superar el mismo nivel. En cada partida, ese nivel es el más alto en que se jugó cuando no se logró superarlo en ninguno de sus intentos. Una partida que terminó habiendo superado su último nivel jugado, o que se dejó antes de jugar un intento completo, corta la racha.",
         "Cada juego se mira por separado; un estudiante puede aparecer una vez por juego. No se cuenta una partida que sigue en curso.",
-        "«Intentos fallidos» suma los intentos perdidos en ese nivel durante la racha. «Nivel máximo superado» es el más alto superado en cualquier partida del juego.",
+        "«Intentos fallidos» suma los intentos perdidos en ese nivel durante esas partidas. «Nivel máximo superado» es el más alto superado en cualquier partida del juego.",
       ],
       total: cohort.length,
     });

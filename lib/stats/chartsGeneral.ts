@@ -363,45 +363,27 @@ const genOutcomes: ChartDef = {
 // ------------------------------------------------------------------- G6
 
 const WEEKDAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-const HOURS = Array.from({ length: 24 }, (_, hour) => `${hour} h`);
 
 const genWhen: ChartDef = {
   id: "gen-when",
   game: "general",
-  title: "Día y hora de juego",
+  title: "Día de juego",
   blurb:
-    "En qué días de la semana o a qué horas empiezan sus partidas. Sirve para saber cuándo conviene pedirles que jueguen o cuándo hay más gente conectada.",
-  views: (options) => (options.by === "hour" ? ["bars", "lines"] : ["bars", "lines", "pie"]),
+    "En qué días de la semana empiezan sus partidas. Sirve para saber cuándo conviene pedirles que jueguen o qué días hay más gente conectada.",
+  views: ["bars", "lines", "pie"],
   ...PERIOD_ONLY,
   supportsDevice: true,
-  options: [
-    {
-      id: "by",
-      label: "Ver por",
-      default: "weekday",
-      choices: [
-        { value: "weekday", label: "Día de la semana" },
-        { value: "hour", label: "Hora del día" },
-      ],
-    },
-    GAME_OPTION,
-    AS_OPTION,
-  ],
+  options: [GAME_OPTION, AS_OPTION],
   build: (ctx) => {
     const attempts = periodAttempts(ctx, ctx.options.game);
     const grouped = groupAttempts(ctx, attempts);
-    const byHour = ctx.options.by === "hour";
-    const categories = byHour ? HOURS : WEEKDAYS;
+    const categories = WEEKDAYS;
     const mode = asOf(ctx);
 
-    const slotOf = (attempt: AttemptRow) => {
-      const { weekday, hour } = chileWeekdayHour(attempt.startedAt);
-
-      return byHour ? hour : weekday;
-    };
+    const slotOf = (attempt: AttemptRow) => chileWeekdayHour(attempt.startedAt).weekday;
 
     return {
-      xLabel: byHour ? "Hora de inicio" : "Día de inicio",
+      xLabel: "Día de inicio",
       yLabel: mode === "percent" ? "% de partidas" : "Partidas iniciadas",
       unit: mode === "percent" ? "percent" : "students",
       unitLabel: "partidas",

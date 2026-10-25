@@ -148,28 +148,6 @@ describe("S3: tramos de nivel maximo", () => {
   });
 });
 
-describe("S4: mejora entre partidas", () => {
-  it("curva: nivel maximo mediano segun el numero de partida", () => {
-    const chart = run(data(), { chart: "cs-improvement" });
-
-    expect(chart.views).toEqual(["lines", "bars"]);
-    expect(chart.categories).toEqual(["1", "2"]);
-    // Partida 1: s1=3, s2=1, s3=12 -> mediana 3. Partida 2: solo s1=1.
-    expect(only(chart).values).toEqual([3, 1]);
-    expect(only(chart).ns).toEqual([3, 1]);
-  });
-
-  it("cambio: compara primera y ultima partida y solo cuenta a quien jugo 2 o mas", () => {
-    const chart = run(data(), { chart: "cs-improvement", options: '{"measure":"change"}' });
-
-    expect(chart.views).toEqual(["bars", "pie", "stacked"]);
-    expect(chart.categories).toEqual(["Mejoró", "Quedó igual", "Empeoró"]);
-    // Solo s1 tiene 2 partidas: de 3 a 1 -> empeoro.
-    expect(only(chart).ns).toEqual([0, 0, 1]);
-    expect(chart.notes.join(" ")).toMatch(/2 o más partidas/);
-  });
-});
-
 describe("S5: intentos para superar un nivel", () => {
   it("a la primera, al 2.o, al 3.o o sin superar", () => {
     const chart = run(data(), { chart: "cs-tries", partida: "", countBy: "attempts" });
@@ -211,18 +189,6 @@ describe("S6, S7 y S8: indicadores exploratorios", () => {
     expect(chart.exploratory).toBe(true);
     // s1 n2: posicion 1 de 3 -> inicio. s2 n2: posicion 3 de 3 -> final. s3 n13: posicion 14 de 14 -> final.
     expect(only(chart).ns).toEqual([1, 0, 2]);
-  });
-
-  it("ritmo: mediana en segundos por nivel, con aviso de exploratorio", () => {
-    const chart = run(data(), { chart: "cs-pace", partida: "" });
-
-    expect(chart.exploratory).toBe(true);
-    expect(chart.views).toEqual(["lines", "bars"]);
-    expect(only(chart).values[0]).toBe(0.8);
-
-    const first = run(data(), { chart: "cs-pace", partida: "", options: '{"measure":"first"}' });
-
-    expect(only(first).values[0]).toBe(1.2);
   });
 });
 
@@ -273,7 +239,7 @@ describe("G5: cómo terminan las partidas", () => {
   });
 });
 
-describe("G6: día y hora de juego", () => {
+describe("G6: día de juego", () => {
   it("por dia de la semana en hora de Chile", () => {
     const base = data();
     // Domingo 18 oct 2026 a las 23:30 en Chile = lunes 19 a las 02:30 UTC: sigue siendo domingo.
@@ -287,13 +253,15 @@ describe("G6: día y hora de juego", () => {
     expect(only(chart).ns).toEqual([0, 0, 0, 1, 0, 3, 1]);
   });
 
-  it("por hora no ofrece torta", () => {
+  it("ya no ofrece la hora: solo el día de la semana", () => {
+    const def = parseChartRequest({ chart: "gen-when" });
+
+    expect(def.ok && def.def.options.map((option) => option.id)).toEqual(["game", "as"]);
+
     const chart = run(data(), { chart: "gen-when", options: '{"by":"hour"}' });
 
-    expect(chart.views).toEqual(["bars", "lines"]);
-    expect(chart.categories).toHaveLength(24);
-    // 15:00 UTC = 12:00 en Chile (UTC-3): las 4 partidas empiezan a esa hora.
-    expect(only(chart).ns[12]).toBe(4);
+    expect(chart.categories).toHaveLength(7);
+    expect(chart.title).toBe("Día de juego");
   });
 });
 

@@ -242,48 +242,6 @@ describe("Nodos: correcciones y ritmo", () => {
     // Solo el nivel 2 de B trae los cuatro: Deshacer 4, Rehacer tablero 1, ruta 2, retroceso 3.
     expect(all(chart).values).toEqual([4, 1, 2, 3]);
   });
-
-  it("tiempo hasta el primer trazo, en segundos", () => {
-    const withEvents = data();
-
-    withEvents.results = withEvents.results.map((r) =>
-      r.studentRut === "B" ? { ...r, metrics: { ...r.metrics, firstStrokeMs: 4000 + r.index * 1000 } } : r,
-    );
-
-    const chart = run(withEvents, { chart: "nc-pace" });
-
-    expect(chart.unit).toBe("seconds");
-    expect(all(chart).values).toEqual([5, 6, 7]);
-    expect(all(chart).ns).toEqual([1, 1, 1]);
-  });
-});
-
-describe("Nodos: mejora entre partidas", () => {
-  it("nivel máximo superado por número de partida", () => {
-    const first = attempt("A", 1);
-    const second = attempt("A", 2);
-    const two: StatsData = {
-      students: [student("A")],
-      attempts: [first, second],
-      results: [
-        tryOf(first, 1, 1, 10, { passed: true }),
-        tryOf(first, 2, 1, 10, { passed: false, blocked: 20 }),
-        tryOf(second, 1, 1, 10, { passed: true }),
-        tryOf(second, 2, 1, 10, { passed: true }),
-        tryOf(second, 3, 1, 10, { passed: true }),
-      ],
-      caseTitles: {},
-    };
-
-    const curve = run(two, { chart: "nc-improvement", partida: "" });
-
-    expect(all(curve).values).toEqual([1, 3]);
-
-    const change = run(two, { chart: "nc-improvement", partida: "", options: '{"measure":"change","as":"count"}' });
-
-    expect(change.categories).toEqual(["Mejoró", "Quedó igual", "Empeoró"]);
-    expect(all(change).values).toEqual([1, 0, 0]);
-  });
 });
 
 describe("catálogo de Conexión de nodos", () => {
@@ -299,8 +257,6 @@ describe("catálogo de Conexión de nodos", () => {
       "nc-errors",
       "nc-corrections",
       "nc-correction-mix",
-      "nc-pace",
-      "nc-improvement",
     ]);
   });
 

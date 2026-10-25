@@ -7,14 +7,11 @@ export function formatNumber(value: number): string {
   return number.format(value);
 }
 
-/** Etiqueta del eje: 1000 se escribe 1K. */
+/**
+ * Etiqueta del eje: el numero completo, con punto de miles (1.000, 2.500). No se abrevia con «K»
+ * porque quien lee el grafico no tiene por que saber que significa.
+ */
 export function formatTick(value: number): string {
-  if (Math.abs(value) >= 1000) {
-    const thousands = value / 1000;
-
-    return `${number.format(thousands)}K`;
-  }
-
   return number.format(value);
 }
 

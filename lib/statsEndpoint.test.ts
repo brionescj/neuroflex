@@ -170,10 +170,7 @@ describe("GET admin/stats/catalog", () => {
       "cs-reach",
       "cs-bands",
       "cs-pass-rate",
-      "cs-tries",
       "cs-time",
-      "cs-pace",
-      "cs-improvement",
       "cs-error-type",
       "cs-first-error",
     ]);

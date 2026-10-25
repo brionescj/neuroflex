@@ -32,9 +32,6 @@ const METRICS_BY_GAME: Record<GameId, string[]> = {
     "swapErrors",
     "substitutionErrors",
     "firstErrorPosition",
-    "firstTapMs",
-    "meanInterTapMs",
-    "maxPauseMs",
   ],
   "node-connection": [
     "passed",
@@ -49,9 +46,6 @@ const METRICS_BY_GAME: Record<GameId, string[]> = {
     "backtrackGestures",
     "strokesLeftOpen",
     "cellsErased",
-    "firstStrokeMs",
-    "maxPauseMs",
-    "longPauses",
   ],
   "mini-cases": ["correctSteps", "isFullyCorrect"],
 };
