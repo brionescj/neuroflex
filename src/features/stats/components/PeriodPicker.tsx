@@ -53,7 +53,7 @@ export function PeriodPicker({ catalog, selection, required, onChange }: PeriodP
             onChange={(range) => onChange({ ...selection, range })}
           />
           <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
-            Se cuentan las partidas que empezaron entre esos días, ambos incluidos (hora de Chile).
+            Se cuentan las partidas que empezaron entre esos días, ambos incluidos.
           </p>
         </div>
       )}

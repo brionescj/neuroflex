@@ -3,14 +3,17 @@ import {
   ChartColumn,
   ChartLine,
   ChartPie,
-  Download,
+  FileSpreadsheet,
+  FileText,
   FlaskConical,
+  LoaderCircle,
   Info,
   LayoutGrid,
   Table2,
   TriangleAlert,
 } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 
@@ -21,7 +24,7 @@ import {
   toggleCategory,
   withoutCategories,
 } from "../utils/categories";
-import { chartToCsv, csvFileName } from "../utils/csv";
+import { downloadExcel, downloadPdf } from "../utils/exportFiles";
 import { groupsOf, groupsSignature, toggleGroup, withoutGroups } from "../utils/groups";
 import type { ChartResult, ViewId } from "../types";
 import { BarChart } from "./charts/BarChart";
@@ -61,19 +64,6 @@ const VIEW_META: Record<ViewChoice, { label: string; Icon: typeof ChartColumn }>
   table: { label: "Tabla", Icon: Table2 },
 };
 
-function download(result: ChartResult, single: boolean) {
-  const blob = new Blob([chartToCsv(result, { single })], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = csvFileName(result);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
 const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
 const NO_CATEGORIES_HIDDEN: ReadonlySet<number> = new Set();
 
@@ -89,6 +79,8 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
     keys: new Set(),
   });
   const helpId = useId();
+  const cardRef = useRef<HTMLElement>(null);
+  const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
 
   // Las partes ocultas valen mientras sean las mismas partes del mismo grafico.
   const categoriesKey = categoriesSignature(full);
@@ -118,9 +110,26 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
   // Si la vista elegida no existe en este grafico, se vuelve a la primera.
   const view: ViewChoice = chosen && choices.includes(chosen) ? chosen : (choices[0] as ViewChoice);
 
+  async function exportAs(kind: "pdf" | "excel") {
+    if (exporting) return;
+
+    setExporting(kind);
+
+    try {
+      if (kind === "excel") await downloadExcel(result, single);
+      else if (cardRef.current) await downloadPdf(cardRef.current, result);
+    } catch {
+      toast.error(kind === "pdf" ? "No se pudo generar el PDF." : "No se pudo generar el Excel.");
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  const exportButton = "flex size-11 items-center justify-center rounded-lg border border-white/10 text-[var(--viz-text-2)] hover:bg-white/5 disabled:opacity-50";
+
   return (
     <SingleStudentContext.Provider value={single}>
-    <article className="viz-root rounded-2xl border border-white/10 bg-[var(--viz-surface)] p-4 text-[var(--viz-text)]">
+    <article ref={cardRef} className="viz-root rounded-2xl border border-white/10 bg-[var(--viz-surface)] p-4 text-[var(--viz-text)]">
       <header className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -128,37 +137,63 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
               <h2 className="text-base font-semibold text-[var(--viz-text)]">{result.title}</h2>
 
               {description && (
-                <HelpButton
-                  label={`Qué muestra «${result.title}»`}
-                  open={helpOpen}
-                  controls={helpId}
-                  onClick={() => setHelpOpen((open) => !open)}
-                  tone="viz"
-                  className="-my-2"
-                />
+                <span data-export-ignore>
+                  <HelpButton
+                    label={`Qué muestra «${result.title}»`}
+                    open={helpOpen}
+                    controls={helpId}
+                    onClick={() => setHelpOpen((open) => !open)}
+                    tone="viz"
+                    className="-my-2"
+                  />
+                </span>
               )}
             </div>
             {subtitle && <p className="mt-0.5 text-xs leading-relaxed text-[var(--viz-text-2)]">{subtitle}</p>}
             {full.basis && <p className="mt-0.5 text-xs leading-relaxed text-[var(--viz-muted)]">{full.basis}</p>}
           </div>
 
-          <div className="flex shrink-0 gap-1.5">
+          <div data-export-ignore className="flex shrink-0 gap-1.5">
+            {view === "table" && (
+              <button
+                type="button"
+                onClick={() => void exportAs("excel")}
+                disabled={exporting !== null}
+                aria-label="Descargar tabla en Excel"
+                title="Descargar tabla en Excel"
+                className={exportButton}
+              >
+                {exporting === "excel" ? (
+                  <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                ) : (
+                  <FileSpreadsheet aria-hidden="true" className="size-4" />
+                )}
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() => download(result, single)}
-              aria-label="Descargar CSV"
-              title="Descargar CSV"
-              className="flex size-11 items-center justify-center rounded-lg border border-white/10 text-[var(--viz-text-2)] hover:bg-white/5"
+              onClick={() => void exportAs("pdf")}
+              disabled={exporting !== null}
+              aria-label="Descargar gráfico en PDF"
+              title="Descargar gráfico en PDF"
+              className={exportButton}
             >
-              <Download aria-hidden="true" className="size-4" />
+              {exporting === "pdf" ? (
+                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              ) : (
+                <FileText aria-hidden="true" className="size-4" />
+              )}
             </button>
           </div>
         </div>
 
         {description && helpOpen && (
+          <div data-export-ignore>
           <HelpNote id={helpId} label={`Qué muestra «${result.title}»`} onClose={() => setHelpOpen(false)} tone="viz">
             {description}
           </HelpNote>
+          </div>
         )}
 
         {result.exploratory && (
@@ -172,7 +207,7 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
         )}
 
         {choices.length > 1 && (
-          <div role="radiogroup" aria-label="Forma de ver el gráfico" className="flex flex-wrap gap-1.5">
+          <div data-export-ignore role="radiogroup" aria-label="Forma de ver el gráfico" className="flex flex-wrap gap-1.5">
             {choices.map((choice) => {
               const { label, Icon } = VIEW_META[choice];
 
@@ -199,7 +234,7 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
         )}
 
         {stale && (
-          <p role="status" className="flex items-start gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs text-[var(--viz-text-2)]">
+          <p data-export-ignore role="status" className="flex items-start gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs text-[var(--viz-text-2)]">
             <Info aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
             Cambiaste la selección. Presiona «Mostrar» para actualizar este gráfico.
           </p>
@@ -227,13 +262,15 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
         />
 
         {canHideCategories(full) && (
-          <CategoryFilter
+          <div data-export-ignore>
+            <CategoryFilter
             result={full}
             colored={view === "pie" || view === "stacked"}
             hidden={hiddenCategories}
             onToggle={(index) => setHiddenCategories(toggleCategory(hiddenCategories, full.categories.length, index))}
             onShowAll={() => setHiddenCategories(new Set())}
           />
+          </div>
         )}
 
         {view === "table" ? (

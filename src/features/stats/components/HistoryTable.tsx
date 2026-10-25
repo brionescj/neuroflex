@@ -31,13 +31,24 @@ export function HistoryTable({ rut }: { rut: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const latest = useRef(0);
+  // Las páginas ya vistas, por filtro y número: volver a una no toca la base. Vale mientras se mira a este estudiante.
+  const seen = useRef(new Map<string, HistoryPage>());
 
   const load = useCallback(
     async (target: number, filter: Filter) => {
       const ticket = ++latest.current;
+      const key = `${filter.from}|${filter.to}|${target}`;
+      const known = seen.current.get(key);
+
+      setError(null);
+
+      if (known) {
+        setData(known);
+        setLoading(false);
+        return;
+      }
 
       setLoading(true);
-      setError(null);
 
       const response = await getStudentHistoryAction(rut, { page: target, ...filter });
 
@@ -50,6 +61,7 @@ export function HistoryTable({ rut }: { rut: string }) {
         return;
       }
 
+      seen.current.set(key, response.data);
       setData(response.data);
     },
     [rut],
@@ -112,7 +124,7 @@ export function HistoryTable({ rut }: { rut: string }) {
           <DateRangeFields idPrefix="history" value={draft} onChange={setDraft} />
 
           <p className="text-xs leading-relaxed text-[var(--viz-muted)]">
-            Se muestran las partidas que empezaron entre esos días, ambos incluidos (hora de Chile).
+            Se muestran las partidas que empezaron entre esos días, ambos incluidos.
           </p>
 
           <div className="flex gap-2">

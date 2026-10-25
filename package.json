@@ -21,7 +21,9 @@
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "html-to-image": "^1.11.13",
     "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.27.0",
     "mongoose": "^9.9.4",
     "react": "^19.2.7",
@@ -31,6 +33,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
+    "write-excel-file": "^4.1.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

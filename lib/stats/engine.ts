@@ -320,16 +320,16 @@ export function periodNote(ctx: Ctx): string | null {
   const { groupBy, range, period } = ctx.request;
 
   if (groupBy === "dateRange") {
-    return "Cada grupo es un rango de fechas, según el día en que empezó cada partida (hora de Chile). Si los rangos se cruzan, una partida aparece en cada uno.";
+    return "Cada grupo es un rango de fechas, según el día en que empezó cada partida. Si los rangos se cruzan, una partida aparece en cada uno.";
   }
 
   if (range) {
-    return `Período: del ${formatDateRange(range)}, según el día en que empezó cada partida (hora de Chile).`;
+    return `Período: del ${formatDateRange(range)}, según el día en que empezó cada partida.`;
   }
 
   return period === "all"
     ? null
-    : `Período: ${PERIOD_LABELS[period].toLowerCase()}, según el día en que empezó cada partida (hora de Chile).`;
+    : `Período: ${PERIOD_LABELS[period].toLowerCase()}, según el día en que empezó cada partida.`;
 }
 
 /** Notas de contexto que comparten los graficos por partida. */

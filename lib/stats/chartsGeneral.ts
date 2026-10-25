@@ -379,7 +379,7 @@ const genWhen: ChartDef = {
     };
 
     return {
-      xLabel: byHour ? "Hora de inicio (hora de Chile)" : "Día de inicio",
+      xLabel: byHour ? "Hora de inicio" : "Día de inicio",
       yLabel: mode === "percent" ? "% de partidas" : "Partidas iniciadas",
       unit: mode === "percent" ? "percent" : "students",
       unitLabel: "partidas",
@@ -393,7 +393,7 @@ const genWhen: ChartDef = {
       ),
       notes: [
         gameNoteOf(ctx.options.game as string),
-        "Se cuenta cuándo empezó cada partida, en hora de Chile. Un estudiante con varias partidas aparece varias veces.",
+        "Se cuenta cuándo empezó cada partida. Un estudiante con varias partidas aparece varias veces.",
         ...(periodNote(ctx) ? [periodNote(ctx) as string] : []),
       ],
       studentsTotal: totalStudents(grouped, (attempt) => attempt.studentRut),

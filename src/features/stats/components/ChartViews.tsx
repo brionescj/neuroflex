@@ -13,8 +13,8 @@ import { ViewTabs, type ViewTab } from "./ViewTabs";
 type View = "time" | "general";
 
 const TABS: ViewTab<View>[] = [
-  { id: "time", label: "Comparativa en el tiempo", hint: "Promedios por semana o por mes" },
   { id: "general", label: "Comparativa general", hint: "Todas sus partidas juntas" },
+  { id: "time", label: "Comparativa en el tiempo", hint: "Promedios por semana o por mes" },
 ];
 
 const ABOUT: Record<View, string> = {
@@ -35,8 +35,8 @@ type ChartViewsProps = {
  * lo que el admin eligió (el tipo de lectura, los juegos abiertos).
  */
 export function ChartViews({ rut, profile, onChooseStates }: ChartViewsProps) {
-  const [view, setView] = useState<View>("time");
-  const [visited, setVisited] = useState<ReadonlySet<View>>(new Set<View>(["time"]));
+  const [view, setView] = useState<View>("general");
+  const [visited, setVisited] = useState<ReadonlySet<View>>(new Set<View>(["general"]));
 
   function choose(next: View) {
     setView(next);

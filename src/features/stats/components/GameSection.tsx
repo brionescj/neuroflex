@@ -9,12 +9,19 @@ type GameSectionProps = {
   summary: string;
   /** Sin partidas no hay nada que abrir. */
   empty?: boolean;
+  /**
+   * Al plegar, lo de adentro se oculta pero sigue armado: al volver a abrir aparece al instante,
+   * con lo que ya había cargado. Sin esto, se arma de nuevo cada vez que se abre.
+   */
+  keepMounted?: boolean;
   children: ReactNode;
 };
 
 /** Los gráficos de un juego, plegados: el admin abre solo los que le interesan. */
-export function GameSection({ title, summary, empty = false, children }: GameSectionProps) {
+export function GameSection({ title, summary, empty = false, keepMounted = false, children }: GameSectionProps) {
   const [open, setOpen] = useState(false);
+  // Con «keepMounted», desde la primera vez que se abre queda armado.
+  const [everOpened, setEverOpened] = useState(false);
   const id = useId();
 
   return (
@@ -22,7 +29,10 @@ export function GameSection({ title, summary, empty = false, children }: GameSec
       <h2>
         <button
           type="button"
-          onClick={() => setOpen((value) => !value)}
+          onClick={() => {
+            if (!open) setEverOpened(true);
+            setOpen(!open);
+          }}
           aria-expanded={empty ? undefined : open}
           aria-controls={empty ? undefined : id}
           disabled={empty}
@@ -42,8 +52,8 @@ export function GameSection({ title, summary, empty = false, children }: GameSec
         </button>
       </h2>
 
-      {open && !empty && (
-        <div id={id} className="flex flex-col gap-3 border-t border-zinc-800 p-3 sm:p-4">
+      {(open || (keepMounted && everOpened)) && !empty && (
+        <div id={id} className={cn("flex flex-col gap-3 border-t border-zinc-800 p-3 sm:p-4", !open && "hidden")}>
           {children}
         </div>
       )}

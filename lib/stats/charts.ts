@@ -434,7 +434,6 @@ const activity: ChartDef = {
       series,
       notes: [
         gameNote(ctx),
-        "Los días se cuentan en hora de Chile.",
         `Se muestran como máximo los últimos ${MAX_BUCKETS[bucket]} períodos.`,
       ],
       studentsTotal: totalStudents(grouped, (attempt) => attempt.studentRut),

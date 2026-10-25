@@ -270,8 +270,8 @@ export function buildEvolution(
           notes: [
             ...metric.notes,
             by === "week"
-              ? "Las semanas van de lunes a domingo, en hora de Chile."
-              : "Los meses son meses calendario, en hora de Chile.",
+              ? "Las semanas van de lunes a domingo."
+              : "Los meses son meses calendario.",
             metric.counts
               ? "El último período está en curso."
               : `Un ${periodWord} sin partidas con datos queda sin punto: no se cuenta como cero. El último período está en curso.`,

@@ -36,3 +36,13 @@ body {
   --viz-other: #7b7a74;
   --viz-nodata: #b3b2aa;
 }
+
+/* Mientras se genera el PDF de un grafico: sin botones y con las tablas completas. */
+[data-exporting] [data-export-ignore] {
+  display: none !important;
+}
+
+[data-exporting] [data-export-expand] {
+  max-height: none !important;
+  overflow: visible !important;
+}

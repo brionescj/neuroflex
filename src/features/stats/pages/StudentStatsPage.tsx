@@ -207,6 +207,7 @@ export default function StudentStatsPage() {
 
           <GameSection
             title="Partida a partida"
+            keepMounted
             empty={totalPartidas === 0}
             summary={
               totalPartidas === 0
