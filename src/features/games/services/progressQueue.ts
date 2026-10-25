@@ -9,6 +9,8 @@ export type ProgressQueue = {
   enqueue: (kind: ProgressOpKind, run: () => Promise<unknown>) => void;
   /** Hay un guardado o borrado en curso o esperando: leer el avance ahora podria traer uno anterior. */
   isBusy: () => boolean;
+  /** Se cumple cuando ya no queda nada en curso ni esperando. */
+  whenIdle: () => Promise<void>;
 };
 
 /**
@@ -31,6 +33,7 @@ export type ProgressQueue = {
 export function createProgressQueue(): ProgressQueue {
   let pending: ProgressOp[] = [];
   let running = false;
+  let idleWaiters: Array<() => void> = [];
 
   async function drain() {
     if (running) return;
@@ -48,11 +51,22 @@ export function createProgressQueue(): ProgressQueue {
     }
 
     running = false;
+
+    const waiters = idleWaiters;
+
+    idleWaiters = [];
+    waiters.forEach((resolve) => resolve());
   }
 
   return {
     isBusy() {
       return running || pending.length > 0;
+    },
+
+    whenIdle() {
+      if (!running && pending.length === 0) return Promise.resolve();
+
+      return new Promise<void>((resolve) => idleWaiters.push(resolve));
     },
 
     enqueue(kind, run) {

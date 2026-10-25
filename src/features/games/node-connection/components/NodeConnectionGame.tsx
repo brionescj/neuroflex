@@ -1,9 +1,16 @@
 import { RotateCcw, Undo2 } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ROUTES } from "@/config/routes";
 import { BackToGameHub } from "@/features/games/components/BackToGameHub";
+import { GameLeaseLostNotice } from "@/features/games/components/GameLeaseLostNotice";
+import { SaveAndExitButton } from "@/features/games/components/SaveAndExitButton";
+import { SoundToggle } from "@/features/games/components/SoundToggle";
+import { useGameLease } from "@/features/games/hooks/useGameLease";
 import { useLockNavigation } from "@/features/games/hooks/useLockNavigation";
+import { GAME_GUARD_CLASS, useScreenshotDeterrents } from "@/features/games/hooks/useScreenshotDeterrents";
+import { sounds, unlockSound } from "@/lib/gameSound";
 import { useWarnBeforeUnload } from "@/features/games/hooks/useWarnBeforeUnload";
 import { cellsErased, corrections } from "../stats";
 import { useNodeConnectionGame } from "../hooks/useNodeConnectionGame";
@@ -40,7 +47,13 @@ export function NodeConnectionGame() {
     reset,
     continueToNextLevel,
     finish,
+    flushProgress,
   } = useNodeConnectionGame();
+
+  // Un juego se juega desde un solo lugar a la vez; y sin las vias faciles de copiar la pantalla.
+  const { lost } = useGameLease("node-connection");
+
+  useScreenshotDeterrents();
 
   // Mientras hay partida en curso (o una pendiente de continuar) el
   // Sidebar y "Cerrar sesion" quedan inhabilitados.
@@ -50,12 +63,75 @@ export function NodeConnectionGame() {
   // cerrar la pestana o recargar mientras hay una partida en curso.
   useWarnBeforeUnload(phase !== "idle" && phase !== "finished");
 
+  // Sonidos: tomar un nodo, unir un par (cada par unido suena mas agudo), chocar con otra linea
+  // y completar el nivel.
+  const previousConnected = useRef(0);
+  const lastBlockedAt = useRef(0);
+  const hadActiveColor = useRef(false);
+
+  useEffect(() => {
+    if (connected > previousConnected.current && phase === "playing") sounds.nodeJoin(connected);
+
+    previousConnected.current = connected;
+  }, [connected, phase]);
+
+  useEffect(() => {
+    if (!blockedCell || phase !== "playing") return;
+
+    const now = Date.now();
+
+    // Una linea que sigue contra un obstaculo no debe sonar a metralleta.
+    if (now - lastBlockedAt.current > 400) sounds.lineBlocked();
+
+    lastBlockedAt.current = now;
+  }, [blockedCell, phase]);
+
+  useEffect(() => {
+    const hasActive = activeColor !== null && activeColor !== undefined;
+
+    if (hasActive && !hadActiveColor.current) sounds.nodePick();
+
+    hadActiveColor.current = hasActive;
+  }, [activeColor]);
+
+  useEffect(() => {
+    if (phase === "level-complete") sounds.levelUp();
+  }, [phase]);
+
+  // El navegador solo deja sonar despues de un toque: Comenzar, Continuar y el tablero lo habilitan.
+  function handleStart() {
+    unlockSound();
+    start();
+  }
+
+  function handleResume() {
+    unlockSound();
+    resume();
+  }
+
+  function handlePointerDown(fx: number, fy: number) {
+    unlockSound();
+    pointerDown(fx, fy);
+  }
+
+  function handleUndo() {
+    sounds.lineUndone();
+    undo();
+  }
+
+  function handleReset() {
+    sounds.lineUndone();
+    reset();
+  }
+
   const lastResult = results[results.length - 1];
   const isLastLevel = level >= totalLevels;
   const totalPairs = levelData.pairs.length;
 
   return (
-    <div className="flex w-full flex-col items-center gap-4">
+    <div className={`${GAME_GUARD_CLASS} flex w-full flex-col items-center gap-4`}>
+      {lost && <GameLeaseLostNotice />}
+
       {phase === "idle" && !hasResumable && <BackToGameHub />}
 
       <h1 className="text-center text-2xl font-bold sm:text-3xl md:text-4xl">
@@ -84,7 +160,7 @@ export function NodeConnectionGame() {
           {canStart && (
             <button
               type="button"
-              onClick={start}
+              onClick={handleStart}
               className="min-h-12 rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
             >
               Comenzar
@@ -94,7 +170,7 @@ export function NodeConnectionGame() {
           {hasResumable && (
             <button
               type="button"
-              onClick={resume}
+              onClick={handleResume}
               className="min-h-12 rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
             >
               Continuar
@@ -142,7 +218,7 @@ export function NodeConnectionGame() {
               paths={paths}
               activeColor={activeColor}
               blockedCell={blockedCell}
-              onPointerDown={pointerDown}
+              onPointerDown={handlePointerDown}
               onPointerMove={pointerMove}
               onPointerUp={pointerUp}
             />
@@ -154,7 +230,7 @@ export function NodeConnectionGame() {
           >
             <button
               type="button"
-              onClick={undo}
+              onClick={handleUndo}
               disabled={!canUndo}
               className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-700 px-4 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -164,7 +240,7 @@ export function NodeConnectionGame() {
 
             <button
               type="button"
-              onClick={reset}
+              onClick={handleReset}
               className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-700 px-4 text-sm font-medium text-white hover:bg-zinc-800"
             >
               <RotateCcw className="size-4" />
@@ -243,6 +319,16 @@ export function NodeConnectionGame() {
               Salir del juego
             </button>
           </div>
+        </div>
+      )}
+
+      {(phase === "idle" || phase === "playing" || phase === "level-complete") && (
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {(phase === "playing" || phase === "level-complete") && (
+            <SaveAndExitButton onSave={flushProgress} />
+          )}
+
+          <SoundToggle />
         </div>
       )}
     </div>

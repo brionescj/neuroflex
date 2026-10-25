@@ -71,3 +71,27 @@ body {
   --viz-soft: rgb(0 0 0 / 0.035);
   --viz-soft-strong: rgb(0 0 0 / 0.08);
 }
+
+
+/* Cuenta regresiva de Seriacion de colores: el numero "salta" al aparecer. */
+@keyframes count-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  35% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+}
+
+/* Los juegos no se imprimen ni se guardan como PDF (ver useScreenshotDeterrents). */
+@media print {
+  .game-guard {
+    display: none !important;
+  }
+}

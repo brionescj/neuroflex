@@ -139,4 +139,39 @@ describe("createProgressQueue", () => {
     q.enqueue("save", h.op("B"));
     expect(h.started).toEqual(["A", "B"]);
   });
+
+  it("whenIdle se cumple de inmediato si no hay nada, y solo al terminar todo si hay guardados pendientes", async () => {
+    const h = makeHarness();
+    const q = createProgressQueue();
+
+    await expect(q.whenIdle()).resolves.toBeUndefined();
+
+    let idle = false;
+
+    q.enqueue("save", h.op("A"));
+    q.enqueue("save", h.op("B"));
+    void q.whenIdle().then(() => {
+      idle = true;
+    });
+
+    await h.finishNext();
+    expect(idle).toBe(false);
+
+    await h.finishNext();
+    expect(idle).toBe(true);
+  });
+
+  it("whenIdle tambien se cumple si un guardado falla", async () => {
+    const h = makeHarness();
+    const q = createProgressQueue();
+    let idle = false;
+
+    q.enqueue("save", h.op("A", { fail: true }));
+    void q.whenIdle().then(() => {
+      idle = true;
+    });
+
+    await h.finishNext();
+    expect(idle).toBe(true);
+  });
 });

@@ -2,8 +2,11 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ROUTES } from "@/config/routes";
+import { sounds, unlockSound } from "@/lib/gameSound";
 import { BackToGameHub } from "./BackToGameHub";
+import { useGameLease } from "../hooks/useGameLease";
 import { useLockNavigation } from "../hooks/useLockNavigation";
+import { GAME_GUARD_CLASS, useScreenshotDeterrents } from "../hooks/useScreenshotDeterrents";
 import { useWarnBeforeUnload } from "../hooks/useWarnBeforeUnload";
 import {
   MAX_TRIES_PER_LEVEL,
@@ -12,6 +15,9 @@ import {
 import { requiredCorrect } from "../hooks/colorSequenceRules";
 import { ColorGrid } from "./ColorGrid";
 import { FinishGameControl } from "./FinishGameControl";
+import { GameLeaseLostNotice } from "./GameLeaseLostNotice";
+import { SaveAndExitButton } from "./SaveAndExitButton";
+import { SoundToggle } from "./SoundToggle";
 
 /** El juego no tiene tope de niveles: se muestra solo el numero ("Nivel 3"). */
 function levelLabel(level: number): string {
@@ -44,7 +50,14 @@ export function ColorSequenceGame() {
     registerAnswer,
     continueAfterResult,
     finish,
+    countdown,
+    flushProgress,
   } = useColorSequenceGame();
+
+  // Un juego se juega desde un solo lugar a la vez; y sin las vias faciles de copiar la pantalla.
+  const { lost } = useGameLease("color-sequence");
+
+  useScreenshotDeterrents();
 
   // Mientras hay partida en curso (o una pendiente de continuar) el
   // Sidebar y "Cerrar sesion" quedan inhabilitados.
@@ -90,7 +103,55 @@ export function ColorSequenceGame() {
 
   const lastResult = levelResults[levelResults.length - 1];
   const showBoard =
-    phase === "idle" || phase === "illuminating" || phase === "answering";
+    phase === "idle" ||
+    phase === "countdown" ||
+    phase === "illuminating" ||
+    phase === "answering";
+
+  // Sonidos: cada numero de la cuenta, cada color que se enciende, y el resultado del nivel.
+  useEffect(() => {
+    if (phase === "countdown") sounds.countdownTick();
+  }, [phase, countdown]);
+
+  useEffect(() => {
+    if (activeId) sounds.color(activeId);
+  }, [activeId]);
+
+  useEffect(() => {
+    if (phase !== "level-result" || !lastResult) return;
+
+    if (lastResult.passed) sounds.levelUp();
+    else sounds.levelMissed();
+    // Solo al mostrarse el resultado de ese intento.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, levelResults.length]);
+
+  // El navegador solo deja sonar despues de un toque: Comenzar, Continuar y cada color lo habilitan.
+  function handleStart() {
+    unlockSound();
+    start();
+  }
+
+  function handleResume() {
+    unlockSound();
+    resume();
+  }
+
+  function handleContinue() {
+    unlockSound();
+    continueAfterResult();
+  }
+
+  function handleSelect(id: Parameters<typeof registerAnswer>[0]) {
+    unlockSound();
+
+    if (phase === "answering") sounds.color(id);
+
+    registerAnswer(id);
+  }
+
+  const canSaveAndExit =
+    phase === "countdown" || phase === "illuminating" || phase === "answering" || phase === "level-result";
 
   // Termino por agotar los intentos de un nivel (desde el 11), no por decision propia.
   const ranOutOfTries =
@@ -99,7 +160,9 @@ export function ColorSequenceGame() {
     lastResult.tryNumber >= MAX_TRIES_PER_LEVEL;
 
   return (
-    <div className="flex w-full flex-col items-center gap-4">
+    <div className={`${GAME_GUARD_CLASS} flex w-full flex-col items-center gap-4`}>
+      {lost && <GameLeaseLostNotice />}
+
       {phase === "idle" && !hasResumable && <BackToGameHub />}
 
       <h1 className="text-center text-2xl font-bold sm:text-3xl md:text-4xl">
@@ -112,7 +175,9 @@ export function ColorSequenceGame() {
               ? hasResumable
                 ? `Tienes una partida en curso: vas en el ${levelLabel(resumeLevel ?? 1).toLowerCase()}`
                 : "Memoriza el orden en que se iluminan los colores"
-              : `${levelLabel(level)} · Intento ${tryNumber} de ${MAX_TRIES_PER_LEVEL} — recuerda ${sequence.length} colores`}
+              : phase === "countdown"
+                ? `${levelLabel(level)} · Prepárate...`
+                : `${levelLabel(level)} · Intento ${tryNumber} de ${MAX_TRIES_PER_LEVEL} — recuerda ${sequence.length} colores`}
           </p>
 
           {/* Mismo ancho que el tablero de Conexion de nodos: ocupa el ancho del
@@ -124,16 +189,30 @@ export function ColorSequenceGame() {
             <ColorGrid
               activeId={activeId}
               disabled={phase !== "answering"}
-              onSelect={registerAnswer}
+              onSelect={handleSelect}
             />
+
+            {phase === "countdown" && (
+              <div
+                className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                aria-live="assertive"
+              >
+                <span
+                  key={countdown}
+                  className="text-8xl font-extrabold text-white drop-shadow-[0_0_18px_rgba(0,0,0,0.9)] [animation:count-pop_0.9s_ease-out]"
+                >
+                  {countdown}
+                </span>
+              </div>
+            )}
 
             {phase === "idle" && (
               <div className="absolute inset-0 flex items-center justify-center">
                 {canStart && (
                   <button
                     type="button"
-                    onClick={start}
-                    className="rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
+                    onClick={handleStart}
+                    className="min-h-12 rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
                   >
                     Comenzar
                   </button>
@@ -143,8 +222,8 @@ export function ColorSequenceGame() {
                   <div className="flex flex-col items-center gap-2">
                     <button
                       type="button"
-                      onClick={resume}
-                      className="rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
+                      onClick={handleResume}
+                      className="min-h-12 rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
                     >
                       Continuar
                     </button>
@@ -214,7 +293,7 @@ export function ColorSequenceGame() {
 
           <button
             type="button"
-            onClick={continueAfterResult}
+            onClick={handleContinue}
             className="mt-1 min-h-11 px-4 text-sm font-medium text-sky-400 hover:text-sky-300"
           >
             {lastResult.passed ? "Siguiente nivel" : "Intentar de nuevo"}
@@ -321,6 +400,14 @@ export function ColorSequenceGame() {
               Salir del juego
             </button>
           </div>
+        </div>
+      )}
+
+      {phase !== "finished" && phase !== "failed" && (
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {canSaveAndExit && <SaveAndExitButton onSave={flushProgress} />}
+
+          <SoundToggle />
         </div>
       )}
     </div>

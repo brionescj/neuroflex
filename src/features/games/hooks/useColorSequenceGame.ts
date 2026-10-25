@@ -30,8 +30,13 @@ export type { LevelResult };
 const ILLUMINATE_ON_MS = 600;
 const ILLUMINATE_GAP_MS = 300;
 
+/** Cuenta regresiva antes de cada intento: 3, 2, 1 (un numero por segundo) y recien ahi se ilumina. */
+export const COUNTDOWN_FROM = 3;
+const COUNTDOWN_STEP_MS = 1000;
+
 type GamePhase =
   | "idle"
+  | "countdown"
   | "illuminating"
   | "answering"
   | "level-result"
@@ -55,6 +60,7 @@ export function useColorSequenceGame() {
   const [tryNumber, setTryNumber] = useState(1);
   const [sequence, setSequence] = useState<SequenceColorId[]>([]);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState(COUNTDOWN_FROM);
   const [levelResults, setLevelResults] = useState<LevelResult[]>([]);
 
   // Una partida ya terminada que se esta archivando antes de empezar otra.
@@ -78,6 +84,7 @@ export function useColorSequenceGame() {
     reload: reloadProgress,
     save: saveProgress,
     clear: clearProgress,
+    flush: flushProgress,
   } = useGameProgress("color-sequence");
 
   // Avance guardado ya validado (null si no hay o si esta corrupto).
@@ -111,7 +118,8 @@ export function useColorSequenceGame() {
       setSequence(snapshot.sequence);
       setLevelResults(snapshot.levelResults);
       setActiveIndex(null);
-      setPhase(snapshot.phase);
+      // Un intento a medias se retoma con su cuenta regresiva: nadie debe encontrarse con el primer color de golpe.
+      setPhase(snapshot.phase === "illuminating" ? "countdown" : snapshot.phase);
     },
     [attempt],
   );
@@ -190,7 +198,7 @@ export function useColorSequenceGame() {
     setTryNumber(1);
     setLevelResults([]);
     setSequence(buildSequence(MIN_SEQUENCE_LENGTH));
-    setPhase("illuminating");
+    setPhase("countdown");
   }, [canStart, attempt]);
 
   const resume = useCallback(() => {
@@ -228,6 +236,23 @@ export function useColorSequenceGame() {
       ),
     );
   }, [phase, level, tryNumber, sequence, levelResults, saveProgress, attempt]);
+
+  // Cuenta regresiva: 3, 2, 1 y luego se ilumina. El reloj del intento aun no corre.
+  useEffect(() => {
+    if (phase !== "countdown") return;
+
+    setCountdown(COUNTDOWN_FROM);
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    for (let step = 1; step < COUNTDOWN_FROM; step++) {
+      timers.push(setTimeout(() => setCountdown(COUNTDOWN_FROM - step), step * COUNTDOWN_STEP_MS));
+    }
+
+    timers.push(setTimeout(() => setPhase("illuminating"), COUNTDOWN_FROM * COUNTDOWN_STEP_MS));
+
+    return () => timers.forEach(clearTimeout);
+  }, [phase]);
 
   // El reloj del intento corre desde que empieza a iluminarse hasta que el
   // alumno completa la respuesta. Reanudar un intento lo reinicia desde cero.
@@ -384,7 +409,7 @@ export function useColorSequenceGame() {
       setSequence((prev) => buildSequence(prev.length, prev));
     }
 
-    setPhase("illuminating");
+    setPhase("countdown");
   }, [levelResults]);
 
   // El juego no tiene tope: terminar es una decision del alumno, posible
@@ -444,5 +469,7 @@ export function useColorSequenceGame() {
     registerAnswer,
     continueAfterResult,
     finish,
+    countdown,
+    flushProgress,
   };
 }

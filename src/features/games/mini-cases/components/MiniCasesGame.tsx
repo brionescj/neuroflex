@@ -4,6 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { ROUTES } from "@/config/routes";
 import { BackToGameHub } from "../../components/BackToGameHub";
+import { GameLeaseLostNotice } from "../../components/GameLeaseLostNotice";
+import { SaveAndExitButton } from "../../components/SaveAndExitButton";
+import { useGameLease } from "../../hooks/useGameLease";
+import { GAME_GUARD_CLASS, useScreenshotDeterrents } from "../../hooks/useScreenshotDeterrents";
 import { useLockNavigation } from "../../hooks/useLockNavigation";
 import { useWarnBeforeUnload } from "../../hooks/useWarnBeforeUnload";
 import { playDistractorSound } from "../audio/distractorSounds";
@@ -58,7 +62,13 @@ export function MiniCasesGame() {
     submitOrder,
     retrySubmit,
     nextCase,
+    flushProgress,
   } = useMiniCasesGame();
+
+  // Un juego se juega desde un solo lugar a la vez; y sin las vias faciles de copiar la pantalla.
+  const { lost } = useGameLease("mini-cases");
+
+  useScreenshotDeterrents();
 
   // Mientras hay partida en curso (o una pendiente de continuar) el
   // Sidebar y "Cerrar sesion" quedan inhabilitados.
@@ -186,7 +196,9 @@ export function MiniCasesGame() {
   const fullyCorrectCount = results.filter((r) => r.isFullyCorrect).length;
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4">
+    <div className={`${GAME_GUARD_CLASS} mx-auto flex w-full max-w-2xl flex-col items-center gap-4`}>
+      {lost && <GameLeaseLostNotice />}
+
       {phase === "idle" && !hasResumable && <BackToGameHub />}
 
       <h1 className="text-2xl font-bold sm:text-3xl md:text-4xl">
@@ -275,6 +287,8 @@ export function MiniCasesGame() {
             <Button onClick={proceedToOrdering} className="self-center">
               Entendido, estructurar plan
             </Button>
+
+            <SaveAndExitButton onSave={flushProgress} className="self-center" />
           </div>
         </div>
       )}
@@ -428,6 +442,10 @@ export function MiniCasesGame() {
             </Button>
           </div>
         </div>
+      )}
+
+      {phase !== "idle" && phase !== "finished" && phase !== "twist" && (
+        <SaveAndExitButton onSave={flushProgress} />
       )}
     </div>
   );

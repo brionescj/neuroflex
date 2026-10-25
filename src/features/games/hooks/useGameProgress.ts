@@ -11,6 +11,9 @@ import { getProgressQueue } from "@/features/games/services/progressQueue";
 
 export type GameProgressStatus = "loading" | "ready" | "error";
 
+/** Si el ultimo guardado de cada juego llego al servidor (para "Guardar nivel y salir"). */
+const lastSaveOk = new Map<GameId, boolean>();
+
 /**
  * Carga una sola vez el progreso guardado de este juego y expone como
  * guardarlo/borrarlo. `saved` es lo que habia en el servidor al cargar la
@@ -56,6 +59,8 @@ export function useGameProgress(gameId: GameId) {
       getProgressQueue(gameId).enqueue("save", async () => {
         const response = await saveGameProgress(gameId, state);
 
+        lastSaveOk.set(gameId, response.success);
+
         if (!response.success && import.meta.env.DEV) {
           console.warn(
             `[useGameProgress] No se pudo guardar (${gameId}): ${response.message}`,
@@ -72,5 +77,12 @@ export function useGameProgress(gameId: GameId) {
     getProgressQueue(gameId).enqueue("clear", () => clearGameProgress(gameId));
   }, [gameId]);
 
-  return { status, error, saved, reload, save, clear };
+  /** Espera a que todo lo pendiente llegue al servidor. true si el ultimo guardado se logro. */
+  const flush = useCallback(async () => {
+    await getProgressQueue(gameId).whenIdle();
+
+    return lastSaveOk.get(gameId) !== false;
+  }, [gameId]);
+
+  return { status, error, saved, reload, save, clear, flush };
 }

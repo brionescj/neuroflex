@@ -83,6 +83,7 @@ export function useMiniCasesGame() {
     reload: reloadProgress,
     save: saveProgress,
     clear: clearProgress,
+    flush: flushProgress,
   } = progress;
 
   const currentCase = cases[caseIndex];
@@ -482,5 +483,6 @@ export function useMiniCasesGame() {
     submitOrder,
     retrySubmit,
     nextCase,
+    flushProgress,
   };
 }

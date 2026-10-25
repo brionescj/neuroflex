@@ -107,6 +107,7 @@ export function useNodeConnectionGame() {
     reload: reloadProgress,
     save: saveProgress,
     clear: clearProgress,
+    flush: flushProgress,
   } = useGameProgress("node-connection");
 
   const levelData = getLevel(level);
@@ -658,5 +659,6 @@ export function useNodeConnectionGame() {
     reset,
     continueToNextLevel,
     finish,
+    flushProgress,
   };
 }
