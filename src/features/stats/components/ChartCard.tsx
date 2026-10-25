@@ -12,7 +12,7 @@ import {
   Table2,
   TriangleAlert,
 } from "lucide-react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -24,19 +24,14 @@ import {
   toggleCategory,
   withoutCategories,
 } from "../utils/categories";
-import { downloadExcel, downloadPdf } from "../utils/exportFiles";
+import { calcSummary } from "../utils/calcSummary";
 import { groupsOf, groupsSignature, toggleGroup, withoutGroups } from "../utils/groups";
 import type { ChartResult, ViewId } from "../types";
-import { BarChart } from "./charts/BarChart";
 import { CategoryFilter } from "./CategoryFilter";
-import { CategoryLegend } from "./charts/CategoryLegend";
+import { ChartPlot } from "./charts/ChartPlot";
 import { ChartTable } from "./charts/ChartTable";
 import { GroupLegend } from "./charts/GroupLegend";
-import { LineChart } from "./charts/LineChart";
-import { PieChart } from "./charts/PieChart";
-import { StackedChart } from "./charts/StackedChart";
 import { SingleStudentContext } from "./charts/singleStudent";
-import { StatCards } from "./charts/StatCards";
 import { HelpButton, HelpNote } from "./HelpNote";
 
 type ChartCardProps = {
@@ -79,7 +74,6 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
     keys: new Set(),
   });
   const helpId = useId();
-  const cardRef = useRef<HTMLElement>(null);
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
 
   // Las partes ocultas valen mientras sean las mismas partes del mismo grafico.
@@ -110,14 +104,33 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
   // Si la vista elegida no existe en este grafico, se vuelve a la primera.
   const view: ViewChoice = chosen && choices.includes(chosen) ? chosen : (choices[0] as ViewChoice);
 
+  const removedSomething = hidden.size > 0 || hiddenCategories.size > 0;
+
   async function exportAs(kind: "pdf" | "excel") {
-    if (exporting) return;
+    if (exporting || (kind === "pdf" && view === "table")) return;
 
     setExporting(kind);
 
     try {
-      if (kind === "excel") await downloadExcel(result, single);
-      else if (cardRef.current) await downloadPdf(cardRef.current, result);
+      if (kind === "excel") {
+        const { downloadExcel } = await import("../utils/exportExcel");
+
+        await downloadExcel(result, single);
+      } else if (view !== "table") {
+        const { downloadPdf } = await import("../utils/exportPdf");
+
+        await downloadPdf({
+          result,
+          full,
+          view,
+          hidden,
+          subtitle,
+          description,
+          calcTitle: calcSummary(full, single, removedSomething),
+          notes: [...full.notes, ...(categoriesNote ? [categoriesNote] : [])],
+          single,
+        });
+      }
     } catch {
       toast.error(kind === "pdf" ? "No se pudo generar el PDF." : "No se pudo generar el Excel.");
     } finally {
@@ -129,7 +142,7 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
 
   return (
     <SingleStudentContext.Provider value={single}>
-    <article ref={cardRef} className="viz-root rounded-2xl border border-white/10 bg-[var(--viz-surface)] p-4 text-[var(--viz-text)]">
+    <article className="viz-root rounded-2xl border border-white/10 bg-[var(--viz-surface)] p-4 text-[var(--viz-text)]">
       <header className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -137,23 +150,21 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
               <h2 className="text-base font-semibold text-[var(--viz-text)]">{result.title}</h2>
 
               {description && (
-                <span data-export-ignore>
-                  <HelpButton
-                    label={`Qué muestra «${result.title}»`}
-                    open={helpOpen}
-                    controls={helpId}
-                    onClick={() => setHelpOpen((open) => !open)}
-                    tone="viz"
-                    className="-my-2"
-                  />
-                </span>
+                <HelpButton
+                  label={`Qué muestra «${result.title}»`}
+                  open={helpOpen}
+                  controls={helpId}
+                  onClick={() => setHelpOpen((open) => !open)}
+                  tone="viz"
+                  className="-my-2"
+                />
               )}
             </div>
             {subtitle && <p className="mt-0.5 text-xs leading-relaxed text-[var(--viz-text-2)]">{subtitle}</p>}
             {full.basis && <p className="mt-0.5 text-xs leading-relaxed text-[var(--viz-muted)]">{full.basis}</p>}
           </div>
 
-          <div data-export-ignore className="flex shrink-0 gap-1.5">
+          <div className="flex shrink-0 gap-1.5">
             {view === "table" && (
               <button
                 type="button"
@@ -171,29 +182,29 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => void exportAs("pdf")}
-              disabled={exporting !== null}
-              aria-label="Descargar gráfico en PDF"
-              title="Descargar gráfico en PDF"
-              className={exportButton}
-            >
-              {exporting === "pdf" ? (
-                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-              ) : (
-                <FileText aria-hidden="true" className="size-4" />
-              )}
-            </button>
+            {view !== "table" && (
+              <button
+                type="button"
+                onClick={() => void exportAs("pdf")}
+                disabled={exporting !== null}
+                aria-label="Descargar gráfico en PDF"
+                title="Descargar gráfico en PDF"
+                className={exportButton}
+              >
+                {exporting === "pdf" ? (
+                  <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                ) : (
+                  <FileText aria-hidden="true" className="size-4" />
+                )}
+              </button>
+            )}
           </div>
         </div>
 
         {description && helpOpen && (
-          <div data-export-ignore>
           <HelpNote id={helpId} label={`Qué muestra «${result.title}»`} onClose={() => setHelpOpen(false)} tone="viz">
             {description}
           </HelpNote>
-          </div>
         )}
 
         {result.exploratory && (
@@ -207,7 +218,7 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
         )}
 
         {choices.length > 1 && (
-          <div data-export-ignore role="radiogroup" aria-label="Forma de ver el gráfico" className="flex flex-wrap gap-1.5">
+          <div role="radiogroup" aria-label="Forma de ver el gráfico" className="flex flex-wrap gap-1.5">
             {choices.map((choice) => {
               const { label, Icon } = VIEW_META[choice];
 
@@ -234,7 +245,7 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
         )}
 
         {stale && (
-          <p data-export-ignore role="status" className="flex items-start gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs text-[var(--viz-text-2)]">
+          <p role="status" className="flex items-start gap-2 rounded-lg bg-white/5 px-3 py-2 text-xs text-[var(--viz-text-2)]">
             <Info aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
             Cambiaste la selección. Presiona «Mostrar» para actualizar este gráfico.
           </p>
@@ -262,33 +273,16 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
         />
 
         {canHideCategories(full) && (
-          <div data-export-ignore>
-            <CategoryFilter
+          <CategoryFilter
             result={full}
             colored={view === "pie" || view === "stacked"}
             hidden={hiddenCategories}
             onToggle={(index) => setHiddenCategories(toggleCategory(hiddenCategories, full.categories.length, index))}
             onShowAll={() => setHiddenCategories(new Set())}
           />
-          </div>
         )}
 
-        {view === "table" ? (
-          <ChartTable result={result} />
-        ) : view === "cards" && result.cards ? (
-          <StatCards cards={result.cards} />
-        ) : view === "lines" ? (
-          <LineChart result={result} />
-        ) : view === "pie" ? (
-          <PieChart result={result} />
-        ) : view === "stacked" ? (
-          <>
-            <StackedChart result={result} />
-            <CategoryLegend result={result} />
-          </>
-        ) : (
-          <BarChart result={result} />
-        )}
+        {view === "table" ? <ChartTable result={result} /> : <ChartPlot result={result} view={view} />}
 
       </div>
 
@@ -304,14 +298,7 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
 
       <details className="mt-4 text-xs text-[var(--viz-text-2)]">
         <summary className="cursor-pointer select-none py-1 text-[var(--viz-muted)] hover:text-[var(--viz-text-2)]">
-          Cómo se calculó
-          {single
-            ? hidden.size > 0 || hiddenCategories.size > 0
-              ? " (contando lo que se quitó del gráfico)"
-              : ""
-            : ` (${full.studentsTotal} ${full.studentsTotal === 1 ? "estudiante" : "estudiantes"}${
-                hidden.size > 0 || hiddenCategories.size > 0 ? ", contando lo que se quitó del gráfico" : ""
-              })`}
+          {calcSummary(full, single, removedSomething)}
         </summary>
 
         <ul className="mt-2 list-disc space-y-1 pl-4 leading-relaxed">

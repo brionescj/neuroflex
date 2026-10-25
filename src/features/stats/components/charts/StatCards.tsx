@@ -16,7 +16,7 @@ function OpenList({ item, list, onClose }: { item: CardItem; list: CardList; onC
     <div
       role="region"
       aria-label={list.title}
-      className="col-span-full flex flex-col gap-2 rounded-xl border border-white/10 p-3"
+      className="col-span-full flex flex-col gap-2 rounded-xl border border-[var(--viz-line)] p-3"
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-medium text-[var(--viz-text)]">
@@ -69,7 +69,7 @@ export function StatCards({ cards }: { cards: ChartCards }) {
               const openList = openIndex === -1 ? undefined : item.lists?.[openIndex];
 
               return [
-                <div key={item.label} className="flex flex-col gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div key={item.label} className="flex flex-col gap-1 rounded-xl border border-[var(--viz-line)] bg-[var(--viz-soft)] p-3">
                   <dl className="flex flex-col gap-1">
                     <dt className="text-[11px] leading-snug text-[var(--viz-text-2)]">{item.label}</dt>
                     <dd className="text-xl font-semibold tabular-nums text-[var(--viz-text)]">{item.value}</dd>
@@ -92,8 +92,8 @@ export function StatCards({ cards }: { cards: ChartCards }) {
                             className={cn(
                               "flex min-h-9 items-center justify-between gap-1.5 rounded-lg border px-2 py-1 text-left text-[11px] leading-snug transition-colors disabled:cursor-default disabled:opacity-50",
                               isOpen
-                                ? "border-white/30 bg-white/10 text-[var(--viz-text)]"
-                                : "border-white/10 text-[var(--viz-text-2)] enabled:hover:bg-white/5",
+                                ? "border-[var(--viz-line-strong)] bg-[var(--viz-soft-strong)] text-[var(--viz-text)]"
+                                : "border-[var(--viz-line)] text-[var(--viz-text-2)] enabled:hover:bg-white/5",
                             )}
                           >
                             <span className="min-w-0">

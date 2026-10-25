@@ -14,6 +14,8 @@ type GroupLegendProps = {
   hidden: ReadonlySet<string>;
   onToggle: (key: string) => void;
   onShowAll: () => void;
+  /** En el PDF: muestra lo mismo pero sin las instrucciones de tocar (no se puede tocar un PDF). */
+  readOnly?: boolean;
 };
 
 /**
@@ -21,7 +23,7 @@ type GroupLegendProps = {
  * boton: tocarlo lo quita del grafico y volver a tocarlo lo pone de nuevo. Con
  * un solo grupo no hace falta (el titulo ya dice que se mira).
  */
-export function GroupLegend({ result, view, hidden, onToggle, onShowAll }: GroupLegendProps) {
+export function GroupLegend({ result, view, hidden, onToggle, onShowAll, readOnly = false }: GroupLegendProps) {
   const single = useSingleStudent();
   const groups = groupsOf(result);
 
@@ -51,8 +53,8 @@ export function GroupLegend({ result, view, hidden, onToggle, onShowAll }: Group
                 className={cn(
                   "flex min-h-11 w-full items-center gap-2 rounded-lg border px-2.5 py-1 text-left transition-colors",
                   isHidden
-                    ? "border-dashed border-white/15 text-[var(--viz-muted)] hover:bg-white/5"
-                    : "border-white/10 hover:bg-white/5",
+                    ? "border-dashed border-[var(--viz-line)] text-[var(--viz-muted)] hover:bg-white/5"
+                    : "border-[var(--viz-line)] hover:bg-white/5",
                   locked && "cursor-not-allowed",
                 )}
               >
@@ -87,19 +89,21 @@ export function GroupLegend({ result, view, hidden, onToggle, onShowAll }: Group
         })}
       </ul>
 
-      <p className="flex flex-wrap items-center gap-x-3 text-[11px] leading-snug text-[var(--viz-muted)]">
-        <span>Toca un grupo para quitarlo del gráfico o volver a ponerlo.</span>
+      {!readOnly && (
+        <p className="flex flex-wrap items-center gap-x-3 text-[11px] leading-snug text-[var(--viz-muted)]">
+          <span>Toca un grupo para quitarlo del gráfico o volver a ponerlo.</span>
 
-        {hidden.size > 0 && (
-          <button
-            type="button"
-            onClick={onShowAll}
-            className="underline underline-offset-2 hover:text-[var(--viz-text-2)]"
-          >
-            Mostrar todos
-          </button>
-        )}
-      </p>
+          {hidden.size > 0 && (
+            <button
+              type="button"
+              onClick={onShowAll}
+              className="underline underline-offset-2 hover:text-[var(--viz-text-2)]"
+            >
+              Mostrar todos
+            </button>
+          )}
+        </p>
+      )}
 
       {result.legendNote && (
         <p className="text-[11px] leading-snug text-[var(--viz-text-2)]">{result.legendNote}</p>

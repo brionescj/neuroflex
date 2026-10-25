@@ -35,14 +35,39 @@ body {
   --viz-s8: #e66767;
   --viz-other: #7b7a74;
   --viz-nodata: #b3b2aa;
+  /* Bordes y fondos suaves: translucidos, para que sirvan sobre cualquier superficie. */
+  --viz-line: rgb(255 255 255 / 0.1);
+  --viz-line-strong: rgb(255 255 255 / 0.3);
+  --viz-soft: rgb(255 255 255 / 0.03);
+  --viz-soft-strong: rgb(255 255 255 / 0.1);
 }
 
-/* Mientras se genera el PDF de un grafico: sin botones y con las tablas completas. */
-[data-exporting] [data-export-ignore] {
-  display: none !important;
-}
-
-[data-exporting] [data-export-expand] {
-  max-height: none !important;
-  overflow: visible !important;
+/*
+ * Version para imprimir (el PDF de cada grafico): fondo blanco y la paleta clara, con el
+ * aqua, el amarillo y el magenta oscurecidos para llegar a 3:1 de contraste sobre blanco.
+ * Validada con la misma prueba de la paleta oscura: todos los pares vecinos separan
+ * a quienes ven distinto los colores (>= 8) y se distinguen a simple vista (>= 15).
+ */
+.viz-print {
+  color-scheme: light;
+  --viz-surface: #ffffff;
+  --viz-text: #141413;
+  --viz-text-2: #3f3e3a;
+  --viz-muted: #62615c;
+  --viz-grid: #e4e3df;
+  --viz-axis: #b9b8b2;
+  --viz-s1: #2a78d6;
+  --viz-s2: #eb6834;
+  --viz-s3: #139f70;
+  --viz-s4: #b87700;
+  --viz-s5: #d4568a;
+  --viz-s6: #008300;
+  --viz-s7: #6250d6;
+  --viz-s8: #e34948;
+  --viz-other: #6b6a65;
+  --viz-nodata: #8f8e88;
+  --viz-line: rgb(0 0 0 / 0.16);
+  --viz-line-strong: rgb(0 0 0 / 0.4);
+  --viz-soft: rgb(0 0 0 / 0.035);
+  --viz-soft-strong: rgb(0 0 0 / 0.08);
 }

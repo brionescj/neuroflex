@@ -31,7 +31,7 @@ export function RowsTable({
   }
 
   return (
-    <div data-export-expand className="max-h-[28rem] max-w-full overflow-auto rounded-lg border border-white/10">
+    <div className="max-h-[28rem] max-w-full overflow-auto rounded-lg border border-white/10">
       <table className="w-full min-w-max border-collapse text-left text-xs text-[var(--viz-text-2)]">
         <caption className="sr-only">{caption}</caption>
 
@@ -98,7 +98,7 @@ export function ChartTable({ result }: { result: ChartResult }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div data-export-expand className="max-w-full overflow-x-auto rounded-lg border border-white/10">
+      <div className="max-w-full overflow-x-auto rounded-lg border border-white/10">
         <table className="w-full min-w-max border-collapse text-left text-xs text-[var(--viz-text-2)]">
           <caption className="sr-only">
             {result.title}: valores por {result.xLabel.toLowerCase()}
