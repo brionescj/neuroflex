@@ -140,7 +140,9 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
 12. **Conexión de nodos: errores permitidos** (no deshacer sin hablar; paridad cliente/servidor):
     - Error = cada choque + 2 por cada «Rehacer tablero» (peso 2 es un supuesto de diseño,
       `NODE_RESET_ERROR_WEIGHT`). Deshacer, acortar un trazo y retroceder no cuentan.
-    - Permitidos = pares del tablero × 3 (niveles 1–5), × 2 (6–10), × 1 (11–15). Al superarlos el
+    - Permitidos = `max(3, ceil(pares × %))` con % = 100 (niveles 1–5), 60 (6–10), 40 (11–15): entre
+      3 y 5 errores por nivel (`allowedErrors`). Subir la dificultad se hace aquí, no en los
+      intentos (`NODE_MAX_TRIES = 3` no se toca). Al superarlos el
       intento se pierde al instante (fase `level-failed`) y se repite el MISMO tablero con los
       errores en cero: 3 intentos por nivel (`key` «3», «3.2», «3.3»). Sin pasar un nivel 1–10 la
       partida termina y se reinicia desde el 1; desde el 11 termina guardando el mejor nivel.
@@ -148,7 +150,7 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       `lib/nodeRules.ts`; `lib/nodeRulesParity.test.ts` exige que coincidan. El servidor recalcula
       `errors`, `errorsAllowed` y `passed` (`scoreNodeTry`); lo que diga el navegador se ignora.
     - Resultados guardados antes de esta regla (sin `passed`) cuentan como pasados.
-    - `contentVersion` de nodos termina en `-r2`: las partidas anteriores no son comparables.
+    - `contentVersion` de nodos termina en `-r3`: las partidas anteriores no son comparables.
     - Mini casos exige PASAR el nivel 10 de nodos (`mini-cases-v2`, evidencia `nodeMaxLevelPassed`).
     - Estadísticas: `lib/stats/chartsNodes.ts` (10 gráficos). «Tiempo por nivel» usa solo el primer
       intento pasado (`isFirstTryTime`). «Estudiantes estancados» = no pasaron el MISMO nivel en
@@ -162,8 +164,18 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       fallar (todos los colores / cero errores). Mini casos: 3 por paso en su lugar + 8 por orden
       perfecto. Se cuenta lo MEJOR de cada nivel o caso entre todas las partidas: los puntos nunca
       bajan y repetir un nivel no regala puntos.
-    - Rangos: Chispa 0, Destello 60, Llama 180, Estrella 350, Constelación 550. 14 insignias con
-      barra de avance; «próxima meta» = la no lograda más avanzada.
+    - Rangos: Chispa 0, Destello 60, Llama 180, Estrella 350, Constelación 550.
+    - 34 insignias en 5 niveles de dificultad (Primeros pasos, Constancia, Dominio, Experto,
+      Maestría), definidas en `lib/studentBadges.ts`; se calculan al vuelo, nunca se guardan.
+      «Próxima meta» = la no lograda con mayor avance (a igual avance, la de nivel más bajo).
+    - Mini casos: la gráfica lista TODO el banco habilitado (`MiniCase.enabled`); los no jugados
+      salen como «Sin jugar», para que quien jugó pocos y los acertó no parezca perfecto.
+    - Cada tarjeta de la pantalla se expande y colapsa (`ScoreCard`, `aria-expanded`), salvo la
+      del rango.
+    - Panel admin, Estadísticas > General: la tarjeta «Máximo logro» (`lib/stats/topScores.ts`)
+      usa el mismo cálculo y abre el ranking (puesto, estudiante, RUT, universidad, paralelo,
+      jornada, edad, puntos, rango, insignias). Se descarga en PDF (listas de las tarjetas) y en
+      Excel: una hoja con la tabla del gráfico y una hoja por lista (`cardListSheets`).
     - Solo lee los datos del estudiante de la sesión (el RUT nunca viene de la solicitud).
 
 ---
