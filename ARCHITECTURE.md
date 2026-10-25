@@ -88,6 +88,10 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       sin dejar una promesa fallida en caché. Los handlers hacen sus lecturas
       independientes en un solo `Promise.all`; las lecturas pesadas de estadísticas se
       comparten 8 s (`reusePromise` en `lib/stats/loadData.ts`).
+    - La tarjeta de Mini casos del menú del estudiante se muestra siempre: abierta si el
+      servidor confirmó el desbloqueo, tenue con un mensaje amable dentro de la misma
+      tarjeta si no (`GameCard` con `lockedMessage`; el texto vive en
+      `unlockHint` de `gameCatalog.ts`). El servidor sigue exigiendo el desbloqueo.
     - El login y `/auth/me` devuelven `unlocked` (desbloqueos ya otorgados, solo lectura):
       la tarjeta de Mini casos aparece sin esperar `/games/access`.
     - Frontend: `src/lib/sharedRequest.ts` reutiliza lo ya pedido (catálogo de
@@ -105,6 +109,31 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       un gráfico nuevo no necesita código de presentación propio.
     - `src/App.tsx` adelanta, según el rol, lo que verá la persona (listados del
       administrador, catálogo de estadísticas, Mi perfil) un instante después de entrar.
+
+11. **Una sola sesión de estudiante y un solo lugar por juego** (no deshacer sin hablar):
+    - `AuthUser.sessionId` guarda la única sesión vigente de un estudiante. Cada inicio de
+      sesión (`lib/sessions.ts → startStudentSession`) genera uno nuevo y lo pone en el JWT
+      (`sid`); un token con otro `sid` recibe `401` con `code: "session-replaced"` y el
+      navegador vuelve al login explicando el motivo. Los administradores no se limitan.
+      Se comprueba con `ensureCurrentSession` en `/auth/me`, `games/*`, `mini-cases*`,
+      perfil y cambio de contraseña (un «sí» se recuerda 5 s por instancia; un «no» siempre
+      se consulta). Un endpoint nuevo de estudiante debe llamarla.
+    - `games/lease` + `GameLease`: quien abre un juego en último lugar «tiene» el juego
+      (`useGameLease`, identificador propio por apertura). Todo lo que guarda (progreso,
+      intentos, envío de mini casos) lleva `X-Game-Lease` y el servidor responde `409`
+      (`game-opened-elsewhere`) si otro lugar lo abrió después; la pestaña que perdió
+      muestra `GameLeaseLostNotice`. Se comprueba al volver a la pestaña y cada 15 s.
+    - **Una página web no puede impedir capturas de pantalla.** `useScreenshotDeterrents`
+      + `GAME_GUARD_CLASS` solo quitan las vías fáciles (menú contextual, selección,
+      imprimir/PDF, «Impr Pant»). Impedirlas de verdad exige una app nativa (FLAG_SECURE en
+      Android, detección en iOS).
+    - «Guardar nivel y salir» (`SaveAndExitButton`): espera a que el último guardado llegue
+      (`ProgressQueue.whenIdle` vía `useGameProgress().flush`) y lleva al menú; el nivel se
+      retoma desde su inicio.
+    - Seriación: cuenta regresiva 3-2-1 (fase `countdown`) antes de cada intento, también al
+      reanudar; el reloj del intento corre desde que se enciende el primer color.
+    - Sonidos (`src/lib/gameSound.ts`, Web Audio sin archivos, silenciable; el silencio vive en
+      `sessionStorage`). `unlockSound()` debe llamarse dentro de un toque.
 
 ---
 
