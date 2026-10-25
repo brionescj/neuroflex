@@ -29,6 +29,7 @@ import miniCasesBank from "./handlers/miniCases/bank";
 import miniCasesSubmit from "./handlers/miniCases/submit";
 import profileContact from "./handlers/profile/contact";
 import profileOne from "./handlers/profile/profile";
+import studentScores from "./handlers/student/scores";
 
 /**
  * Todas las rutas de la API viven en UNA sola funcion de Vercel
@@ -83,6 +84,8 @@ export const ROUTES: RouteDef[] = [
 
   { pattern: "profile/:rut", handler: profileOne },
   { pattern: "profile/:rut/contact", handler: profileContact },
+
+  { pattern: "student/scores", handler: studentScores },
 ];
 
 export type RouteMatch = { handler: Handler; params: Record<string, string>; pattern?: string };

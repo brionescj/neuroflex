@@ -38,6 +38,7 @@ import miniCasesBank from "./handlers/miniCases/bank";
 import miniCasesSubmit from "./handlers/miniCases/submit";
 import profileContact from "./handlers/profile/contact";
 import profileOne from "./handlers/profile/profile";
+import studentScores from "./handlers/student/scores";
 import { ROUTES, dispatch, matchRoute, routeSegments, type RouteDef } from "./router";
 
 const seg = (path: string) => path.split("/").filter(Boolean);
@@ -73,6 +74,7 @@ const EXPECTED: [string, unknown, Record<string, string>][] = [
   ["mini-cases/caso-4/submit", miniCasesSubmit, { caseKey: "caso-4" }],
   ["profile/12345678-9", profileOne, { rut: "12345678-9" }],
   ["profile/12345678-9/contact", profileContact, { rut: "12345678-9" }],
+  ["student/scores", studentScores, {}],
 ];
 
 describe("tabla de rutas", () => {

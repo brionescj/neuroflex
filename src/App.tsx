@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth";
-import { ComingSoon } from "@/components/ComingSoon";
 import { PageLoader } from "@/components/PageLoader";
 import { ROUTES } from "@/config/routes";
 import { useAuth } from "@/context";
@@ -28,6 +27,7 @@ const RegisterPage = lazy(loadRegister);
 const DashboardLayout = lazy(loadDashboardLayout);
 const StudentDashboard = lazy(loadStudentDashboard);
 const AdminDashboard = lazy(loadAdminDashboard);
+const StudentScoresPage = lazy(() => import("@/features/student/pages/StudentScoresPage"));
 const loadProfile = () => import("@/features/profile/pages/ProfilePage");
 const loadStats = () => import("@/features/stats/pages/StatsPage");
 const loadStudentStats = () => import("@/features/stats/pages/StudentStatsPage");
@@ -188,7 +188,7 @@ export default function App() {
             path={ROUTES.STUDENT_GAME_NODE_CONNECTION}
             element={<NodeConnectionGame />}
           />
-          <Route path={ROUTES.STUDENT_SCORES} element={<ComingSoon />} />
+          <Route path={ROUTES.STUDENT_SCORES} element={<StudentScoresPage />} />
           <Route path={ROUTES.STUDENT_PROFILE} element={<ProfilePage />} />
         </Route>
 
