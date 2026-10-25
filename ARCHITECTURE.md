@@ -138,21 +138,27 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       `sessionStorage`). `unlockSound()` debe llamarse dentro de un toque.
 
 12. **Conexión de nodos: errores permitidos** (no deshacer sin hablar; paridad cliente/servidor):
-    - Error = cada choque + 2 por cada «Rehacer tablero» (peso 2 es un supuesto de diseño,
-      `NODE_RESET_ERROR_WEIGHT`). Deshacer, acortar un trazo y retroceder no cuentan.
-    - Permitidos = `max(3, ceil(pares × %))` con % = 100 (niveles 1–5), 60 (6–10), 40 (11–15): entre
-      3 y 5 errores por nivel (`allowedErrors`). Subir la dificultad se hace aquí, no en los
-      intentos (`NODE_MAX_TRIES = 3` no se toca). Al superarlos el
+    - Error = cada choque + cada «Deshacer» + cada vez que se acorta o rehace una ruta tocándola
+      (`routeRestarts`) + cada gesto que retrocede sobre el propio trazo (`backtrackGestures`, una
+      vez por gesto, en el momento en que se borra la primera celda) + 2 por cada «Rehacer tablero»
+      (peso 2 es un supuesto de diseño, `NODE_RESET_ERROR_WEIGHT`). Lo único que no cuenta es trazar
+      bien. Resultados antiguos sin alguno de esos contadores cuentan 0 para ese término.
+    - Permitidos = `max(4, ceil(pares × %))` con % = 100 (niveles 1–5), 80 (6–10), 60 (11–15): en la
+      práctica 4,4,4,4,5 | 4,5,5,6,6 | 5,5,5,5,5 (`allowedErrors`). La tolerancia se calibró solo con
+      jugadores simulados; no está validada con estudiantes reales. Subir la dificultad se hace aquí,
+      no en los intentos (`NODE_MAX_TRIES = 3` no se toca). Al superarlos el
       intento se pierde al instante (fase `level-failed`) y se repite el MISMO tablero con los
       errores en cero: 3 intentos por nivel (`key` «3», «3.2», «3.3»). Sin pasar un nivel 1–10 la
       partida termina y se reinicia desde el 1; desde el 11 termina guardando el mejor nivel.
+    - La pantalla previa al juego (`NodeConnectionGame`) explica en tres bloques cómo se juega, qué
+      cuenta como error y el margen/intentos; el rango de errores sale de `LEVELS`, no se escribe a mano.
     - Reglas en `src/features/games/node-connection/rules.ts`, copia del servidor en
       `lib/nodeRules.ts`; `lib/nodeRulesParity.test.ts` exige que coincidan. El servidor recalcula
       `errors`, `errorsAllowed` y `passed` (`scoreNodeTry`); lo que diga el navegador se ignora.
     - Resultados guardados antes de esta regla (sin `passed`) cuentan como pasados.
-    - `contentVersion` de nodos termina en `-r3`: las partidas anteriores no son comparables.
+    - `contentVersion` de nodos termina en `-r4` (`RULES_REVISION`): las partidas anteriores no son comparables. Hay que regenerar los datos de demostración.
     - Mini casos exige PASAR el nivel 10 de nodos (`mini-cases-v2`, evidencia `nodeMaxLevelPassed`).
-    - Estadísticas: `lib/stats/chartsNodes.ts` (10 gráficos). «Tiempo por nivel» usa solo el primer
+    - Estadísticas: `lib/stats/chartsNodes.ts` (8 gráficos; «Planificación y pausas» y «Mejora entre partidas» ya no existen). «Tiempo por nivel» usa solo el primer
       intento pasado (`isFirstTryTime`). «Estudiantes estancados» = no pasaron el MISMO nivel en
       3 o más partidas consecutivas de un juego, siendo la última partida jugada la tercera de la
       racha; la lista dice de qué juego se trata (`chartsLists.ts`).
@@ -164,19 +170,50 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       fallar (todos los colores / cero errores). Mini casos: 3 por paso en su lugar + 8 por orden
       perfecto. Se cuenta lo MEJOR de cada nivel o caso entre todas las partidas: los puntos nunca
       bajan y repetir un nivel no regala puntos.
-    - Rangos: Chispa 0, Destello 60, Llama 180, Estrella 350, Constelación 550.
+    - Rangos (`RANKS`, también en la respuesta de `/student/scores` para el «?» de «Tu rango»): Chispa 0,
+      Destello 100, Llama 300, Estrella 550, Constelación 800 (el máximo teórico ronda 1000 puntos).
     - 34 insignias en 5 niveles de dificultad (Primeros pasos, Constancia, Dominio, Experto,
-      Maestría), definidas en `lib/studentBadges.ts`; se calculan al vuelo, nunca se guardan.
+      Maestría), definidas en `lib/studentBadges.ts`; se calculan al vuelo, nunca se guardan. Con umbrales
+      altos a propósito: un estudiante que pasa 10 niveles de Seriación y los 15 de Nodos sin fallar
+      debe quedar con ≤ 13 de 34 (`studentBadges.test.ts` lo exige). «Racha impecable» = ≥ 10 niveles
+      distintos, todos al primer intento (`FLAWLESS_RUN_LEVELS`). Las insignias por días usan los días
+      distintos de juego en hora de Chile (`daysPlayed`). Los umbrales no están validados con estudiantes reales.
       «Próxima meta» = la no lograda con mayor avance (a igual avance, la de nivel más bajo).
     - Mini casos: la gráfica lista TODO el banco habilitado (`MiniCase.enabled`); los no jugados
       salen como «Sin jugar», para que quien jugó pocos y los acertó no parezca perfecto.
     - Cada tarjeta de la pantalla se expande y colapsa (`ScoreCard`, `aria-expanded`), salvo la
-      del rango.
+      del rango. Nacen colapsadas, excepto «Tu resumen» y «Puntos por juego» (`defaultOpen`). Las
+      explicaciones van tras un «?» (`HelpToggle`, 44 px): la lista de rangos junto a «Tu rango» y
+      «¿Cómo se ganan los puntos?» junto a «Tu próxima meta».
     - Panel admin, Estadísticas > General: la tarjeta «Máximo logro» (`lib/stats/topScores.ts`)
       usa el mismo cálculo y abre el ranking (puesto, estudiante, RUT, universidad, paralelo,
       jornada, edad, puntos, rango, insignias). Se descarga en PDF (listas de las tarjetas) y en
       Excel: una hoja con la tabla del gráfico y una hoja por lista (`cardListSheets`).
     - Solo lee los datos del estudiante de la sesión (el RUT nunca viene de la solicitud).
+
+14. **Panel de estadísticas del administrador** (`src/features/stats/`, `lib/stats/`):
+    - Solo hay dos secciones: «Juego» y «Gráfico». Dentro de «Gráfico» van las opciones propias del
+      gráfico (`ChartSettings`) y el bloque plegable «Comparar este gráfico» (`ComparePanel`).
+      Ya no existen «Cómo verlo» ni «Filtros»: los filtros son «Compararlo solo entre quienes…» dentro
+      de ese bloque (`FilterPanel`).
+    - Comparar = una o varias características a la vez (hasta 3). La primera viaja como `groupBy` y las
+      demás como `alsoBy`; cada combinación existente es un grupo («UVM · Femenino»), con tope de 7
+      grupos y el resto en «Otros» (`groupByCombination` en `pipeline.ts`). El dispositivo va solo,
+      igual que «Estudiantes específicos» y «Rangos de fechas». Los gráficos que son listas
+      (`compare: false`) solo se acotan. Los valores que se comparan se eligen con el mismo filtro.
+    - Gráficos de perfil (`profileOnly`): «Intentos para superar un nivel» y «Mejora entre partidas» de
+      Seriación solo existen en el desempeño del estudiante; no están en el catálogo del panel.
+    - «Dónde fallan primero»: la secuencia se divide en 5 partes iguales (el último color siempre cae en
+      la 5.ª) y la opción «Mostrar» da una tabla con la parte donde más falla cada estudiante.
+    - «Alternativas que más fallan» (Mini casos, `chartsMiniCases.ts`): por caso, % de veces que cada paso
+      se ubicó mal, lugar donde más lo ponen y lista de estudiantes (tarjetas con listas, vista Tabla).
+      Pide a la base las métricas `placements` y `options` solo para este gráfico (`EXTRA_METRICS`).
+    - Los ejes muestran el número completo con separador de miles (nunca «K»).
+    - Desempeño > «Partida a partida»: cada fila trae un icono que abre, en el mismo recuadro, los datos
+      de la partida (`GET /api/admin/stats/students/:rut/partidas/:attemptId`, `lib/stats/partidaDetail.ts`):
+      colores pedidos frente a marcados (Seriación), errores y orden de unión (Nodos) u orden correcto
+      frente al elegido (Mini casos), más el tiempo por nivel. «Volver» regresa a la lista y la impresora
+      baja solo esos datos en PDF.
 
 ---
 
