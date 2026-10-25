@@ -19,13 +19,17 @@ export function RequireGameAccess({
   unlockKey,
   children,
 }: RequireGameAccessProps) {
-  const { status, access, reload } = useGameAccess();
+  const { status, access, fresh, reload } = useGameAccess();
 
-  if (status === "loading") {
+  // Un desbloqueo ya conocido deja entrar de inmediato (el servidor lo vuelve a exigir
+  // al cargar el juego). Solo se espera la respuesta cuando aun no se sabe.
+  const knownGranted = access?.[unlockKey] === true;
+
+  if (!knownGranted && !fresh && status !== "error") {
     return <p className="text-center text-sm text-zinc-500">Cargando...</p>;
   }
 
-  if (status === "error") {
+  if (status === "error" && !knownGranted) {
     return (
       <div className="flex flex-col items-center gap-2 text-center">
         <p className="text-sm text-rose-400">
@@ -42,7 +46,7 @@ export function RequireGameAccess({
     );
   }
 
-  if (!access?.[unlockKey]) {
+  if (!knownGranted) {
     return <Navigate to={ROUTES.STUDENT} replace />;
   }
 

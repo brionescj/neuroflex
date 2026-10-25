@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Outlet } from "react-router-dom";
 
+import { SectionLoader } from "@/components/PageLoader";
 import { GameLockProvider } from "@/context";
 
 import { Breadcrumb } from "./Breadcrumb";
@@ -23,7 +24,10 @@ export default function DashboardLayout() {
 
           <main className="flex-1 space-y-4 p-6">
             <Breadcrumb />
-            <Outlet />
+            {/* El menu y la barra se quedan; solo el contenido espera su descarga. */}
+            <Suspense fallback={<SectionLoader />}>
+              <Outlet />
+            </Suspense>
           </main>
         </div>
       </div>

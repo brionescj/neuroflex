@@ -5,6 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>neuroflex</title>
+    <script>
+      // Si hay una sesion abierta (lo avisa la cookie auxiliar), se pregunta quien es
+      // YA, mientras el navegador descarga y ejecuta el codigo: la espera del servidor
+      // (que puede estar arrancando en frio) se solapa con esa descarga.
+      try {
+        if (document.cookie.indexOf("neuroflex_hint=") !== -1) {
+          window.__earlyMe = fetch("%VITE_API_URL%/auth/me", { credentials: "same-origin" })
+            .then(function (r) {
+              return r.json().then(
+                function (body) { return { status: r.status, body: body }; },
+                function () { return { status: r.status, body: null }; }
+              );
+            })
+            .catch(function () { return null; });
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

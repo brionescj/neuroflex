@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { api } from "@/lib/axios";
+import { hasSessionHint, restoreSession } from "@/lib/restoreSession";
 import type { SessionUser } from "@/types";
 
 import { AuthContext, type AuthContextValue } from "./auth.context";
@@ -18,29 +19,29 @@ type Props = {
 export function AuthProvider({ children }: Props) {
   const [user, setUser] = useState<SessionUser | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Sin cookie auxiliar no hay sesion que esperar: el login se muestra de inmediato
+  // y la comprobacion sigue en segundo plano (por si la sesion existe igual).
+  const [isLoading, setIsLoading] = useState(hasSessionHint);
 
   /**
    * Rehidratacion de la sesion.
    *
    * Ya no se lee localStorage: el navegador manda la cookie httpOnly
    * solo, y el servidor confirma la identidad via /auth/me. isLoading
-   * evita que ProtectedRoute redirija al login antes de tener respuesta.
+   * evita que ProtectedRoute redirija al login antes de tener respuesta,
+   * pero solo cuando hay indicios de una sesion (ver arriba).
    */
   useEffect(() => {
     let active = true;
 
-    api
-      .get("/auth/me")
-      .then((response) => {
-        if (active) setUser(response.data.data);
-      })
-      .catch(() => {
-        if (active) setUser(null);
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
-      });
+    restoreSession().then((restored) => {
+      if (!active) return;
+
+      // Sin sesion no se toca el usuario: si la persona ya inicio sesion mientras
+      // esta comprobacion volaba, no hay que borrarla.
+      if (restored) setUser(restored);
+      setIsLoading(false);
+    });
 
     return () => {
       active = false;

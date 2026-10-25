@@ -117,10 +117,13 @@ type AdminsSectionProps = {
   isActive: boolean;
 };
 
+// Ultimo listado recibido (ver StudentsSection): se muestra al instante y se actualiza detras.
+let lastAdmins: Admin[] | null = null;
+
 export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
   const { user, login } = useAuth();
-  const [admins, setAdmins] = useState<Admin[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [admins, setAdmins] = useState<Admin[]>(() => lastAdmins ?? []);
+  const [isLoading, setIsLoading] = useState(lastAdmins === null);
   const [isCreating, setIsCreating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -142,9 +145,12 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
   );
 
   async function loadAdmins() {
-    setIsLoading(true);
+    if (lastAdmins === null) setIsLoading(true);
     const result = await listAdminsAction();
-    if (result.success) setAdmins(result.data);
+    if (result.success) {
+      lastAdmins = result.data;
+      setAdmins(result.data);
+    }
     setIsLoading(false);
   }
 

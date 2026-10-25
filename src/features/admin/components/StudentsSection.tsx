@@ -385,9 +385,14 @@ type StudentsSectionProps = {
   isActive: boolean;
 };
 
+// Ultimo listado recibido. Al volver a esta pantalla (desde estadisticas, por ejemplo) se
+// muestra al instante mientras el servidor entrega el actualizado, en vez de una
+// pantalla vacia con "Cargando...". Solo vive en memoria: al recargar la pagina se pierde.
+let lastStudents: Student[] | null = null;
+
 export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps) {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [students, setStudents] = useState<Student[]>(() => lastStudents ?? []);
+  const [isLoading, setIsLoading] = useState(lastStudents === null);
   const [isCreating, setIsCreating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -412,9 +417,13 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
   );
 
   async function loadStudents() {
-    setIsLoading(true);
+    // Con un listado ya a la vista (o recordado) se actualiza sin taparlo con "Cargando...".
+    if (lastStudents === null) setIsLoading(true);
     const result = await listStudentsAction();
-    if (result.success) setStudents(result.data);
+    if (result.success) {
+      lastStudents = result.data;
+      setStudents(result.data);
+    }
     setIsLoading(false);
   }
 

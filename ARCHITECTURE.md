@@ -59,7 +59,22 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
    `POST /api/auth/password` (pide la actual). Un administrador genera una nueva para un
    estudiante con `POST /api/admin/students/:rut/password`, confirmando con su propia
    contraseña; si el estudiante aún no se registró se le crea la cuenta (queda registrado).
-   La contraseña generada se muestra una sola vez y no se puede volver a ver.
+   Igual hace un administrador con otro (`POST /api/admin/admins/:rut/password`, no con
+   la propia: esa se cambia desde el perfil). La contraseña generada se muestra una sola
+   vez y no se puede volver a ver.
+10. **Velocidad de carga** (no deshacer sin medir):
+    - Solo el login viaja en el código inicial; el resto de las pantallas va con
+      `React.lazy` en `src/App.tsx`, que además las descarga por adelantado.
+      Una pantalla nueva se declara allí igual que las demás, no con un import directo.
+    - `neuroflex_hint` es una cookie auxiliar legible por el navegador (solo lleva el
+      rol): permite mostrar el login al instante y adelantar `/auth/me`. **No es una
+      credencial**; la sesión real es `neuroflex_session` (httpOnly). Nunca guardar en
+      ella nada más.
+    - Las lecturas de `/auth/me`, login, listado de estudiantes y banco de casos usan
+      `.lean()` y solo los campos necesarios. Una ruta nueva que se pida seguido debe
+      hacer lo mismo salvo que necesite métodos del documento (`save`, `toObject`).
+    - Los desbloqueos de juegos recordados en memoria (`useGameAccess`) van por RUT y
+      solo se recuerda un «sí»; un «no» siempre se consulta al servidor.
 
 ---
 
@@ -194,7 +209,9 @@ Cuando exista JWT, el token se guarda aquí y el resto de la app no se entera.
 archivo debe usarla para acceder a `localStorage` directamente.
 
 `AuthProvider` expone `isLoading` durante la rehidratación para que
-`ProtectedRoute` no redirija al login antes de saber si hay sesión.
+`ProtectedRoute` no redirija al login antes de saber si hay sesión. Solo está en `true`
+cuando existe la cookie auxiliar `neuroflex_hint`; sin ella el login se muestra de
+inmediato y `/auth/me` se confirma en segundo plano (`src/lib/restoreSession.ts`).
 
 ---
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 
+import { PageLoader } from "@/components/PageLoader";
 import { DASHBOARD_BY_ROLE } from "@/config/routes";
 import { useAuth } from "@/context";
 
@@ -15,7 +16,7 @@ export function PublicOnlyRoute({ children }: Props) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return null;
+    return <PageLoader />;
   }
 
   if (user) {
