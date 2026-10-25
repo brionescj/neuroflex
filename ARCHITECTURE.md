@@ -129,11 +129,42 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       Android, detección en iOS).
     - «Guardar nivel y salir» (`SaveAndExitButton`): espera a que el último guardado llegue
       (`ProgressQueue.whenIdle` vía `useGameProgress().flush`) y lleva al menú; el nivel se
-      retoma desde su inicio.
+      retoma desde su inicio. Pide confirmación antes de salir (cuadro `<dialog>`; Esc o
+      «Seguir jugando» siguen en el juego; el reloj del nivel no se detiene mientras se decide).
+      En Mini casos se llama «caso» (`unit="caso"`).
     - Seriación: cuenta regresiva 3-2-1 (fase `countdown`) antes de cada intento, también al
       reanudar; el reloj del intento corre desde que se enciende el primer color.
     - Sonidos (`src/lib/gameSound.ts`, Web Audio sin archivos, silenciable; el silencio vive en
       `sessionStorage`). `unlockSound()` debe llamarse dentro de un toque.
+
+12. **Conexión de nodos: errores permitidos** (no deshacer sin hablar; paridad cliente/servidor):
+    - Error = cada choque + 2 por cada «Rehacer tablero» (peso 2 es un supuesto de diseño,
+      `NODE_RESET_ERROR_WEIGHT`). Deshacer, acortar un trazo y retroceder no cuentan.
+    - Permitidos = pares del tablero × 3 (niveles 1–5), × 2 (6–10), × 1 (11–15). Al superarlos el
+      intento se pierde al instante (fase `level-failed`) y se repite el MISMO tablero con los
+      errores en cero: 3 intentos por nivel (`key` «3», «3.2», «3.3»). Sin pasar un nivel 1–10 la
+      partida termina y se reinicia desde el 1; desde el 11 termina guardando el mejor nivel.
+    - Reglas en `src/features/games/node-connection/rules.ts`, copia del servidor en
+      `lib/nodeRules.ts`; `lib/nodeRulesParity.test.ts` exige que coincidan. El servidor recalcula
+      `errors`, `errorsAllowed` y `passed` (`scoreNodeTry`); lo que diga el navegador se ignora.
+    - Resultados guardados antes de esta regla (sin `passed`) cuentan como pasados.
+    - `contentVersion` de nodos termina en `-r2`: las partidas anteriores no son comparables.
+    - Mini casos exige PASAR el nivel 10 de nodos (`mini-cases-v2`, evidencia `nodeMaxLevelPassed`).
+    - Estadísticas: `lib/stats/chartsNodes.ts` (10 gráficos). «Tiempo por nivel» usa solo el primer
+      intento pasado (`isFirstTryTime`). «Estudiantes estancados» = no pasaron el MISMO nivel en
+      3 o más partidas consecutivas de un juego, siendo la última partida jugada la tercera de la
+      racha; la lista dice de qué juego se trata (`chartsLists.ts`).
+
+13. **Mis puntuaciones (estudiante)** — `GET /api/student/scores` (`lib/handlers/student/scores.ts`,
+    cálculo puro en `lib/studentScores.ts`, pantalla en `src/features/student/`):
+    - Nada depende del tiempo (ni puntos, ni insignias, ni gráficos): medir rapidez presiona.
+    - Puntos por nivel superado (Seriación y Nodos): 10 + 5 si fue al primer intento + 5 si fue sin
+      fallar (todos los colores / cero errores). Mini casos: 3 por paso en su lugar + 8 por orden
+      perfecto. Se cuenta lo MEJOR de cada nivel o caso entre todas las partidas: los puntos nunca
+      bajan y repetir un nivel no regala puntos.
+    - Rangos: Chispa 0, Destello 60, Llama 180, Estrella 350, Constelación 550. 14 insignias con
+      barra de avance; «próxima meta» = la no lograda más avanzada.
+    - Solo lee los datos del estudiante de la sesión (el RUT nunca viene de la solicitud).
 
 ---
 
