@@ -3,6 +3,7 @@ import {
   getStatsChart,
   getStudentEvolution,
   getStudentHistory,
+  getStudentPartida,
   getStudentProfile,
   type StatesByGame,
 } from "../services/stats.service";
@@ -22,6 +23,10 @@ export async function getStudentProfileAction(rut: string, states?: StatesByGame
 
 export async function getStudentHistoryAction(rut: string, query: { page: number; from: string; to: string }) {
   return getStudentHistory(rut, query);
+}
+
+export async function getStudentPartidaAction(rut: string, attemptId: string) {
+  return getStudentPartida(rut, attemptId);
 }
 
 export async function getStudentEvolutionAction(rut: string, by: EvolutionBy, span: EvolutionSpan) {

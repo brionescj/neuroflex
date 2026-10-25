@@ -20,6 +20,7 @@ import adminStatsCatalog from "./handlers/admin/statsCatalog";
 import adminStatsStudent from "./handlers/admin/statsStudent";
 import adminStatsStudentEvolution from "./handlers/admin/statsStudentEvolution";
 import adminStatsStudentHistory from "./handlers/admin/statsStudentHistory";
+import adminStatsStudentPartida from "./handlers/admin/statsStudentPartida";
 import adminStudentDetails from "./handlers/admin/studentDetails";
 import adminStudents from "./handlers/admin/students";
 import adminStudentPassword from "./handlers/admin/studentPassword";
@@ -62,6 +63,7 @@ const EXPECTED: [string, unknown, Record<string, string>][] = [
   ["admin/stats/students/12345678-9", adminStatsStudent, { rut: "12345678-9" }],
   ["admin/stats/students/12345678-9/evolution", adminStatsStudentEvolution, { rut: "12345678-9" }],
   ["admin/stats/students/12345678-9/history", adminStatsStudentHistory, { rut: "12345678-9" }],
+  ["admin/stats/students/12345678-9/partidas/att-1", adminStatsStudentPartida, { rut: "12345678-9", attemptId: "att-1" }],
   ["admin/students", adminStudents, {}],
   ["admin/students/12345678-9/details", adminStudentDetails, { rut: "12345678-9" }],
   ["admin/students/12345678-9/password", adminStudentPassword, { rut: "12345678-9" }],

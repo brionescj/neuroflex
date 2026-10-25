@@ -1,15 +1,16 @@
-import { ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 import { getStudentHistoryAction } from "../actions/stats.action";
-import type { DateRangeInput, HistoryPage } from "../types";
+import type { DateRangeInput, GameId, HistoryPage } from "../types";
 import { pageItems } from "../utils/pageList";
 import { rangeProblem } from "../utils/selection";
 import { RowsTable } from "./charts/ChartTable";
 import { DateRangeFields } from "./DateRangeFields";
+import { PartidaView } from "./PartidaView";
 
 type Filter = DateRangeInput;
 
@@ -21,8 +22,10 @@ const NO_FILTER: Filter = { from: "", to: "" };
  * «Partida a partida»: de 10 en 10, de la más reciente a la más antigua. Pide al servidor
  * solo la página que se ve, y puede acotarse por la fecha en que empezó cada partida.
  */
-export function HistoryTable({ rut }: { rut: string }) {
+export function HistoryTable({ rut, studentName = "" }: { rut: string; studentName?: string }) {
   const [page, setPage] = useState(1);
+  // La partida cuyos datos se están viendo: oculta la lista, y al volver queda como estaba (página y fechas).
+  const [opened, setOpened] = useState<{ attemptId: string; game: GameId } | null>(null);
   // Lo escrito en los campos de fecha y lo que ya se aplicó.
   const [draft, setDraft] = useState<Filter>(NO_FILTER);
   const [applied, setApplied] = useState<Filter>(NO_FILTER);
@@ -84,6 +87,18 @@ export function HistoryTable({ rut }: { rut: string }) {
     setDraft(NO_FILTER);
     setPage(1);
     setApplied(NO_FILTER);
+  }
+
+  if (opened) {
+    return (
+      <PartidaView
+        rut={rut}
+        studentName={studentName}
+        attemptId={opened.attemptId}
+        game={opened.game}
+        onBack={() => setOpened(null)}
+      />
+    );
   }
 
   const first = data && data.total > 0 ? (data.page - 1) * data.pageSize + 1 : 0;
@@ -153,6 +168,29 @@ export function HistoryTable({ rut }: { rut: string }) {
               columns={data.columns}
               rows={data.rows}
               emptyText={hasFilter ? "Ninguna partida empezó en esas fechas." : "Este estudiante aún no ha jugado."}
+              rowAction={
+                data.attempts && data.attempts.length === data.rows.length
+                  ? {
+                      header: "Datos",
+                      render: (index) => {
+                        const attempt = data.attempts[index];
+                        const row = data.rows[index];
+
+                        return attempt ? (
+                          <button
+                            type="button"
+                            onClick={() => setOpened(attempt)}
+                            aria-label={`Ver los datos de la partida ${row?.[1] ?? ""} de ${row?.[0] ?? ""}`}
+                            title="Ver los datos de la partida"
+                            className="mx-auto flex size-11 items-center justify-center rounded-lg border border-white/10 text-[var(--viz-text-2)] hover:bg-white/5"
+                          >
+                            <Eye aria-hidden="true" className="size-4" />
+                          </button>
+                        ) : null;
+                      },
+                    }
+                  : undefined
+              }
             />
           ) : (
             <p className="flex items-center gap-2 text-sm text-[var(--viz-text-2)]" role="status">

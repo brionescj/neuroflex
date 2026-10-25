@@ -84,6 +84,11 @@ export default async function handler(
   return res.status(200).json({
     success: true,
     message: "Historial obtenido.",
-    data: historyPage(rows, total, parsed.query.page),
+    data: historyPage(
+      rows,
+      total,
+      parsed.query.page,
+      attempts.map((attempt) => ({ attemptId: attempt.attemptId, game: attempt.gameId })),
+    ),
   });
 }

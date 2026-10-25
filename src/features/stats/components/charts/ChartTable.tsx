@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { ROUTES } from "@/config/routes";
@@ -19,11 +20,14 @@ export function RowsTable({
   columns,
   rows,
   emptyText = "No hay filas para mostrar con estos filtros.",
+  rowAction,
 }: {
   caption: string;
   columns: string[];
   rows: (string | number | null)[][];
   emptyText?: string;
+  /** Una columna extra al final con un botón por fila (por ejemplo, «ver los datos»). */
+  rowAction?: { header: string; render: (rowIndex: number) => ReactNode };
 }) {
   if (rows.length === 0) {
     return (
@@ -43,6 +47,11 @@ export function RowsTable({
                 {column}
               </th>
             ))}
+            {rowAction && (
+              <th scope="col" className="sticky right-0 bg-[var(--viz-surface)] px-3 py-2 text-center font-medium shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.6)]">
+                {rowAction.header}
+              </th>
+            )}
           </tr>
         </thead>
 
@@ -75,6 +84,11 @@ export function RowsTable({
                   )}
                 </td>
               ))}
+              {rowAction && (
+                <td className="sticky right-0 bg-[var(--viz-surface)] px-2 py-1 text-center shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.6)]">
+                  {rowAction.render(r)}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

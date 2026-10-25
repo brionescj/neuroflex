@@ -181,7 +181,7 @@ export const mcOptions: ChartDef = {
         slot: caseIndex % 8,
         items: ordered.map((stats) => {
           const expected = topOf(stats.expectedAt)?.value ?? null;
-          const percent = Math.round(percentOf(stats.wrong, stats.plays));
+          const percent = Math.round(percentOf(stats.wrong, stats.plays) ?? 0);
           const failing = [...stats.byStudent.entries()]
             .filter(([, own]) => own.wrong > 0)
             .sort((a, b) => b[1].wrong - a[1].wrong || a[0].localeCompare(b[0]));

@@ -13,6 +13,7 @@ import type {
   EvolutionSpan,
   GameId,
   HistoryPage,
+  PartidaDetail,
   StudentEvolution,
   StudentProfile,
 } from "../types";
@@ -88,6 +89,13 @@ export function getStudentHistory(
   if (query.to !== "") params.to = query.to;
 
   return get<HistoryPage>(`/admin/stats/students/${encodeURIComponent(rut)}/history`, params);
+}
+
+/** Los datos de una partida de un estudiante: lo que pidió el juego, lo que hizo y cuánto tardó en cada nivel. */
+export function getStudentPartida(rut: string, attemptId: string): Promise<ApiResponse<PartidaDetail>> {
+  return get<PartidaDetail>(
+    `/admin/stats/students/${encodeURIComponent(rut)}/partidas/${encodeURIComponent(attemptId)}`,
+  );
 }
 
 /** Los promedios del estudiante por semana o por mes. */

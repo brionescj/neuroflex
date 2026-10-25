@@ -283,6 +283,47 @@ export type HistoryPage = {
   page: number;
   pageSize: number;
   pages: number;
+  /** Cual partida es cada fila (mismo orden que `rows`): lo que se pide para ver sus datos. */
+  attempts: { attemptId: string; game: GameId }[];
+};
+
+/** Una pieza de una secuencia (un color o un paso) dentro del detalle de una partida. */
+export type PartidaItem = {
+  text: string;
+  /** Color de fondo, si la pieza es un color. */
+  color?: string;
+  /** true = en su lugar; false = fuera de lugar; ausente = no se evalua. */
+  ok?: boolean;
+};
+
+/** Un nivel (o caso) de una partida, con lo que pidio el juego y lo que hizo el estudiante. */
+export type PartidaRow = {
+  /** «Nivel 3» o «Caso 2 · Cruzar la calle». */
+  label: string;
+  /** «Intento 2» (Seriacion y Nodos); null en Mini casos. */
+  tryText: string | null;
+  /** «Superado», «No superado», «Orden completo»… */
+  result: string;
+  ok: boolean | null;
+  seconds: number;
+  /** Secuencias para comparar: lo pedido frente a lo marcado. */
+  lines: { title: string; items: PartidaItem[] }[];
+  /** Datos sueltos: aciertos, errores, choques... */
+  facts: { label: string; value: string }[];
+  /** Cuando el nivel no guardo el detalle. */
+  notice: string | null;
+};
+
+/** Los datos de una partida, nivel por nivel (seriacion), tablero por tablero (nodos) o caso por caso (mini casos). */
+export type PartidaDetail = {
+  attemptId: string;
+  game: GameId;
+  attemptNumber: number;
+  /** Fecha de inicio, en hora de Chile. */
+  startedAt: string;
+  outcome: string;
+  rows: PartidaRow[];
+  notes: string[];
 };
 
 export type EvolutionBy = "week" | "month";

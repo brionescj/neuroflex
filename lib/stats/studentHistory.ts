@@ -84,10 +84,16 @@ export function historyWindow(query: HistoryQuery): { from: Date | null; until: 
   };
 }
 
-export function historyPage(rows: HistoryPage["rows"], total: number, page: number): HistoryPage {
+export function historyPage(
+  rows: HistoryPage["rows"],
+  total: number,
+  page: number,
+  attempts: HistoryPage["attempts"] = [],
+): HistoryPage {
   return {
     columns: HISTORY_COLUMNS,
     rows,
+    attempts,
     total,
     page,
     pageSize: HISTORY_PAGE_SIZE,

@@ -285,7 +285,7 @@ export default function StudentStatsPage() {
             }
           >
             <div className="viz-root rounded-xl bg-[var(--viz-surface)] p-3 text-[var(--viz-text)]">
-              <HistoryTable key={rut} rut={rut} />
+              <HistoryTable key={rut} rut={rut} studentName={profile.student.name} />
             </div>
           </GameSection>
 

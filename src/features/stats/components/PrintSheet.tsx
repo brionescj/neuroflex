@@ -60,7 +60,14 @@ function ListTable({ list }: { list: PrintList }) {
           {list.rows.map((row, r) => (
             <tr key={r} className="border-b border-[var(--viz-line)]">
               {row.map((value, c) => (
-                <td key={c} className={c === row.length - 1 && row.length > 4 ? "px-2 py-1" : "whitespace-nowrap px-2 py-1"}>
+                <td
+                  key={c}
+                  className={
+                    (c === row.length - 1 && row.length > 4) || (typeof value === "string" && value.length > 24)
+                      ? "px-2 py-1"
+                      : "whitespace-nowrap px-2 py-1"
+                  }
+                >
                   {cell(value)}
                 </td>
               ))}
