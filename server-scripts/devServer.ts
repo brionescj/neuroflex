@@ -14,8 +14,6 @@
 import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 
-const PORT = Number(process.env.PORT ?? 3000);
-
 /** Lee `.env` a mano en versiones de Node que aun no traen process.loadEnvFile (antes de la 20.12). */
 function loadEnvByHand(path: string): void {
   for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
@@ -30,12 +28,17 @@ function loadEnvByHand(path: string): void {
   }
 }
 
-try {
-  if (typeof process.loadEnvFile === "function") process.loadEnvFile(".env");
-  else loadEnvByHand(".env");
-} catch {
-  // Sin .env: se usan las variables que ya estén definidas en el entorno.
+// .env.local manda sobre .env (ninguno pisa una variable que ya venga del entorno).
+for (const file of [".env.local", ".env"]) {
+  try {
+    if (typeof process.loadEnvFile === "function") process.loadEnvFile(file);
+    else loadEnvByHand(file);
+  } catch {
+    // Ese archivo no existe: se prueba el siguiente o se usan las variables del entorno.
+  }
 }
+
+const PORT = Number(process.env.PORT ?? 3000);
 
 // Despues de leer .env: lib/db.ts y lib/jwt.ts exigen sus variables al cargarse.
 const { dispatch } = await import("../lib/router");
