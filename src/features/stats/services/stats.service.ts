@@ -2,6 +2,7 @@ import { isAxiosError } from "axios";
 
 import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
+import { sharedRequest } from "@/lib/sharedRequest";
 import { fail, type ApiResponse } from "@/types";
 
 import type {
@@ -39,8 +40,16 @@ async function get<T>(
   }
 }
 
+/**
+ * Lo ya pedido se reutiliza un rato: Estadisticas y Desempeño leen el mismo catalogo, y se pide por
+ * adelantado al abrir la sesion del administrador. Crear o modificar un estudiante lo descarta.
+ */
+const CATALOG_REUSE_MS = 60_000;
+const PROFILE_REUSE_MS = 30_000;
+const EVOLUTION_REUSE_MS = 60_000;
+
 export function getStatsCatalog(): Promise<ApiResponse<Catalog>> {
-  return get<Catalog>("/admin/stats/catalog");
+  return sharedRequest("stats:catalog", () => get<Catalog>("/admin/stats/catalog"), CATALOG_REUSE_MS);
 }
 
 /** Los parametros ya vienen como texto (los objetos van como JSON). */
@@ -61,7 +70,11 @@ export function getStudentProfile(rut: string, states: StatesByGame = {}): Promi
     if (list && list.length > 0) params[game] = list.join(",");
   }
 
-  return get<StudentProfile>(`/admin/stats/students/${encodeURIComponent(rut)}`, params);
+  return sharedRequest(
+    `stats:student:${rut}:${JSON.stringify(params)}`,
+    () => get<StudentProfile>(`/admin/stats/students/${encodeURIComponent(rut)}`, params),
+    PROFILE_REUSE_MS,
+  );
 }
 
 /** Una pagina del partida a partida; `from` y `to` (AAAA-MM-DD) filtran por la fecha en que empezó la partida. */
@@ -83,5 +96,9 @@ export function getStudentEvolution(
   by: EvolutionBy,
   span: EvolutionSpan,
 ): Promise<ApiResponse<StudentEvolution>> {
-  return get<StudentEvolution>(`/admin/stats/students/${encodeURIComponent(rut)}/evolution`, { by, span });
+  return sharedRequest(
+    `stats:evolution:${rut}:${by}:${span}`,
+    () => get<StudentEvolution>(`/admin/stats/students/${encodeURIComponent(rut)}/evolution`, { by, span }),
+    EVOLUTION_REUSE_MS,
+  );
 }

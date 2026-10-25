@@ -19,6 +19,10 @@
               );
             })
             .catch(function () { return null; });
+        } else {
+          // Sin sesion: se "calienta" el servidor (arranca la funcion y abre la conexion a la base) mientras
+          // la persona escribe su RUT y su contraseña, para que iniciar sesion no pague ese arranque.
+          fetch("%VITE_API_URL%/auth/health", { credentials: "same-origin" }).catch(function () {});
         }
       } catch (e) {}
     </script>

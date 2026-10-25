@@ -7,6 +7,8 @@ type ProgressOp = {
 
 export type ProgressQueue = {
   enqueue: (kind: ProgressOpKind, run: () => Promise<unknown>) => void;
+  /** Hay un guardado o borrado en curso o esperando: leer el avance ahora podria traer uno anterior. */
+  isBusy: () => boolean;
 };
 
 /**
@@ -49,6 +51,10 @@ export function createProgressQueue(): ProgressQueue {
   }
 
   return {
+    isBusy() {
+      return running || pending.length > 0;
+    },
+
     enqueue(kind, run) {
       const last = pending[pending.length - 1];
 

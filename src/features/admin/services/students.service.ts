@@ -2,6 +2,7 @@ import { isAxiosError } from "axios";
 
 import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
+import { forgetRequests, prefetchOnce, takePrefetched } from "@/lib/sharedRequest";
 import {
   fail,
   type ApiResponse,
@@ -53,6 +54,8 @@ export async function updateStudentDetails(
       `/admin/students/${rut}/details`,
       payload,
     );
+    // Las estadisticas (lista de estudiantes del catalogo) ya no estan al dia.
+    forgetRequests("stats:");
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
@@ -62,7 +65,19 @@ export async function updateStudentDetails(
   }
 }
 
-export async function listStudents(): Promise<ApiResponse<Student[]>> {
+const LIST_KEY = "admin:students";
+
+/** Pide el listado por adelantado (al abrir la sesion del administrador); se recoge UNA vez al abrir el panel. */
+export function prefetchStudents(): void {
+  prefetchOnce(LIST_KEY, requestStudents, 30_000);
+}
+
+/** La primera vez toma lo pedido por adelantado; las siguientes (tras crear o editar) piden al servidor. */
+export function listStudents(): Promise<ApiResponse<Student[]>> {
+  return takePrefetched<ApiResponse<Student[]>>(LIST_KEY) ?? requestStudents();
+}
+
+async function requestStudents(): Promise<ApiResponse<Student[]>> {
   try {
     const response = await api.get<ApiResponse<Student[]>>("/admin/students");
     return response.data;
@@ -82,6 +97,8 @@ export async function createStudent(
       "/admin/students",
       payload,
     );
+    // Las estadisticas (lista de estudiantes del catalogo) ya no estan al dia.
+    forgetRequests("stats:");
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {
@@ -100,6 +117,8 @@ export async function setStudentEnabled(
       `/admin/students/${rut}/status`,
       { enabled },
     );
+    // Las estadisticas (lista de estudiantes del catalogo) ya no estan al dia.
+    forgetRequests("stats:");
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {

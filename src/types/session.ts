@@ -16,4 +16,11 @@ export type SessionUser = {
   displayName: string;
 
   avatarId: AvatarId;
+
+  /**
+   * Solo lo entrega el servidor al abrir la sesion (login y /auth/me): los juegos con desbloqueo
+   * que el estudiante YA tiene registrados, para pintar el menu sin esperar otra consulta.
+   * No se guarda en el estado de la sesion.
+   */
+  unlocked?: { miniCases?: boolean };
 };

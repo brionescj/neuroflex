@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { GameId } from "../gameCatalog";
 import {
   clearGameProgress,
+  forgetPrefetchedProgress,
   loadGameProgress,
   saveGameProgress,
 } from "../services/gameProgress.service";
@@ -50,6 +51,8 @@ export function useGameProgress(gameId: GameId) {
   // guardado viejo podria pisar a uno nuevo (ver progressQueue.ts).
   const save = useCallback(
     (state: unknown) => {
+      // Lo pedido por adelantado ya no es el avance actual (y no debe recogerse al reabrir el juego).
+      forgetPrefetchedProgress(gameId);
       getProgressQueue(gameId).enqueue("save", async () => {
         const response = await saveGameProgress(gameId, state);
 
@@ -65,6 +68,7 @@ export function useGameProgress(gameId: GameId) {
 
   const clear = useCallback(() => {
     setSaved(null);
+    forgetPrefetchedProgress(gameId);
     getProgressQueue(gameId).enqueue("clear", () => clearGameProgress(gameId));
   }, [gameId]);
 

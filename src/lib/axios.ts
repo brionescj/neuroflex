@@ -4,7 +4,8 @@ import { env } from "@/config/env";
 
 export const api = axios.create({
   baseURL: env.API_URL,
-  timeout: 10000,
+  // 20 s: con una funcion que arranca en frio y una base lenta, 10 s cortaba peticiones que si iban a responder.
+  timeout: 20000,
   headers: {
     "Content-Type": "application/json",
   },

@@ -2,11 +2,14 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 
 import { api } from "@/lib/axios";
+import { forgetGranted, rememberGranted } from "@/lib/gameAccessMemory";
+import { forgetRequests } from "@/lib/sharedRequest";
 import { hasSessionHint, restoreSession } from "@/lib/restoreSession";
 import type { SessionUser } from "@/types";
 
@@ -16,8 +19,22 @@ type Props = {
   children: ReactNode;
 };
 
+/**
+ * Lo que el servidor adelanta al abrir la sesion (los desbloqueos ya registrados) va a la memoria de
+ * desbloqueos; el usuario de la sesion queda sin ese campo.
+ */
+function withoutExtras(sessionUser: SessionUser): SessionUser {
+  const { unlocked, ...session } = sessionUser;
+
+  if (unlocked) rememberGranted(sessionUser.rut, unlocked);
+
+  return session;
+}
+
 export function AuthProvider({ children }: Props) {
   const [user, setUser] = useState<SessionUser | null>(null);
+  // La persona de la sesion actual, para saber si "iniciar sesion" cambia de persona o solo refresca sus datos.
+  const currentRut = useRef<string | null>(null);
 
   // Sin cookie auxiliar no hay sesion que esperar: el login se muestra de inmediato
   // y la comprobacion sigue en segundo plano (por si la sesion existe igual).
@@ -39,7 +56,10 @@ export function AuthProvider({ children }: Props) {
 
       // Sin sesion no se toca el usuario: si la persona ya inicio sesion mientras
       // esta comprobacion volaba, no hay que borrarla.
-      if (restored) setUser(restored);
+      if (restored) {
+        currentRut.current = restored.rut;
+        setUser(withoutExtras(restored));
+      }
       setIsLoading(false);
     });
 
@@ -49,12 +69,23 @@ export function AuthProvider({ children }: Props) {
   }, []);
 
   const login = useCallback((sessionUser: SessionUser) => {
-    setUser(sessionUser);
+    // Otra persona: nada de lo guardado en memoria (listados, perfil, estadisticas) le corresponde.
+    // La misma persona refrescando sus datos (ej. cambio de avatar) conserva lo que ya se cargo.
+    if (currentRut.current !== sessionUser.rut) {
+      forgetRequests();
+      forgetGranted();
+    }
+
+    currentRut.current = sessionUser.rut;
+    setUser(withoutExtras(sessionUser));
   }, []);
 
   const logout = useCallback(async () => {
     await api.post("/auth/logout").catch(() => {});
 
+    forgetRequests();
+    forgetGranted();
+    currentRut.current = null;
     setUser(null);
   }, []);
 

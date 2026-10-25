@@ -1,25 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/context";
+import { grantedFor, rememberGranted } from "@/lib/gameAccessMemory";
 
 import type { GameAccess } from "../services/gameAccess.service";
 import { REUSE_MS, requestGameAccess } from "../services/gameAccess.warm";
 
 export type GameAccessStatus = "loading" | "ready" | "error";
-
-/**
- * Lo ultimo que el servidor dijo, POR ESTUDIANTE (clave: su RUT) y solo los
- * desbloqueos concedidos. Sirve para pintar el menu y abrir un juego sin esperar
- * otra consulta, mientras se pregunta de nuevo al servidor.
- *
- * - Va por RUT, asi que otro estudiante que inicie sesion en el mismo navegador
- *   nunca ve lo del anterior.
- * - Solo se recuerda un "si": en MiniCasos el desbloqueo es definitivo (una vez
- *   registrado no se quita). Un "no" nunca se da por bueno sin consultar: podria
- *   haberse desbloqueado hace un momento.
- * - Vive en memoria: al recargar la pagina se pierde.
- */
-const granted = new Map<string, Partial<GameAccess>>();
 
 /**
  * Consulta al servidor a que juegos con desbloqueo tiene acceso el estudiante.
@@ -36,7 +23,7 @@ export function useGameAccess() {
 
   const [status, setStatus] = useState<GameAccessStatus>("loading");
   const [access, setAccess] = useState<Partial<GameAccess> | null>(
-    () => (rut ? (granted.get(rut) ?? null) : null),
+    () => grantedFor(rut),
   );
   const [fresh, setFresh] = useState(false);
 
@@ -54,11 +41,7 @@ export function useGameAccess() {
         return;
       }
 
-      if (rut) {
-        const only: Partial<GameAccess> = {};
-        if (response.data.miniCases) only.miniCases = true;
-        granted.set(rut, only);
-      }
+      if (rut) rememberGranted(rut, response.data);
 
       setAccess(response.data);
       setFresh(true);

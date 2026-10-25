@@ -6,7 +6,10 @@ import { ComingSoon } from "@/components/ComingSoon";
 import { PageLoader } from "@/components/PageLoader";
 import { ROUTES } from "@/config/routes";
 import { useAuth } from "@/context";
+import { prefetchAdminHomeAction } from "@/features/admin/actions/students.action";
 import LoginPage from "@/features/auth/pages/LoginPage";
+import { getStatsCatalogAction } from "@/features/stats/actions/stats.action";
+import { getProfileAction } from "@/features/profile/actions/getProfile.action";
 import { requestGameAccess } from "@/features/games/services/gameAccess.warm";
 import { readSessionHint } from "@/lib/restoreSession";
 import AuthLayout from "@/layouts/AuthLayout";
@@ -119,6 +122,25 @@ export default function App() {
   useEffect(() => {
     if (role) prefetchRoleScreens(role);
   }, [role]);
+
+  // Lo primero que ve cada rol se pide ya, sin esperar a que se descargue y se dibuje su pantalla; lo demas, un
+  // instante despues para no competir con eso. Todo queda en memoria (se vacia al cerrar sesion) y quien abre
+  // la pantalla lo recoge: Mi perfil y, en el administrador, Estadisticas y Desempeño (que comparten el catalogo).
+  const userRut = user?.rut ?? null;
+
+  useEffect(() => {
+    if (!userRut || !role) return;
+
+    if (role === "admin") prefetchAdminHomeAction();
+
+    const timer = window.setTimeout(() => {
+      void getProfileAction(userRut, role);
+
+      if (role === "admin") void getStatsCatalogAction();
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [userRut, role]);
 
   // Apenas se sabe quien es el estudiante se pide a que juegos tiene acceso, sin esperar
   // a que se dibuje su menu (que tomara esta misma consulta).

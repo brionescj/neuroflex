@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context";
 import { cn } from "@/lib/utils";
 
-import { getStatsCatalogAction, getStudentProfileAction } from "../actions/stats.action";
+import { getStatsCatalogAction, getStudentEvolutionAction, getStudentProfileAction } from "../actions/stats.action";
 import { StatCards } from "../components/charts/StatCards";
 import { ChartViews } from "../components/ChartViews";
 import { GameSection } from "../components/GameSection";
@@ -128,6 +128,25 @@ export default function StudentStatsPage() {
     rememberDesempeno({ owner, rut, choosing, query, page: tablePage, catalog, profile: loaded, choice });
   }, [owner, rut, choosing, query, tablePage, catalog, loaded, choice]);
 
+  // Apenas se tiene el resumen del estudiante se pide, por adelantado, la lectura «en el tiempo» que se abre
+  // por defecto: al cambiar de pestaña ya esta calculada. Se pide una vez por estudiante.
+  const loadedRut = loaded?.rut ?? "";
+
+  useEffect(() => {
+    if (loadedRut !== "") void getStudentEvolutionAction(loadedRut, "week", "1");
+  }, [loadedRut]);
+
+  // Al detenerse sobre una fila se empieza a calcular su desempeño (con los estados por defecto, que son los que
+  // se piden al elegirlo): al tocarla ya esta listo o casi. Un cambio rapido de fila cancela el anterior.
+  const hintTimer = useRef<number | undefined>(undefined);
+
+  function hint(target: string) {
+    window.clearTimeout(hintTimer.current);
+    hintTimer.current = window.setTimeout(() => void getStudentProfileAction(target, NO_STATES), 250);
+  }
+
+  useEffect(() => () => window.clearTimeout(hintTimer.current), []);
+
   function chooseStates(game: GameId, next: AttemptState[]) {
     setChoice({ rut, states: { ...states, [game]: next } });
   }
@@ -175,6 +194,7 @@ export default function StudentStatsPage() {
             page={tablePage}
             onQueryChange={setQuery}
             onPageChange={setTablePage}
+            onHint={hint}
           />
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3">

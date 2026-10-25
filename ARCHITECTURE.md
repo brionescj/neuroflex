@@ -75,6 +75,29 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       hacer lo mismo salvo que necesite métodos del documento (`save`, `toObject`).
     - Los desbloqueos de juegos recordados en memoria (`useGameAccess`) van por RUT y
       solo se recuerda un «sí»; un «no» siempre se consulta al servidor.
+    - **Medir antes de culpar al código.** Toda respuesta de la API lleva la cabecera
+      `Server-Timing` (`total`, `db`, y `arranque` si fue el primer pedido del proceso;
+      se ve en DevTools → Network → Timing) y la consola del servidor avisa con
+      `[lento]` cualquier pedido de 2 s o más (`lib/timing.ts`, aplicado en `dispatch`).
+      `GET /api/auth/health` solo conecta la base: la página lo pide al abrirse sin
+      sesión para calentar la función mientras la persona escribe su RUT.
+    - `vercel dev` arranca cada pedido de nuevo (y vuelve a abrir Atlas): no sirve para
+      medir. Para desarrollo local: `npm run dev:server` (un proceso que conserva la
+      conexión) + `npm run dev`, con `VITE_API_URL=/api` en `.env.local`.
+    - `lib/db.ts` abre una sola conexión por proceso, con límites de espera explícitos y
+      sin dejar una promesa fallida en caché. Los handlers hacen sus lecturas
+      independientes en un solo `Promise.all`; las lecturas pesadas de estadísticas se
+      comparten 8 s (`reusePromise` en `lib/stats/loadData.ts`).
+    - El login y `/auth/me` devuelven `unlocked` (desbloqueos ya otorgados, solo lectura):
+      la tarjeta de Mini casos aparece sin esperar `/games/access`.
+    - Frontend: `src/lib/sharedRequest.ts` reutiliza lo ya pedido (catálogo de
+      estadísticas, perfiles, listados, evolución) y comparte pedidos en vuelo; solo
+      guarda respuestas correctas y se vacía al cambiar de persona o cerrar sesión.
+      `prefetchOnce/takePrefetched` entrega lo adelantado UNA sola vez (progreso de
+      juegos, banco de casos): se invalida al guardar o borrar progreso y no se adelanta
+      si la cola de guardado está ocupada. Crear o editar estudiantes vacía `stats:`.
+    - `src/App.tsx` adelanta, según el rol, lo que verá la persona (listados del
+      administrador, catálogo de estadísticas, Mi perfil) un instante después de entrar.
 
 ---
 

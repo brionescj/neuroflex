@@ -2,6 +2,7 @@ import { LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/context";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 import { getStatsCatalogAction, getStatsChartAction } from "../actions/stats.action";
@@ -29,18 +30,23 @@ import {
   partidaText,
   timeProblem,
 } from "../utils/selection";
+import { recallStats, rememberStats } from "../utils/statsMemory";
 import type { Catalog, ChartResult, Selection } from "../types";
 
 type Shown = { result: ChartResult; subtitle: string; key: string };
 
 export default function StatsPage() {
-  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const { user } = useAuth();
+  const owner = user?.rut ?? "";
+  // Lo que la vista dejó al irse a otra pestaña: al volver aparece tal cual estaba, sin recargar.
+  const [saved] = useState(() => recallStats(owner));
+  const [catalog, setCatalog] = useState<Catalog | null>(saved?.catalog ?? null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [selection, setSelection] = useState<Selection | null>(null);
-  const [shown, setShown] = useState<Shown | null>(null);
+  const [selection, setSelection] = useState<Selection | null>(saved?.selection ?? null);
+  const [shown, setShown] = useState<Shown | null>(saved?.shown ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<Record<number, boolean>>({});
+  const [open, setOpen] = useState<Record<number, boolean>>(saved?.open ?? {});
   const resultRef = useRef<HTMLDivElement>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
@@ -61,6 +67,10 @@ export default function StatsPage() {
   useEffect(() => {
     void loadCatalog();
   }, [loadCatalog]);
+
+  useEffect(() => {
+    rememberStats({ owner, catalog, selection, shown, open });
+  }, [owner, catalog, selection, shown, open]);
 
   const chart = useMemo(
     () => (catalog && selection ? findChartDef(catalog, selection.chart) : undefined),

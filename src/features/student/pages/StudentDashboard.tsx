@@ -1,9 +1,26 @@
+import { useEffect } from "react";
+
 import { GameCard } from "@/features/games/components/GameCard";
 import { GAME_CATALOG } from "@/features/games/gameCatalog";
 import { useGameAccess } from "@/features/games/hooks/useGameAccess";
+import { prefetchMiniCases } from "@/features/games/mini-cases/services/miniCases.service";
+import { prefetchGameProgress } from "@/features/games/services/gameProgress.service";
 
 export default function StudentDashboard() {
   const { access } = useGameAccess();
+  const miniCasesOpen = access?.miniCases === true;
+
+  // Con el menu a la vista se piden por adelantado el avance de los juegos (y el banco de Mini casos, si ya lo
+  // tiene): al tocar uno, abre sin esperar al servidor. Cada vez que se vuelve al menu se piden de nuevo.
+  useEffect(() => {
+    prefetchGameProgress("color-sequence");
+    prefetchGameProgress("node-connection");
+
+    if (miniCasesOpen) {
+      prefetchGameProgress("mini-cases");
+      prefetchMiniCases();
+    }
+  }, [miniCasesOpen]);
 
   // Un juego con desbloqueo no aparece hasta que el servidor lo confirme
   // (tampoco mientras carga ni si la consulta falla): oculto, sin pistas.

@@ -19,6 +19,11 @@ type StudentTableProps = {
   page: number;
   onQueryChange: (query: string) => void;
   onPageChange: (page: number) => void;
+  /**
+   * Se llama cuando el puntero se detiene sobre una fila (o se toca / enfoca): permite empezar a
+   * calcular su desempeño antes de que se elija, para que aparezca al instante.
+   */
+  onHint?: (rut: string) => void;
 };
 
 const PAGE_SIZE = 10;
@@ -36,7 +41,7 @@ function State({ enabled }: { enabled: boolean }) {
  * que la filtra. Se ve de 10 en 10. En el celular el paralelo y la universidad pasan a la
  * segunda línea del nombre para que no haga falta desplazar hacia el lado.
  */
-export function StudentTable({ students, selected, onSelect, query, page, onQueryChange, onPageChange }: StudentTableProps) {
+export function StudentTable({ students, selected, onSelect, query, page, onQueryChange, onPageChange, onHint }: StudentTableProps) {
   const inputId = useId();
 
   const found = useMemo(() => {
@@ -108,6 +113,9 @@ export function StudentTable({ students, selected, onSelect, query, page, onQuer
                 <tr
                   key={student.rut}
                   onClick={() => onSelect(student.rut)}
+                  onPointerEnter={() => onHint?.(student.rut)}
+                  onPointerDown={() => onHint?.(student.rut)}
+                  onFocus={() => onHint?.(student.rut)}
                   className={cn(
                     "cursor-pointer border-b border-zinc-800 last:border-0 hover:bg-zinc-800/60",
                     student.rut === selected && "bg-zinc-800",

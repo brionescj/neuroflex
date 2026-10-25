@@ -2,6 +2,7 @@ import { isAxiosError } from "axios";
 
 import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
+import { forgetRequests, prefetchOnce, takePrefetched } from "@/lib/sharedRequest";
 import { fail, type ApiResponse, type Admin } from "@/types";
 
 export type CreateAdminPayload = {
@@ -12,7 +13,19 @@ export type CreateAdminPayload = {
   password: string;
 };
 
-export async function listAdmins(): Promise<ApiResponse<Admin[]>> {
+const LIST_KEY = "admin:admins";
+
+/** Pide el listado por adelantado (al abrir la sesion del administrador); se recoge UNA vez al abrir el panel. */
+export function prefetchAdmins(): void {
+  prefetchOnce(LIST_KEY, requestAdmins, 30_000);
+}
+
+/** La primera vez toma lo pedido por adelantado; las siguientes (tras crear o editar) piden al servidor. */
+export function listAdmins(): Promise<ApiResponse<Admin[]>> {
+  return takePrefetched<ApiResponse<Admin[]>>(LIST_KEY) ?? requestAdmins();
+}
+
+async function requestAdmins(): Promise<ApiResponse<Admin[]>> {
   try {
     const response = await api.get<ApiResponse<Admin[]>>("/admin/admins");
     return response.data;
@@ -32,6 +45,8 @@ export async function createAdmin(
       "/admin/admins",
       payload,
     );
+    // Su ficha del perfil guardada ya no es la actual.
+    forgetRequests("profile:");
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {

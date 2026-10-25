@@ -2,11 +2,13 @@ import {
   createStudent,
   generateStudentPassword,
   listStudents,
+  prefetchStudents,
   setStudentEnabled,
   updateStudentDetails,
   type CreateStudentPayload,
   type UpdateStudentDetailsPayload,
 } from "../services/students.service";
+import { prefetchAdmins } from "../services/admins.service";
 
 export async function listStudentsAction() {
   return listStudents();
@@ -29,4 +31,10 @@ export async function updateStudentDetailsAction(
 
 export async function generateStudentPasswordAction(rut: string, adminPassword: string) {
   return generateStudentPassword(rut, adminPassword);
+}
+
+/** Pide por adelantado los listados del panel de inicio (estudiantes y administradores). */
+export function prefetchAdminHomeAction() {
+  prefetchStudents();
+  prefetchAdmins();
 }

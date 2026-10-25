@@ -3,6 +3,7 @@ import { isAxiosError } from "axios";
 import type { AvatarId } from "@/config/avatars";
 import { responseFromError } from "@/lib/apiError";
 import { api } from "@/lib/axios";
+import { forgetRequests, sharedRequest } from "@/lib/sharedRequest";
 import {
   fail,
   type ApiResponse,
@@ -15,19 +16,30 @@ export type ProfileDetails =
   | ({ role: "student" } & Student)
   | ({ role: "admin" } & Admin);
 
+/** Cuanto se reutiliza la ficha ya pedida (al volver al perfil, o si se pidio por adelantado al iniciar sesion). */
+const PROFILE_REUSE_MS = 120_000;
+
+export const profileKey = (rut: string) => `profile:${rut}`;
+
 export async function getProfileDetails(
   rut: string,
   _role: UserRole,
 ): Promise<ProfileDetails | null> {
-  try {
-    const response = await api.get<ApiResponse<ProfileDetails>>(
-      `/profile/${rut}`,
-    );
+  const result = await sharedRequest(
+    profileKey(rut),
+    async () => {
+      try {
+        const response = await api.get<ApiResponse<ProfileDetails>>(`/profile/${rut}`);
 
-    return response.data.data;
-  } catch {
-    return null;
-  }
+        return { success: true, data: response.data.data as ProfileDetails | null };
+      } catch {
+        return { success: false, data: null };
+      }
+    },
+    PROFILE_REUSE_MS,
+  );
+
+  return result.data;
 }
 
 export type UpdateContactPayload = {
@@ -54,6 +66,9 @@ export async function updateProfileContact(
       `/profile/${payload.rut}/contact`,
       { email: payload.email, avatarId: payload.avatarId },
     );
+
+    // La ficha guardada ya no es la actual.
+    forgetRequests("profile:");
 
     return response.data;
   } catch (error) {
