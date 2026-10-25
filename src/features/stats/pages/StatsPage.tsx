@@ -61,7 +61,8 @@ export default function StatsPage() {
     }
 
     setCatalog(response.data);
-    setSelection((current) => current ?? initialSelection(response.data));
+    // Lo recordado vale solo si ese gráfico todavía existe en el catálogo; si no, se parte de cero.
+    setSelection((current) => (current && findChartDef(response.data, current.chart) ? current : initialSelection(response.data)));
   }, []);
 
   useEffect(() => {
@@ -86,6 +87,65 @@ export default function StatsPage() {
   );
 
   const currentKey = params ? paramsKey(params) : null;
+
+  // «Mostrar». `resume`: se vuelve a pedir el gráfico que estaba a la vista antes de que el navegador
+  // recargara la página; no se pliega la selección ni se desplaza la pantalla (ya estaba como la dejó la persona).
+  async function show(resume = false) {
+    if (!catalog || !selection || !chart || !params) return;
+
+    const gameName = catalog.games.find((g) => g.id === selection.game)?.label ?? "";
+    const comparing = chart.canCompare ? comparedDimension(selection.groupBy) : null;
+
+    setLoading(true);
+    setError(null);
+
+    const response = await getStatsChartAction(params);
+
+    setLoading(false);
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    setShown({
+      result: response.data,
+      key: paramsKey(params),
+      subtitle: [
+        gameName,
+        compareSummary(catalog, selection),
+        chart.usesPartida ? partidaText(selection) : null,
+        chart.usesPartida && canChooseCount(selection) && selection.countBy === "attempts" ? "Contando partidas" : null,
+        chart.usesPeriod && selection.groupBy !== "dateRange" ? periodText(catalog, selection) : null,
+        filtersSummary(catalog, selection.filters, selection.age, comparing),
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    });
+
+    if (resume) return;
+
+    // En celular se pliega la seleccion (sus titulos siguen a la vista) para ver el grafico.
+    if (!isDesktop) setOpen({});
+
+    requestAnimationFrame(() =>
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  }
+
+  // Tras una recarga de la página (en el celular, al apagar y encender la pantalla) el gráfico que
+  // estaba a la vista se pide de nuevo apenas hay catálogo y selección.
+  const showRef = useRef(show);
+  const resuming = useRef(saved?.resume === true);
+
+  showRef.current = show;
+
+  useEffect(() => {
+    if (!resuming.current || !params || shown !== null) return;
+
+    resuming.current = false;
+    void showRef.current(true);
+  }, [params, shown]);
 
   if (catalogError) {
     return (
@@ -121,44 +181,6 @@ export default function StatsPage() {
 
   function update(next: Selection) {
     setSelection(next);
-  }
-
-  async function show() {
-    if (!catalog || !selection || !chart || !params) return;
-
-    setLoading(true);
-    setError(null);
-
-    const response = await getStatsChartAction(params);
-
-    setLoading(false);
-
-    if (!response.success) {
-      setError(response.message);
-      return;
-    }
-
-    setShown({
-      result: response.data,
-      key: paramsKey(params),
-      subtitle: [
-        gameLabel,
-        compareSummary(catalog, selection),
-        chart.usesPartida ? partidaText(selection) : null,
-        chart.usesPartida && canChooseCount(selection) && selection.countBy === "attempts" ? "Contando partidas" : null,
-        chart.usesPeriod && selection.groupBy !== "dateRange" ? periodText(catalog, selection) : null,
-        filtersSummary(catalog, selection.filters, selection.age, compareBy),
-      ]
-        .filter(Boolean)
-        .join(" · "),
-    });
-
-    // En celular se pliega la seleccion (sus titulos siguen a la vista) para ver el grafico.
-    if (!isDesktop) setOpen({});
-
-    requestAnimationFrame(() =>
-      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-    );
   }
 
   const charts = chartsOf(catalog, selection.game);

@@ -10,6 +10,7 @@ import {
 import { api } from "@/lib/axios";
 import { forgetGranted, rememberGranted } from "@/lib/gameAccessMemory";
 import { forgetRequests } from "@/lib/sharedRequest";
+import { clearTabMemory } from "@/lib/tabMemory";
 import { hasSessionHint, restoreSession } from "@/lib/restoreSession";
 import type { SessionUser } from "@/types";
 
@@ -74,6 +75,7 @@ export function AuthProvider({ children }: Props) {
     if (currentRut.current !== sessionUser.rut) {
       forgetRequests();
       forgetGranted();
+      clearTabMemory();
     }
 
     currentRut.current = sessionUser.rut;
@@ -85,6 +87,7 @@ export function AuthProvider({ children }: Props) {
 
     forgetRequests();
     forgetGranted();
+    clearTabMemory();
     currentRut.current = null;
     setUser(null);
   }, []);

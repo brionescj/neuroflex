@@ -96,6 +96,13 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       `prefetchOnce/takePrefetched` entrega lo adelantado UNA sola vez (progreso de
       juegos, banco de casos): se invalida al guardar o borrar progreso y no se adelanta
       si la cola de guardado está ocupada. Crear o editar estudiantes vacía `stats:`.
+    - **Gráficos legibles (Estadísticas y Desempeño):** todo gráfico de `lib/stats` declara
+      `xLabel`, `yLabel` y `unitLabel`; si su valor es la parte de un total (porcentaje de
+      un grupo, reparto), cada serie lleva `part` y `total` (y el gráfico `partLabel` /
+      `totalLabel`, p. ej. «que lo superaron» / «que jugaron el nivel»); si es un promedio o
+      una mediana, `ns` dice con cuántos datos se calculó. El tooltip, la torta, las apiladas,
+      la tabla en pantalla y la tabla descargable leen eso mediante `src/features/stats/utils/reading.ts`:
+      un gráfico nuevo no necesita código de presentación propio.
     - `src/App.tsx` adelanta, según el rol, lo que verá la persona (listados del
       administrador, catálogo de estadísticas, Mi perfil) un instante después de entrar.
 
@@ -230,6 +237,15 @@ Cuando exista JWT, el token se guarda aquí y el resto de la app no se entera.
 
 `SESSION_KEY` se exporta solo para `session.service.test.ts`; ningún otro
 archivo debe usarla para acceder a `localStorage` directamente.
+
+**Memoria de pantalla.** `src/lib/tabMemory.ts` es el único archivo que toca
+`sessionStorage`: guarda, solo en esa pestaña, lo que una pantalla debe recordar si el navegador
+recarga la página (en el celular, al apagar y encender la pantalla): qué se eligió en
+Estadísticas, a qué estudiante se miraba en Desempeño. Escribe con 300 ms de espera y de
+inmediato al ocultarse la página (`visibilitychange`, `pagehide`). Reglas: solo estado de pantalla,
+**nunca** credenciales ni resultados calculados (se vuelven a pedir al servidor); cada
+memoria lleva `VERSION` y `owner` (RUT) y se descarta si no coincide; `AuthProvider` la vacía
+al cerrar sesión y cuando entra otra persona.
 
 `AuthProvider` expone `isLoading` durante la rehidratación para que
 `ProtectedRoute` no redirija al login antes de saber si hay sesión. Solo está en `true`
