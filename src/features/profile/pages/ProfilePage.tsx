@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/Field";
 import { EmailInput } from "@/components/forms/EmailInput";
 import { AVATARS, type AvatarId } from "@/config/avatars";
+import { genderLabel, universityLabel } from "@/config/studentOptions";
 import { useAuth } from "@/context";
 import { updateAdminNamesAction } from "@/features/admin/actions/admins.action";
 import { AdminNameForm, type PersonNames } from "@/features/admin/components/AdminNameForm";
+import { formatBirthDate } from "@/features/admin/utils/birthDate";
 import { ChangePasswordForm } from "@/features/auth/components";
 import { cn } from "@/lib/utils";
 import type { ProfileDetails } from "@/services/profile.service";
@@ -30,17 +32,22 @@ function nameRows(details: ProfileDetails) {
   ];
 }
 
-/** Lo que el estudiante no edita desde el perfil. (Los nombres de un administrador los puede corregir: van aparte.) */
+/**
+ * Lo que el estudiante no edita desde el perfil, ordenado como en las tarjetas de
+ * estudiantes del panel de administracion en el celular. (Los nombres de un
+ * administrador los puede corregir: van aparte.)
+ */
 function studentFields(details: Extract<ProfileDetails, { role: "student" }>) {
   return [
-    ...nameRows(details),
-    { label: "Paralelo", value: String(details.paralelo) },
-    { label: "Año de ingreso", value: String(details.entryYear) },
-    { label: "Ciudad", value: details.ciudad || "Sin registrar" },
-    { label: "Región", value: details.region || "Sin registrar" },
+    { label: "RUT", value: details.rut },
+    { label: "Universidad", value: universityLabel(details.university) },
+    { label: "Fecha de nacimiento", value: formatBirthDate(details.birthDate) },
+    { label: "Género", value: genderLabel(details.gender) },
+    { label: "Ciudad", value: details.ciudad },
+    { label: "Región", value: details.region },
     {
       label: "Celular",
-      value: details.celular ? `+569 ${details.celular}` : "Sin registrar",
+      value: details.celular ? `+569 ${details.celular}` : undefined,
     },
   ];
 }
@@ -102,8 +109,18 @@ export default function ProfilePage() {
     // disponible. Deuda tecnica: agregar updateUser() en AuthProvider.
     login({ ...user, avatarId: data.avatarId });
 
+    // La ficha en pantalla pasa a ser la guardada: "Cancelar" vuelve a ESTE correo, no al anterior.
+    setDetails((current) =>
+      current ? { ...current, email: data.email, avatarId: data.avatarId } : current,
+    );
     setIsEditingEmail(false);
     toast.success(result.message);
+  }
+
+  /** Descarta lo escrito en el correo y vuelve al ultimo guardado. */
+  function cancelEmailEdit() {
+    form.resetField("email", { defaultValue: details?.email ?? "" });
+    setIsEditingEmail(false);
   }
 
   async function saveNames(names: PersonNames): Promise<string | null> {
@@ -181,13 +198,27 @@ export default function ProfilePage() {
       )}
 
       {details.role === "student" && (
-        <div className="space-y-2 rounded-xl border border-zinc-800 p-4">
-          {studentFields(details).map((field) => (
-            <div key={field.label} className="flex justify-between text-sm">
-              <span className="text-zinc-400">{field.label}</span>
-              <span className="text-white">{field.value}</span>
-            </div>
-          ))}
+        <div className="rounded-2xl border border-zinc-800 p-4">
+          <p className="font-medium text-white">
+            {details.firstName} {details.paternalLastName}{" "}
+            {details.maternalLastName}
+          </p>
+
+          <div className="mt-1 flex gap-4 text-xs text-zinc-400">
+            <span>Paralelo {details.paralelo}</span>
+            <span>Ingreso {details.entryYear}</span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-4 border-t border-zinc-800 pt-3 min-[420px]:grid-cols-2">
+            {studentFields(details).map((field) => (
+              <div key={field.label} className="min-w-0">
+                <p className="text-xs text-zinc-500">{field.label}</p>
+                <p className="break-words text-sm text-white">
+                  {field.value || "Sin registrar"}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -213,15 +244,25 @@ export default function ProfilePage() {
               </div>
 
               {isEditingEmail ? (
-                <EmailInput
-                  id="email"
-                  autoComplete="email"
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  aria-invalid={fieldState.invalid}
-                  autoFocus
-                />
+                <div className="space-y-2">
+                  <EmailInput
+                    id="email"
+                    autoComplete="email"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    aria-invalid={fieldState.invalid}
+                    autoFocus
+                  />
+
+                  <button
+                    type="button"
+                    onClick={cancelEmailEdit}
+                    className="min-h-11 rounded-lg px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                  >
+                    Cancelar cambio de correo
+                  </button>
+                </div>
               ) : (
                 <p className="text-sm text-white">
                   {field.value || "Sin registrar"}
