@@ -64,6 +64,7 @@ vi.mock("./models/MiniCase", () => ({ MiniCase: model("MiniCase", () => mocks.ca
 
 import catalogHandler from "./handlers/admin/statsCatalog";
 import chartHandler from "./handlers/admin/statsChart";
+import { forgetReusable } from "./stats/loadData";
 
 type Handler = typeof catalogHandler;
 
@@ -92,6 +93,8 @@ function call(handler: Handler, query: Record<string, unknown> = {}, method = "G
 const RUT = "12345678-5";
 
 beforeEach(() => {
+  // Las lecturas se reutilizan unos segundos: cada caso parte de cero.
+  forgetReusable();
   mocks.role = "admin";
   mocks.authorized = true;
   mocks.connects = 0;

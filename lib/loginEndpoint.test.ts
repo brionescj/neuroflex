@@ -8,12 +8,14 @@ const mocks = vi.hoisted(() => {
     account: null as Record<string, unknown> | null,
     profile: null as Record<string, unknown> | null,
     passwordOk: true,
+    unlocked: undefined as { miniCases: true } | undefined,
     /** Orden en que ocurrieron las lecturas, para comprobar que van a la vez. */
     events: [] as string[],
   };
 });
 
 vi.mock("./db", () => ({ connectDB: async () => undefined }));
+vi.mock("./unlockedGames", () => ({ findUnlockedGames: async () => mocks.unlocked }));
 vi.mock("./findAccount", () => ({ findAccount: async () => mocks.account }));
 vi.mock("./findProfile", () => ({
   findSessionProfile: async () => {
@@ -70,6 +72,7 @@ beforeEach(() => {
   mocks.account = { id: "a1", rut: "12345678-5", password: "hash", role: "student", enabled: true };
   mocks.profile = { firstName: "Ana", paternalLastName: "Pérez", avatarId: "cat", enabled: true };
   mocks.passwordOk = true;
+  mocks.unlocked = undefined;
   mocks.events = [];
 });
 
@@ -87,6 +90,23 @@ describe("POST auth/login", () => {
     expect(hint).toBeDefined();
     expect(hint).not.toContain("HttpOnly");
     expect(hint).not.toContain(cookies[0]!.split(";")[0]!.split("=")[1]!);
+  });
+
+  it("adelanta los desbloqueos ya registrados junto con la sesion; sin ellos no agrega nada", async () => {
+    expect((await login(GOOD)).json.data.unlocked).toBeUndefined();
+
+    mocks.unlocked = { miniCases: true };
+
+    expect((await login(GOOD)).json.data.unlocked).toEqual({ miniCases: true });
+  });
+
+  it("con la contraseña incorrecta no entrega desbloqueos", async () => {
+    mocks.unlocked = { miniCases: true };
+    mocks.passwordOk = false;
+
+    const { json } = await login(GOOD);
+
+    expect(json.data).toBeUndefined();
   });
 
   it("la contraseña y la ficha se consultan a la vez, no una despues de la otra", async () => {

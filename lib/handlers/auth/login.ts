@@ -7,6 +7,7 @@ import { setSessionCookie } from "../../cookies";
 import { normalizeForDatabase } from "../../rut";
 import { findAccount } from "../../findAccount";
 import { findSessionProfile } from "../../findProfile";
+import { findUnlockedGames } from "../../unlockedGames";
 
 export default async function handler(
   req: VercelRequest,
@@ -41,9 +42,10 @@ export default async function handler(
   // Comprobar la contraseña (bcrypt, lo mas lento del inicio de sesion) y leer la
   // ficha son independientes: se hacen a la vez. Si la contraseña resulta
   // incorrecta, la ficha leida simplemente se descarta.
-  const [passwordOk, profile] = await Promise.all([
+  const [passwordOk, profile, unlocked] = await Promise.all([
     verifyPassword(password, account.password),
     findSessionProfile(account.rut, account.role),
+    findUnlockedGames(account.rut, account.role),
   ]);
 
   if (!passwordOk) {
@@ -77,6 +79,7 @@ export default async function handler(
       role: account.role,
       displayName: `${profile.firstName} ${profile.paternalLastName}`,
       avatarId: profile.avatarId,
+      ...(unlocked ? { unlocked } : {}),
     },
   });
 }

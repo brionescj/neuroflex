@@ -4,6 +4,7 @@ import { connectDB } from "../../db";
 import { verifyToken } from "../../jwt";
 import { readSessionCookie } from "../../cookies";
 import { findSessionProfile } from "../../findProfile";
+import { findUnlockedGames } from "../../unlockedGames";
 
 export default async function handler(
   req: VercelRequest,
@@ -18,7 +19,10 @@ export default async function handler(
 
   await connectDB();
 
-  const profile = await findSessionProfile(payload.rut, payload.role);
+  const [profile, unlocked] = await Promise.all([
+    findSessionProfile(payload.rut, payload.role),
+    findUnlockedGames(payload.rut, payload.role),
+  ]);
 
   if (!profile) {
     return res.status(404).json({ success: false, message: "Ficha no encontrada." });
@@ -40,6 +44,7 @@ export default async function handler(
       role: payload.role,
       displayName: `${profile.firstName} ${profile.paternalLastName}`,
       avatarId: profile.avatarId,
+      ...(unlocked ? { unlocked } : {}),
     },
   });
 }

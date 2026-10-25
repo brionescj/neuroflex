@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "dev": "vite",
+    "dev:server": "tsx server-scripts/devServer.ts",
     "dev:api": "vercel dev",
     "build": "tsc -b && vite build",
     "lint": "oxlint",

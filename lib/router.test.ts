@@ -24,6 +24,7 @@ import adminStudentDetails from "./handlers/admin/studentDetails";
 import adminStudents from "./handlers/admin/students";
 import adminStudentPassword from "./handlers/admin/studentPassword";
 import adminStudentStatus from "./handlers/admin/studentStatus";
+import authHealth from "./handlers/auth/health";
 import authLogin from "./handlers/auth/login";
 import authLogout from "./handlers/auth/logout";
 import authMe from "./handlers/auth/me";
@@ -40,9 +41,10 @@ import { ROUTES, dispatch, matchRoute, routeSegments, type RouteDef } from "./ro
 
 const seg = (path: string) => path.split("/").filter(Boolean);
 
-// Las 24 rutas de la API, con las URLs que usa el navegador. Si este test falla
+// Las 25 rutas de la API, con las URLs que usa el navegador. Si este test falla
 // al agregar o mover una ruta, la tabla de lib/router.ts no esta al dia.
 const EXPECTED: [string, unknown, Record<string, string>][] = [
+  ["auth/health", authHealth, {}],
   ["auth/login", authLogin, {}],
   ["auth/logout", authLogout, {}],
   ["auth/me", authMe, {}],

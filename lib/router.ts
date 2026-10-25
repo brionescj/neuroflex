@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
+import { runTimed } from "./timing";
+import authHealth from "./handlers/auth/health";
 import adminAdminDetails from "./handlers/admin/adminDetails";
 import adminAdmins from "./handlers/admin/admins";
 import adminAdminPassword from "./handlers/admin/adminPassword";
@@ -48,6 +50,7 @@ export type RouteDef = {
 };
 
 export const ROUTES: RouteDef[] = [
+  { pattern: "auth/health", handler: authHealth },
   { pattern: "auth/login", handler: authLogin },
   { pattern: "auth/logout", handler: authLogout },
   { pattern: "auth/me", handler: authMe },
@@ -80,7 +83,7 @@ export const ROUTES: RouteDef[] = [
   { pattern: "profile/:rut/contact", handler: profileContact },
 ];
 
-export type RouteMatch = { handler: Handler; params: Record<string, string> };
+export type RouteMatch = { handler: Handler; params: Record<string, string>; pattern?: string };
 
 function decode(segment: string): string | null {
   try {
@@ -122,7 +125,7 @@ export function matchRoute(
       }
     }
 
-    if (matches) return { handler: route.handler, params };
+    if (matches) return { handler: route.handler, params, pattern: route.pattern };
   }
 
   return null;
@@ -186,5 +189,5 @@ export async function dispatch(
     writable: true,
   });
 
-  return match.handler(req, res);
+  return runTimed(res, `${req.method ?? "GET"} ${match.pattern ?? ""}`, () => match.handler(req, res));
 }

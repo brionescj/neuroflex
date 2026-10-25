@@ -40,14 +40,16 @@ export default async function handler(
 
   await connectDB();
 
-  if (!(await Student.exists({ rut, isDeleted: { $ne: true } }))) {
-    return res.status(404).json({ success: false, message: "No se encontro al estudiante." });
-  }
-
-  const [attempts, results] = await Promise.all([
+  // Las tres lecturas salen a la vez (antes la del estudiante iba primero y las otras esperaban).
+  const [exists, attempts, results] = await Promise.all([
+    Student.exists({ rut, isDeleted: { $ne: true } }),
     GameAttempt.find({ studentRut: rut }).select(ATTEMPT_FIELDS).lean() as Promise<AttemptRow[]>,
     GameLevelResult.find({ studentRut: rut }).select(RESULT_FIELDS).lean() as Promise<ResultRow[]>,
   ]);
+
+  if (!exists) {
+    return res.status(404).json({ success: false, message: "No se encontro al estudiante." });
+  }
 
   for (const result of results) {
     if (!result.metrics) result.metrics = {};

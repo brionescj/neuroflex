@@ -46,35 +46,71 @@ export async function loadStudents(): Promise<StudentRow[]> {
     .lean()) as StudentRow[];
 }
 
-export async function loadChartData(def: ChartDef): Promise<StatsData> {
+/**
+ * Lo que ya se pidio hace muy poco se reutiliza (y una peticion identica que llega mientras
+ * la primera sigue en curso espera la misma respuesta). Los graficos leen colecciones enteras:
+ * al cambiar un filtro o abrir otro grafico unos segundos despues, no hace falta volver a leerlas.
+ * Un dato nuevo tarda como maximo estos milisegundos en verse.
+ */
+export const DATA_REUSE_MS = 8000;
+
+const reuse = new Map<string, { at: number; promise: Promise<unknown> }>();
+
+export function reusePromise<T>(key: string, load: () => Promise<T>, ms: number = DATA_REUSE_MS): Promise<T> {
+  const hit = reuse.get(key);
+
+  if (hit && Date.now() - hit.at < ms) return hit.promise as Promise<T>;
+
+  const promise = load();
+
+  reuse.set(key, { at: Date.now(), promise });
+
+  // Una lectura fallida no se reutiliza.
+  promise.catch(() => {
+    if (reuse.get(key)?.promise === promise) reuse.delete(key);
+  });
+
+  return promise;
+}
+
+/** Solo para pruebas: vacia lo reutilizable. */
+export function forgetReusable(): void {
+  reuse.clear();
+}
+
+export function loadChartData(def: ChartDef): Promise<StatsData> {
+  return reusePromise(`chart:${def.game}:${def.id}`, () => readChartData(def));
+}
+
+async function readChartData(def: ChartDef): Promise<StatsData> {
   const gameFilter = def.game === "general" ? {} : { gameId: def.game };
 
-  const [students, attempts] = await Promise.all([
-    loadStudents(),
-    GameAttempt.find(gameFilter).select(ATTEMPT_FIELDS).lean() as Promise<AttemptRow[]>,
-  ]);
+  // Todas las lecturas salen a la vez: antes iban una tras otra y cada una pagaba su
+  // propio viaje de ida y vuelta a la base.
+  const studentsRequest = loadStudents();
+  const attemptsRequest = GameAttempt.find(gameFilter).select(ATTEMPT_FIELDS).lean() as Promise<AttemptRow[]>;
 
-  let results: ResultRow[] = [];
-  let unlocks: UnlockRow[] = [];
-  const caseTitles: Record<string, string> = {};
+  let resultsRequest: Promise<ResultRow[]> = Promise.resolve([]);
+  let unlocksRequest: Promise<UnlockRow[]> = Promise.resolve([]);
+  let casesRequest: Promise<{ caseKey: string; title: string }[]> = Promise.resolve([]);
 
   if (def.game === "general") {
     // La actividad solo necesita cuando se completo cada nivel o caso.
     if (def.id === "activity") {
-      results = (await GameLevelResult.find()
+      resultsRequest = GameLevelResult.find()
         .select("attemptId studentRut gameId completedAt")
-        .lean()) as ResultRow[];
+        .lean() as Promise<ResultRow[]>;
     }
 
     // El resumen y las listas de avance necesitan el nivel (y el tiempo) de cada nivel de seriacion y nodos.
     if (def.id === "gen-summary" || def.id === "gen-stuck" || def.id === "gen-locked") {
-      results = (await GameLevelResult.find({ gameId: { $in: ["color-sequence", "node-connection"] } })
+      resultsRequest = GameLevelResult.find({ gameId: { $in: ["color-sequence", "node-connection"] } })
         .select("attemptId studentRut gameId index tryNumber activeMsNet metrics.passed metrics.correctCount metrics.sequenceLength")
-        .lean()) as ResultRow[];
+        .lean() as Promise<ResultRow[]>;
     }
 
     if (def.id === "gen-summary" || def.id === "gen-locked") {
-      unlocks = (await GameUnlock.find().select("studentRut gameId unlockedAt").lean()) as UnlockRow[];
+      unlocksRequest = GameUnlock.find().select("studentRut gameId unlockedAt").lean() as Promise<UnlockRow[]>;
     }
   } else {
     const projection: Record<string, 1> = {
@@ -90,19 +126,24 @@ export async function loadChartData(def: ChartDef): Promise<StatsData> {
 
     for (const name of METRICS_BY_GAME[def.game]) projection[`metrics.${name}`] = 1;
 
-    results = (await GameLevelResult.find({ gameId: def.game })
-      .select(projection)
-      .lean()) as ResultRow[];
+    resultsRequest = GameLevelResult.find({ gameId: def.game }).select(projection).lean() as Promise<ResultRow[]>;
   }
 
   if (def.game === "mini-cases") {
-    const cases = (await MiniCase.find().select("caseKey title").lean()) as {
-      caseKey: string;
-      title: string;
-    }[];
-
-    for (const item of cases) caseTitles[item.caseKey] = item.title;
+    casesRequest = MiniCase.find().select("caseKey title").lean() as Promise<{ caseKey: string; title: string }[]>;
   }
+
+  const [students, attempts, results, unlocks, cases] = await Promise.all([
+    studentsRequest,
+    attemptsRequest,
+    resultsRequest,
+    unlocksRequest,
+    casesRequest,
+  ]);
+
+  const caseTitles: Record<string, string> = {};
+
+  for (const item of cases) caseTitles[item.caseKey] = item.title;
 
   // Un resultado sin metricas (nodos) llega sin ese campo: se normaliza.
   for (const result of results) {
@@ -133,26 +174,36 @@ export async function loadStudentProfileData(rut: string): Promise<StatsData> {
     for (const name of METRICS_BY_GAME[game]) ownProjection[`metrics.${name}`] = 1;
   }
 
-  const [students, attempts, own, others, unlocks, cases] = await Promise.all([
+  // Lo de TODOS los estudiantes (para comparar con el grupo) se lee una vez y se reutiliza si el
+  // administrador abre a otro estudiante enseguida; lo del estudiante mismo se lee siempre.
+  const [group, own] = await Promise.all([
+    reusePromise("profile:group", readGroupData),
+    GameLevelResult.find({ studentRut: rut }).select(ownProjection).lean() as Promise<ResultRow[]>,
+  ]);
+
+  const results = [...own, ...group.others.filter((row) => row.studentRut !== rut)];
+
+  for (const result of results) {
+    if (!result.metrics) result.metrics = {};
+  }
+
+  return { students: group.students, attempts: group.attempts, results, unlocks: group.unlocks, caseTitles: group.caseTitles };
+}
+
+async function readGroupData() {
+  const [students, attempts, others, unlocks, cases] = await Promise.all([
     loadStudents(),
     GameAttempt.find().select(ATTEMPT_FIELDS).lean() as Promise<AttemptRow[]>,
-    GameLevelResult.find({ studentRut: rut }).select(ownProjection).lean() as Promise<ResultRow[]>,
-    GameLevelResult.find({ studentRut: { $ne: rut }, gameId: { $in: ["color-sequence", "node-connection"] } })
+    GameLevelResult.find({ gameId: { $in: ["color-sequence", "node-connection"] } })
       .select("attemptId studentRut gameId index tryNumber activeMsNet metrics.passed metrics.correctCount metrics.sequenceLength")
       .lean() as Promise<ResultRow[]>,
     GameUnlock.find().select("studentRut gameId unlockedAt").lean() as Promise<UnlockRow[]>,
     MiniCase.find().select("caseKey title").lean() as Promise<{ caseKey: string; title: string }[]>,
   ]);
 
-  const results = [...own, ...others];
-
-  for (const result of results) {
-    if (!result.metrics) result.metrics = {};
-  }
-
   const caseTitles: Record<string, string> = {};
 
   for (const item of cases) caseTitles[item.caseKey] = item.title;
 
-  return { students, attempts, results, unlocks, caseTitles };
+  return { students, attempts, others, unlocks, caseTitles };
 }
