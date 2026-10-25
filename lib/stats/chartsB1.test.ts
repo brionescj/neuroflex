@@ -377,7 +377,7 @@ describe("G1: resumen del grupo", () => {
     const chart = run(base, { chart: "gen-summary", groupBy: "university" });
 
     expect(chart.cards?.map((c) => c.group)).toEqual(["Santo Tomás", "UVM", "Sin dato"]);
-    expect(chart.cards?.find((c) => c.group === "UVM")?.items[0]?.value).toBe("1");
+    expect(chart.cards?.find((c) => c.group === "UVM")?.items.find((i) => i.label === "Estudiantes habilitados")?.value).toBe("1");
   });
 });
 

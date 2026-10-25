@@ -297,6 +297,8 @@ export type StatsData = {
   unlocks?: UnlockRow[];
   /** caseKey -> titulo, para rotular los mini casos. */
   caseTitles: Record<string, string>;
+  /** Claves de los casos habilitados del banco, en orden (solo si el grafico las necesita). */
+  caseKeys?: string[];
 };
 
 /** Un grafico de la ficha de un estudiante, con su explicacion. */

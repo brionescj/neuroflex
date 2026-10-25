@@ -394,6 +394,7 @@ describe("Resumen del grupo: tarjetas con listas", () => {
     const items = run(empty([student("1")]), { chart: "gen-summary" }).cards?.[0]?.items ?? [];
 
     expect(items.filter((item) => item.lists).map((item) => item.label)).toEqual([
+      "Máximo logro",
       "Han jugado al menos una vez",
       "Con Mini casos desbloqueado",
     ]);

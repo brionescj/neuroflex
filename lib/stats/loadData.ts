@@ -118,8 +118,18 @@ async function readChartData(def: ChartDef): Promise<StatsData> {
         .lean() as Promise<ResultRow[]>;
     }
 
-    // El resumen y las listas de avance necesitan el nivel (y el tiempo) de cada nivel de seriacion y nodos.
-    if (def.id === "gen-summary" || def.id === "gen-stuck" || def.id === "gen-locked") {
+    // El resumen calcula ademas el ranking de logros: necesita los tres juegos y lo que puntua cada resultado.
+    if (def.id === "gen-summary") {
+      resultsRequest = GameLevelResult.find()
+        .select(
+          "attemptId studentRut gameId key index tryNumber activeMsNet metrics.passed metrics.solved metrics.correctCount metrics.sequenceLength metrics.percent metrics.errors metrics.errorsAllowed metrics.correctSteps metrics.isFullyCorrect",
+        )
+        .lean() as Promise<ResultRow[]>;
+      casesRequest = MiniCase.find({ enabled: true }).select("caseKey title").lean() as Promise<{ caseKey: string; title: string }[]>;
+    }
+
+    // Las listas de avance necesitan el nivel (y el tiempo) de cada nivel de seriacion y nodos.
+    if (def.id === "gen-stuck" || def.id === "gen-locked") {
       resultsRequest = GameLevelResult.find({ gameId: { $in: ["color-sequence", "node-connection"] } })
         .select("attemptId studentRut gameId index tryNumber activeMsNet metrics.passed metrics.correctCount metrics.sequenceLength")
         .lean() as Promise<ResultRow[]>;
@@ -166,7 +176,12 @@ async function readChartData(def: ChartDef): Promise<StatsData> {
     if (!result.metrics) result.metrics = {};
   }
 
-  return { students, attempts, results, unlocks, caseTitles };
+  const caseKeys =
+    def.game === "general" && def.id === "gen-summary"
+      ? cases.map((item) => item.caseKey).sort((a, b) => a.localeCompare(b, "es", { numeric: true }))
+      : undefined;
+
+  return { students, attempts, results, unlocks, caseTitles, ...(caseKeys ? { caseKeys } : {}) };
 }
 
 /**

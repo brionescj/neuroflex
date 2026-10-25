@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { listsOfCards } from "./cardLists";
+import { cardListSheets, listsOfCards } from "./cardLists";
 import type { ChartCards } from "../types";
 
 const COLUMNS = ["Estudiante", "RUT"];
@@ -55,5 +55,47 @@ describe("listsOfCards", () => {
 
   it("un resumen sin listas no imprime ninguna", () => {
     expect(listsOfCards([{ group: "Resumen", slot: 0, items: [{ label: "Partidas", value: "3" }] }])).toEqual([]);
+  });
+});
+
+describe("cardListSheets", () => {
+  it("una hoja por lista con gente, con nombre válido para Excel y sin repetirse", () => {
+    const long = "Quiénes no han desbloqueado el juego de Mini casos todavía";
+    const withLong: ChartCards = [
+      {
+        group: "Todos",
+        slot: 0,
+        items: [
+          {
+            label: "A",
+            value: "1",
+            lists: [
+              { title: `${long} A`, columns: COLUMNS, rows: [["Ana", "1-9"]] },
+              { title: `${long} B`, columns: COLUMNS, rows: [["Luis", "2-7"]] },
+              { title: "Vacía", columns: COLUMNS, rows: [] },
+              { title: "Con: [símbolos]/?", columns: COLUMNS, rows: [["Pedro", "3-5"]] },
+            ],
+          },
+        ],
+      },
+    ];
+    const names = cardListSheets(withLong).map((sheet) => sheet.title);
+
+    expect(names).toHaveLength(3);
+    expect(new Set(names.map((name) => name.toLowerCase())).size).toBe(3);
+
+    for (const name of names) {
+      expect(name.length).toBeLessThanOrEqual(31);
+      expect(name).not.toMatch(/[\\/?*[\]:]/);
+    }
+  });
+
+  it("al comparar grupos antepone el grupo al nombre", () => {
+    const two: ChartCards = [
+      { ...cards[0]!, group: "UVM" },
+      { ...cards[0]!, group: "Santo Tomás" },
+    ];
+
+    expect(cardListSheets(two).map((sheet) => sheet.title)[0]).toMatch(/^UVM /);
   });
 });

@@ -27,6 +27,7 @@ import {
   type StudentRow,
 } from "./types";
 import { studentName } from "./pipeline";
+import { rankStudents, topScoreRows, TOP_SCORE_COLUMNS } from "./topScores";
 import { LIST_CHARTS, baseCells, chileDate, lockedMiniCases, miniCasesCells, miniCasesColumns } from "./chartsLists";
 
 const PERIOD_ONLY = { usesPartida: false, usesPeriod: true } as const;
@@ -104,8 +105,17 @@ const genSummary: ChartDef = {
       const sortByName = (a: StudentRow, b: StudentRow) =>
         a.paternalLastName.localeCompare(b.paternalLastName, "es") || a.firstName.localeCompare(b.firstName, "es");
 
+      const ranking = rankStudents({
+        students,
+        attempts,
+        results,
+        caseKeys: ctx.data.caseKeys ?? [],
+      });
+
       return {
         spec,
+        ranking,
+        rankingRows: topScoreRows(ranking, ctx.now),
         notPlayed: students.filter((s) => !played.includes(s)).sort(sortByName),
         locked: lockedMiniCases(students, ctx.data.results, unlocks),
         unlockedList: students.filter((s) => unlockedAt.has(s.rut)).sort(sortByName).map((s) => ({ student: s, at: unlockedAt.get(s.rut) as Date })),
@@ -122,6 +132,20 @@ const genSummary: ChartDef = {
     });
 
     const spec = [
+      {
+        label: "Máximo logro",
+        value: (s: (typeof summaries)[number]) => s.ranking[0]?.scores.totalPoints ?? null,
+        text: (s: (typeof summaries)[number]) =>
+          s.ranking[0] ? `${number(s.ranking[0].scores.totalPoints)} puntos` : "Sin datos",
+        hint: (s: (typeof summaries)[number]) => {
+          const top = s.ranking[0];
+
+          return top ? `${studentName(top.student, top.student.rut)} · ${top.scores.rank.name} · ${top.earned} insignias` : undefined;
+        },
+        lists: (s: (typeof summaries)[number]) => [
+          { title: "Ranking de logros", columns: TOP_SCORE_COLUMNS, rows: s.rankingRows },
+        ],
+      },
       {
         label: "Estudiantes habilitados",
         value: (s: (typeof summaries)[number]) => s.total,
@@ -214,6 +238,7 @@ const genSummary: ChartDef = {
       },
       notes: [
         "Se cuentan los estudiantes habilitados. El nivel típico es el nivel máximo que alcanzó cada estudiante, tomando todas sus partidas; la mediana es el valor del medio.",
+        "El máximo logro usa los mismos puntos e insignias de «Mis puntuaciones» del estudiante (no dependen del tiempo); el ranking ordena de mayor a menor puntaje y, si empatan, por insignias.",
         "El nivel de cada juego es el más alto que superó. En Nodos, superar un nivel es resolver el tablero sin agotar los errores permitidos; los niveles jugados antes de existir esos errores cuentan como superados.",
         FICHA_NOTE,
       ],

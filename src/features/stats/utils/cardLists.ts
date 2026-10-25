@@ -22,3 +22,36 @@ export function listsOfCards(cards: ChartCards): PrintList[] {
     ),
   );
 }
+
+/**
+ * Las mismas listas, una por hoja de Excel. El nombre de una hoja admite 31 caracteres, sin
+ * `\ / ? * [ ] :`, y no puede repetirse: si dos quedan iguales se les agrega un numero.
+ */
+export function cardListSheets(cards: ChartCards): PrintList[] {
+  const used = new Set<string>();
+
+  return cards.flatMap((block) =>
+    block.items.flatMap((item) =>
+      (item.lists ?? [])
+        .filter((list) => list.rows.length > 0)
+        .map((list) => {
+          const base = (cards.length > 1 ? `${block.group} ${list.title}` : list.title)
+            .replace(/[\\/?*[\]:]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 31);
+          let name = base === "" ? "Lista" : base;
+
+          for (let n = 2; used.has(name.toLowerCase()); n++) {
+            const suffix = ` ${n}`;
+
+            name = `${base.slice(0, 31 - suffix.length)}${suffix}`;
+          }
+
+          used.add(name.toLowerCase());
+
+          return { title: name, columns: list.columns, rows: list.rows };
+        }),
+    ),
+  );
+}
