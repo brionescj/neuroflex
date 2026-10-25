@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { LETTER, MARGIN, PLOT_MAX_SHARE, SHEET_WIDTH_PX, flowSheet, listRowsPerBlock, type FlowBlock } from "./printLayout";
+import { LETTER, MARGIN, PLOT_MAX_SHARE, SHEET_WIDTH_PX, flowSheet, type FlowBlock } from "./printLayout";
 
 const CONTENT_WIDTH = LETTER.width - MARGIN * 2;
 const PT = CONTENT_WIDTH / SHEET_WIDTH_PX;
@@ -64,9 +64,48 @@ describe("flowSheet", () => {
   });
 });
 
-describe("listRowsPerBlock", () => {
-  it("las tablas anchas llevan menos filas por trozo que las angostas", () => {
-    expect(listRowsPerBlock(7)).toBeLessThan(listRowsPerBlock(4));
-    expect(listRowsPerBlock(4)).toBeGreaterThan(0);
+describe("flowSheet: listas", () => {
+  const list = (id: string, head: number, rows: number, rowHeight = 30): FlowBlock => ({
+    id,
+    kind: "list",
+    height: head + rows * rowHeight,
+    rows: Array.from({ length: rows }, () => rowHeight),
+  });
+
+  it("una lista que cabe va en una sola pieza, completa", () => {
+    const placed = flowSheet([text("header", 100), list("l", 40, 5)]);
+    const piece = placed[1];
+
+    expect(placed).toHaveLength(2);
+    expect(piece?.slice).toEqual({ from: 0, to: 40 + 150 });
+    expect(piece?.box.height).toBeCloseTo(190 * PT);
+  });
+
+  it("una lista larga se corta solo entre filas y sigue en la hoja siguiente sin volver a empezar", () => {
+    const pieces = flowSheet([text("header", 300), list("l", 40, 40)]).filter((block) => block.id === "l");
+
+    expect(pieces.length).toBeGreaterThan(1);
+    expect(pieces[0]?.slice?.from).toBe(0);
+    expect(pieces[0]?.page).toBe(0);
+
+    for (let i = 1; i < pieces.length; i += 1) {
+      // Cada pieza empieza justo donde terminó la anterior (en una frontera de fila), sin repetir el título.
+      expect(pieces[i]?.slice?.from).toBe(pieces[i - 1]?.slice?.to);
+      expect(((pieces[i]?.slice?.from ?? 0) - 40) % 30).toBe(0);
+      expect(pieces[i]?.page).toBe((pieces[i - 1]?.page ?? 0) + 1);
+      expect(pieces[i]?.box.y).toBe(MARGIN);
+    }
+
+    expect(pieces.at(-1)?.slice?.to).toBe(40 + 40 * 30);
+
+    for (const piece of pieces) expect(piece.box.y + piece.box.height).toBeLessThanOrEqual(BOTTOM + 0.001);
+  });
+
+  it("el titulo no queda solo al pie de la hoja: pasa a la siguiente con su primera fila", () => {
+    const [header, piece] = flowSheet([text("header", 920), list("l", 40, 3)]);
+
+    expect(header?.page).toBe(0);
+    expect(piece?.page).toBe(1);
+    expect(piece?.slice?.from).toBe(0);
   });
 });

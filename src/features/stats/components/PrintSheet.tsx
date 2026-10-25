@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { formatNumber } from "../utils/format";
 import type { PrintList } from "../utils/cardLists";
-import { SHEET_WIDTH_PX, listRowsPerBlock } from "../utils/printLayout";
+import { SHEET_WIDTH_PX } from "../utils/printLayout";
 import { PrintModeContext } from "./charts/printMode";
 import { SingleStudentContext } from "./charts/singleStudent";
 
@@ -39,16 +39,11 @@ function cell(value: string | number | null): string {
   return typeof value === "number" ? formatNumber(value) : value;
 }
 
-/** Un trozo de una lista de estudiantes: su titulo (con «continúa» si no es el primero) y sus filas. */
-function ListBlock({ list, from, first }: { list: PrintList; from: number; first: boolean }) {
-  const rows = list.rows.slice(from, from + listRowsPerBlock(list.columns.length));
-
+/** Una lista de estudiantes: un titulo y una sola tabla (si no cabe en la hoja, el PDF la corta entre filas). */
+function ListTable({ list }: { list: PrintList }) {
   return (
-    <div data-sheet-part="list" data-sheet-kind="text" className="flex flex-col gap-1.5 bg-white py-1">
-      <h2 className="text-xs font-medium text-[var(--viz-text)]">
-        {list.title}
-        {!first && <span className="font-normal text-[var(--viz-muted)]"> · continúa</span>}
-      </h2>
+    <div data-sheet-part="list" data-sheet-kind="list" className="flex flex-col gap-1.5 bg-white py-1">
+      <h2 className="text-xs font-medium text-[var(--viz-text)]">{list.title}</h2>
 
       <table className="w-full border-collapse text-left text-[11px] text-[var(--viz-text-2)]">
         <thead>
@@ -62,8 +57,8 @@ function ListBlock({ list, from, first }: { list: PrintList; from: number; first
         </thead>
 
         <tbody>
-          {rows.map((row, r) => (
-            <tr key={from + r} className="border-b border-[var(--viz-line)]">
+          {list.rows.map((row, r) => (
+            <tr key={r} className="border-b border-[var(--viz-line)]">
               {row.map((value, c) => (
                 <td key={c} className={c === row.length - 1 && row.length > 4 ? "px-2 py-1" : "whitespace-nowrap px-2 py-1"}>
                   {cell(value)}
@@ -144,13 +139,9 @@ export function PrintSheet({
             {plot}
           </div>
 
-          {lists.flatMap((list) => {
-            const perBlock = listRowsPerBlock(list.columns.length);
-
-            return Array.from({ length: Math.ceil(list.rows.length / perBlock) }, (_, i) => (
-              <ListBlock key={`${list.title}-${i}`} list={list} from={i * perBlock} first={i === 0} />
-            ));
-          })}
+          {lists.map((list) => (
+            <ListTable key={list.title} list={list} />
+          ))}
 
           <div data-sheet-part="notes" data-sheet-kind="text" className="flex flex-col gap-3 bg-white pt-1">
             {deduction && (

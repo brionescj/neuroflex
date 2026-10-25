@@ -50,6 +50,36 @@ const MAX_CANVAS_AREA = 16_000_000;
 /** 3 pixeles por pixel: unos 290 ppp en la hoja, de sobra para imprimir. */
 const PIXEL_RATIO = 3;
 
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("No se pudo preparar la imagen del PDF."));
+    image.src = url;
+  });
+}
+
+/** Recorta un tramo vertical (en pixeles de la parte dibujada) de la foto de una parte. */
+function cropPng(image: HTMLImageElement, partWidth: number, from: number, to: number): string {
+  const scale = image.width / partWidth;
+  const top = Math.round(from * scale);
+  const canvas = document.createElement("canvas");
+
+  canvas.width = image.width;
+  canvas.height = Math.max(1, Math.min(image.height, Math.round(to * scale)) - top);
+
+  const context = canvas.getContext("2d");
+
+  if (!context) throw new Error("No se pudo preparar la imagen del PDF.");
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, top, image.width, canvas.height, 0, 0, canvas.width, canvas.height);
+
+  return canvas.toDataURL("image/png");
+}
+
 export type PdfInput = PrintSheetProps & {
   /** Nombre del archivo, sin la extension. */
   fileName: string;
@@ -84,15 +114,24 @@ export async function downloadPdf({ fileName, ...sheet }: PdfInput): Promise<voi
 
     if (parts.length === 0) throw new Error("No se pudo armar la hoja del PDF.");
 
-    const blocks: FlowBlock[] = parts.map((element, i) => ({
-      id: String(i),
-      kind: element.dataset.sheetKind === "plot" ? "plot" : "text",
-      height: element.getBoundingClientRect().height,
-    }));
+    const blocks: FlowBlock[] = parts.map((element, i) => {
+      const box = element.getBoundingClientRect();
+
+      if (element.dataset.sheetKind === "list") {
+        // El alto de cada fila, para que una lista larga se corte solo entre filas.
+        const rows = Array.from(element.querySelectorAll<HTMLElement>("tbody tr")).map((row) => row.getBoundingClientRect());
+
+        return { id: String(i), kind: "list", height: box.height, rows: rows.map((row, r) => (rows[r + 1]?.top ?? row.bottom) - row.top) };
+      }
+
+      return { id: String(i), kind: element.dataset.sheetKind === "plot" ? "plot" : "text", height: box.height };
+    });
     const placed = flowSheet(blocks);
 
     const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: [LETTER.width, LETTER.height], compress: true });
     let page = 0;
+    // Cada parte se fotografia una sola vez, aunque una lista larga ocupe varias hojas.
+    const shots = new Map<string, { url: string; image: HTMLImageElement; width: number }>();
 
     for (const block of placed) {
       const element = parts[Number(block.id)];
@@ -104,9 +143,18 @@ export async function downloadPdf({ fileName, ...sheet }: PdfInput): Promise<voi
         page += 1;
       }
 
-      const { width, height } = element.getBoundingClientRect();
-      const ratio = Math.min(PIXEL_RATIO, Math.sqrt(MAX_CANVAS_AREA / (width * height)));
-      const image = await toPng(element, { pixelRatio: ratio, skipFonts: true, backgroundColor: "#ffffff" });
+      let shot = shots.get(block.id);
+
+      if (!shot) {
+        const { width, height } = element.getBoundingClientRect();
+        const ratio = Math.min(PIXEL_RATIO, Math.sqrt(MAX_CANVAS_AREA / (width * height)));
+        const url = await toPng(element, { pixelRatio: ratio, skipFonts: true, backgroundColor: "#ffffff" });
+
+        shot = { url, image: await loadImage(url), width };
+        shots.set(block.id, shot);
+      }
+
+      const image = block.slice ? cropPng(shot.image, shot.width, block.slice.from, block.slice.to) : shot.url;
 
       pdf.addImage(image, "PNG", block.box.x, block.box.y, block.box.width, block.box.height);
     }
