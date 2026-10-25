@@ -99,15 +99,15 @@ export function ColorSequenceGame() {
     lastResult.tryNumber >= MAX_TRIES_PER_LEVEL;
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex w-full flex-col items-center gap-4">
       {phase === "idle" && !hasResumable && <BackToGameHub />}
 
-      <h1 className="text-2xl font-bold sm:text-3xl md:text-4xl">
-      Serialización de colores
-    </h1>
+      <h1 className="text-center text-2xl font-bold sm:text-3xl md:text-4xl">
+        Serialización de colores
+      </h1>
       {showBoard && (
         <>
-          <p className="text-sm text-zinc-400">
+          <p className="text-center text-sm text-zinc-400">
             {phase === "idle"
               ? hasResumable
                 ? `Tienes una partida en curso: vas en el ${levelLabel(resumeLevel ?? 1).toLowerCase()}`
@@ -115,7 +115,12 @@ export function ColorSequenceGame() {
               : `${levelLabel(level)} · Intento ${tryNumber} de ${MAX_TRIES_PER_LEVEL} — recuerda ${sequence.length} colores`}
           </p>
 
-          <div className="relative w-full max-w-56 xs:max-w-64 sm:max-w-xs md:max-w-sm lg:max-w-md">
+          {/* Mismo ancho que el tablero de Conexion de nodos: ocupa el ancho del
+              celular (hasta 34 rem) y nunca pasa del 62 % del alto de la pantalla. */}
+          <div
+            className="relative w-full"
+            style={{ maxWidth: "min(34rem, 62vh)" }}
+          >
             <ColorGrid
               activeId={activeId}
               disabled={phase !== "answering"}
