@@ -40,7 +40,7 @@ export type DemoGameId = "color-sequence" | "node-connection" | "mini-cases";
 
 /** Copias de lo que define el navegador; demoPlan.test.ts comprueba que no se desfasen. */
 export const COLOR_SEQUENCE_VERSION = "color-sequence-2";
-export const NODE_VERSION = "nodes-15-4827409f-r3";
+export const NODE_VERSION = "nodes-15-4827409f-r4";
 
 /** Tamano del tablero y pares de cada uno de los 15 niveles de Conexion de nodos. */
 export const NODE_LEVELS: readonly { board: number; pairs: number }[] = [
@@ -374,7 +374,7 @@ function playSeriation(
 // Conexion de nodos
 // ---------------------------------------------------------------------------
 
-function playNodes(rng: Rng, skill: Skill, sessionIndex: number, abandonAfterLevel: number | null): Draft {
+function playNodes(rng: Rng, profile: DemoProfile, skill: Skill, sessionIndex: number, abandonAfterLevel: number | null): Draft {
   const results: DemoResult[] = [];
   const offsets: number[] = [];
   const base = new Date(0);
@@ -392,24 +392,36 @@ function playNodes(rng: Rng, skill: Skill, sessionIndex: number, abandonAfterLev
 
     for (let tryNumber = 1; tryNumber <= NODE_MAX_TRIES; tryNumber++) {
       // Con el tablero ya visto, el reintento sale algo mejor.
-      const carelessness = skill.care * badDay * (tryNumber === 1 ? 1 : 0.8);
+      // Con cada partida corrigen menos: aprenden que deshacer y retroceder tambien cuentan.
+      const learning = Math.pow(0.88, sessionIndex) * (!profile.locked && sessionIndex >= 2 ? 0.6 : 1);
+      const carelessness = skill.care * badDay * learning * (tryNumber === 1 ? 1 : 0.8);
       let reset = poisson(rng, carelessness * 0.08 * Math.pow(level, 0.6));
       let blocked = poisson(rng, carelessness * 0.3 * level);
-      const failed = nodeErrorsOf({ blockedCount: blocked, resetCount: reset }) > allowed;
+      let undo = poisson(rng, carelessness * (0.3 + 0.18 * pairs));
+      let backtrackGestures = poisson(rng, carelessness * 0.12 * pairs);
+      let routeRestarts = poisson(rng, carelessness * 0.1 * pairs);
+      const countsOf = () => ({ blockedCount: blocked, resetCount: reset, undoCount: undo, routeRestarts, backtrackGestures });
+      const failed = nodeErrorsOf(countsOf()) > allowed;
 
       if (failed) {
-        // El intento termina en cuanto los errores superan lo permitido.
-        reset = Math.min(reset, Math.floor((allowed + 1) / 2));
-        blocked = Math.max(0, allowed + 1 - 2 * reset);
+        // El intento termina en cuanto los errores superan lo permitido: lo que se hizo despues no existe.
+        while (nodeErrorsOf(countsOf()) > allowed + 1) {
+          if (undo > 0) undo -= 1;
+          else if (backtrackGestures > 0) backtrackGestures -= 1;
+          else if (routeRestarts > 0) routeRestarts -= 1;
+          else if (blocked > 0) blocked -= 1;
+          else reset -= 1;
+        }
+
+        // Si quedo un error de menos (el ultimo restado valia dos), se completa con un choque.
+        if (nodeErrorsOf(countsOf()) <= allowed) blocked += allowed + 1 - nodeErrorsOf(countsOf());
       }
 
+      const errors = nodeErrorsOf(countsOf());
       const seconds = baseSeconds * (failed ? between(rng, 0.35, 0.8) : 1) * (tryNumber === 1 ? 1 : 0.85);
       const { gross, net } = withIdle(rng, seconds * 1000);
 
-      const undo = poisson(rng, skill.care * (0.3 + 0.18 * pairs) * (failed ? 0.6 : 1));
-      const backtrackGestures = undo;
-      const backtrackCells = undo * int(rng, 1, 3);
-      const routeRestarts = Math.min(reset, poisson(rng, 0.2));
+      const backtrackCells = backtrackGestures * int(rng, 1, 3);
       const restartCells = routeRestarts * int(rng, 2, 6);
       const resetCells = reset * int(rng, 4, 12);
 
@@ -422,14 +434,14 @@ function playNodes(rng: Rng, skill: Skill, sessionIndex: number, abandonAfterLev
         metrics: {
           solved: !failed,
           passed: !failed,
-          errors: nodeErrorsOf({ blockedCount: blocked, resetCount: reset }),
+          errors,
           errorsAllowed: allowed,
           pairCount: pairs,
           boardSize: board,
           undoCount: undo,
           resetCount: reset,
           corrections: undo + reset,
-          strokesStarted: pairs + undo + routeRestarts + int(rng, 0, pairs),
+          strokesStarted: pairs + routeRestarts + backtrackGestures + int(rng, 0, pairs),
           backtrackCells,
           backtrackGestures,
           routeRestarts,
@@ -631,7 +643,7 @@ export function planStudent(input: PlanInput): DemoPlan {
           game === "color-sequence"
             ? playSeriation(rng, profile, skill, learnIndex(game), seriationPassedTen, abandonAfter)
             : game === "node-connection"
-              ? playNodes(rng, skill, learnIndex(game), abandonAfter)
+              ? playNodes(rng, profile, skill, learnIndex(game), abandonAfter)
               : playMiniCases(rng, skill, learnIndex(game), miniCases, abandonAfter);
 
         draft.clock = { day, startMinute: minute };

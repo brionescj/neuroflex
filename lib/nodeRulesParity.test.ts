@@ -35,11 +35,23 @@ describe("reglas de nodos: navegador y servidor coinciden", () => {
       }
     }
 
-    for (let blocked = 0; blocked <= 12; blocked++) {
-      for (let reset = 0; reset <= 6; reset++) {
-        expect(nodeErrorsOf({ blockedCount: blocked, resetCount: reset })).toBe(
-          errorsOf({ blockedCount: blocked, resetCount: reset }),
-        );
+    for (let blocked = 0; blocked <= 6; blocked++) {
+      for (let reset = 0; reset <= 3; reset++) {
+        for (let undo = 0; undo <= 3; undo++) {
+          for (let restarts = 0; restarts <= 3; restarts++) {
+            for (let back = 0; back <= 3; back++) {
+              const counts = {
+                blockedCount: blocked,
+                resetCount: reset,
+                undoCount: undo,
+                routeRestarts: restarts,
+                backtrackGestures: back,
+              };
+
+              expect(nodeErrorsOf(counts)).toBe(errorsOf(counts));
+            }
+          }
+        }
       }
     }
   });
@@ -49,12 +61,31 @@ describe("reglas de nodos: navegador y servidor coinciden", () => {
       for (const pairCount of [2, 5, 8]) {
         for (let blockedCount = 0; blockedCount <= 30; blockedCount++) {
           for (const resetCount of [0, 1, 3]) {
-            for (const solved of [true, false]) {
-              const server = scoreNodeTry(level, { pairCount, blockedCount, resetCount, solved });
+            for (const [undoCount, routeRestarts, backtrackGestures] of [[0, 0, 0], [2, 1, 3]] as const) {
+              for (const solved of [true, false]) {
+                const server = scoreNodeTry(level, {
+                  pairCount,
+                  blockedCount,
+                  resetCount,
+                  undoCount,
+                  routeRestarts,
+                  backtrackGestures,
+                  solved,
+                });
 
-              expect(server?.passed).toBe(
-                isTryPassed({ level, pairCount, solved, blockedCount, resetCount }),
-              );
+                expect(server?.passed).toBe(
+                  isTryPassed({
+                    level,
+                    pairCount,
+                    solved,
+                    blockedCount,
+                    resetCount,
+                    undoCount,
+                    routeRestarts,
+                    backtrackGestures,
+                  }),
+                );
+              }
             }
           }
         }
@@ -75,7 +106,21 @@ describe("scoreNodeTry", () => {
       errorsAllowed: 99,
     });
 
-    expect(score).toEqual({ errors: 9, errorsAllowed: 3, passed: false });
+    expect(score).toEqual({ errors: 9, errorsAllowed: 4, passed: false });
+  });
+
+  it("deshacer, rehacer una ruta y retroceder suman errores en el servidor", () => {
+    const score = scoreNodeTry(1, {
+      pairCount: 2,
+      blockedCount: 1,
+      resetCount: 0,
+      undoCount: 2,
+      routeRestarts: 1,
+      backtrackGestures: 1,
+      solved: true,
+    });
+
+    expect(score).toEqual({ errors: 5, errorsAllowed: 4, passed: false });
   });
 
   it("sin contadores (resultado antiguo) no puntua", () => {

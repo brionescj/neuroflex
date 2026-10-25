@@ -245,6 +245,9 @@ describe("partidas de prueba", () => {
         const errors = nodeErrorsOf({
           blockedCount: Number(r.metrics.blockedCount),
           resetCount: Number(r.metrics.resetCount),
+          undoCount: Number(r.metrics.undoCount),
+          routeRestarts: Number(r.metrics.routeRestarts),
+          backtrackGestures: Number(r.metrics.backtrackGestures),
         });
 
         expect(r.tryNumber).toBeLessThanOrEqual(3);

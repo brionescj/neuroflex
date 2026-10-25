@@ -200,6 +200,7 @@ describe("toNodeReport: intentos y errores", () => {
     expect(report.index).toBe(4);
     expect(report.tryNumber).toBe(2);
     // 3 choques + 2 rehacer tablero x 2 = 7; en el nivel 4 se permiten 4 pares x 100 % = 4.
+    // (Sin deshacer, rutas rehechas ni retrocesos en este intento.)
     expect(report.metrics).toMatchObject({
       solved: false,
       passed: false,
@@ -225,7 +226,27 @@ describe("toNodeReport: intentos y errores", () => {
     );
 
     expect(report.key).toBe("7");
-    expect(report.metrics).toMatchObject({ errors: 1, errorsAllowed: 3, passed: true });
+    expect(report.metrics).toMatchObject({ errors: 1, errorsAllowed: 4, passed: true });
+  });
+
+  it("deshacer, rehacer una ruta y retroceder suman errores", () => {
+    const report = toNodeReport(
+      {
+        level: 2,
+        tryNumber: 1,
+        solved: true,
+        passed: false,
+        pairCount: 3,
+        timeMs: 9_000,
+        undoCount: 2,
+        resetCount: 0,
+        stats: { ...stats, blockedCount: 1, routeRestarts: 1, backtrackGestures: 3 },
+      },
+      FALLBACK,
+    );
+
+    // 1 choque + 2 deshacer + 1 ruta rehecha + 3 retrocesos = 7 de 4 permitidos.
+    expect(report.metrics).toMatchObject({ errors: 7, errorsAllowed: 4 });
   });
 
   it("sin contadores (partida antigua) no inventa errores", () => {

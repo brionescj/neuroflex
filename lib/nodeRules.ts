@@ -4,21 +4,22 @@
  * con el navegador): lib/nodeRulesParity.test.ts comprueba que ambas coincidan.
  *
  * Un nivel se pasa con el tablero resuelto y sin agotar los errores que se
- * permiten. Error = cada choque + 2 por cada "Rehacer tablero".
+ * permiten. Error = cada choque + cada "Deshacer" + cada ruta acortada o rehecha tocandola
+ * + cada gesto que retrocede + 2 por cada "Rehacer tablero".
  */
 
 export const NODE_MAX_TRIES = 3;
 export const NODE_MIN_LEVELS = 10;
 export const NODE_RESET_ERROR_WEIGHT = 2;
 
-export const NODE_MIN_ALLOWED_ERRORS = 3;
+export const NODE_MIN_ALLOWED_ERRORS = 4;
 
-/** Copia de allowedPercentOfPairs del navegador: 100 % (1 a 5), 60 % (6 a 10) y 40 % (11 a 15). */
+/** Copia de allowedPercentOfPairs del navegador: 100 % (1 a 5), 80 % (6 a 10) y 60 % (11 a 15). */
 export function nodeAllowedPercentOfPairs(level: number): number {
   if (level <= 5) return 100;
-  if (level <= 10) return 60;
+  if (level <= 10) return 80;
 
-  return 40;
+  return 60;
 }
 
 export function nodeAllowedErrors(level: number, pairCount: number): number {
@@ -30,8 +31,17 @@ export function nodeAllowedErrors(level: number, pairCount: number): number {
 export function nodeErrorsOf(counts: {
   blockedCount: number;
   resetCount: number;
+  undoCount?: number;
+  routeRestarts?: number;
+  backtrackGestures?: number;
 }): number {
-  return counts.blockedCount + NODE_RESET_ERROR_WEIGHT * counts.resetCount;
+  return (
+    counts.blockedCount +
+    (counts.undoCount ?? 0) +
+    (counts.routeRestarts ?? 0) +
+    (counts.backtrackGestures ?? 0) +
+    NODE_RESET_ERROR_WEIGHT * counts.resetCount
+  );
 }
 
 function num(value: unknown): number {
@@ -53,6 +63,9 @@ export function scoreNodeTry(
   const errors = nodeErrorsOf({
     blockedCount: metrics.blockedCount,
     resetCount: num(metrics.resetCount),
+    undoCount: num(metrics.undoCount),
+    routeRestarts: num(metrics.routeRestarts),
+    backtrackGestures: num(metrics.backtrackGestures),
   });
   const errorsAllowed = nodeAllowedErrors(level, pairCount);
 

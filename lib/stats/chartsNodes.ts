@@ -35,7 +35,7 @@ const EXPLORATORY_NOTE =
   "Indicador exploratorio: describe cómo juegan, pero no basta para evaluar a nadie ni para sacar conclusiones por sí solo.";
 
 const NODE_RULE_NOTE =
-  "Un nivel se supera resolviendo el tablero sin agotar los errores permitidos: cada choque cuenta como un error y cada «Rehacer tablero», como dos.";
+  "Un nivel se supera resolviendo el tablero sin agotar los errores permitidos: cada choque, cada Deshacer, cada ruta acortada o rehecha tocándola y cada retroceso sobre el propio trazo cuentan como un error, y cada «Rehacer tablero», como dos. Los niveles jugados antes de esta regla no cuentan deshacer ni retroceder.";
 
 const maxPassedLevel = (unit: Unit) =>
   unit.results
@@ -52,7 +52,13 @@ function errorsOfResult(result: ResultRow): number | null {
 
   if (blocked === null) return null;
 
-  return nodeErrorsOf({ blockedCount: blocked, resetCount: numberMetric(result, "resetCount") ?? 0 });
+  return nodeErrorsOf({
+    blockedCount: blocked,
+    resetCount: numberMetric(result, "resetCount") ?? 0,
+    undoCount: numberMetric(result, "undoCount") ?? 0,
+    routeRestarts: numberMetric(result, "routeRestarts") ?? 0,
+    backtrackGestures: numberMetric(result, "backtrackGestures") ?? 0,
+  });
 }
 
 function allowedOfResult(result: ResultRow): number | null {
@@ -287,7 +293,7 @@ const ncErrors: ChartDef = {
   game: GAME,
   title: "Errores por nivel",
   blurb:
-    "Cuántos errores cometen en cada nivel: choques con otra línea o con un nodo, y los «Rehacer tablero». También se puede ver qué parte del margen de errores permitido usan. Muestra en qué niveles el tablero los obliga a rectificar más.",
+    "Cuántos errores cometen en cada nivel: choques con otra línea o con un nodo, Deshacer, rutas acortadas o rehechas, retrocesos y los «Rehacer tablero». También se puede ver qué parte del margen de errores permitido usan. Muestra en qué niveles el tablero los obliga a rectificar más.",
   views: ["lines", "bars"],
   usesPartida: true,
   supportsDevice: true,
@@ -297,7 +303,7 @@ const ncErrors: ChartDef = {
       label: "Medir",
       default: "errors",
       choices: [
-        { value: "errors", label: "Errores (choques + rehacer tablero ×2)" },
+        { value: "errors", label: "Errores (choques + correcciones + rehacer tablero ×2)" },
         { value: "blocked", label: "Choques con otra línea o nodo" },
         { value: "margin", label: "Margen de errores usado (%)" },
       ],
@@ -335,7 +341,7 @@ const ncErrors: ChartDef = {
       [
         measure === "blocked"
           ? "Un choque es intentar pasar la línea por una celda ocupada por otro trazo o nodo."
-          : "Errores = choques + 2 por cada «Rehacer tablero».",
+          : "Errores = choques + Deshacer + rutas rehechas + retrocesos + 2 por cada «Rehacer tablero».",
         "Solo el primer intento de cada nivel. Solo niveles registrados con el detalle de choques y reinicios.",
         "Los niveles altos tienen tableros más grandes y más pares, así que es esperable que acumulen más errores.",
       ],

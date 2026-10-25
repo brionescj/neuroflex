@@ -17,6 +17,7 @@ import { getLevel, TOTAL_LEVELS } from "../levels";
 import {
   MAX_TRIES_PER_LEVEL,
   allowedErrors,
+  errorCountsOf,
   errorsOf,
   isOverLimit,
   isTryPassed,
@@ -84,7 +85,7 @@ export function useNodeConnectionGame() {
   const [phase, setPhase] = useState<GamePhase>("idle");
   const [level, setLevel] = useState(1);
   const [tryNumber, setTryNumber] = useState(1);
-  // Errores del intento en curso (choques + rehacer tablero x 2), para el contador en pantalla.
+  // Errores del intento en curso (ver rules.ts), para el contador en pantalla.
   const [errors, setErrors] = useState(0);
   const [results, setResults] = useState<NodeLevelResult[]>([]);
 
@@ -158,6 +159,18 @@ export function useNodeConnectionGame() {
     setPaths(next);
   }, []);
 
+  // Los contadores de errores del intento en curso (todo lo que se corrige cuenta).
+  const currentCounts = useCallback(
+    () =>
+      errorCountsOf({
+        undoCount: undoCountRef.current,
+        resetCount: resetCountRef.current,
+        stats: statsRef.current,
+      }),
+    [],
+  );
+  const currentErrors = useCallback(() => errorsOf(currentCounts()), [currentCounts]);
+
   const beginLevel = useCallback(
     (
       levelNumber: number,
@@ -183,12 +196,7 @@ export function useNodeConnectionGame() {
       resetCountRef.current = seed?.resetCount ?? 0;
       statsRef.current = seed?.stats ? { ...seed.stats } : emptyStats();
       resolvedRef.current = false;
-      setErrors(
-        errorsOf({
-          blockedCount: statsRef.current.blockedCount,
-          resetCount: resetCountRef.current,
-        }),
-      );
+      setErrors(currentErrors());
       gestureBacktrackedRef.current = false;
       gestureBackCellsRef.current = 0;
       eventLogRef.current = createNodeEventLog(
@@ -206,7 +214,7 @@ export function useNodeConnectionGame() {
       setTryNumber(tryNumberValue);
       setPhase("playing");
     },
-    [commitPaths, clock],
+    [commitPaths, clock, currentErrors],
   );
 
   // Registra el resultado de un intento y decide que sigue segun las reglas:
@@ -269,10 +277,7 @@ export function useNodeConnectionGame() {
 
       const pairCount = getLevel(snapshot.level).pairs.length;
       const solved = isSnapshotSolved(snapshot);
-      const overLimit = isOverLimit(snapshot.level, pairCount, {
-        blockedCount: snapshot.stats?.blockedCount ?? 0,
-        resetCount: snapshot.resetCount,
-      });
+      const overLimit = isOverLimit(snapshot.level, pairCount, errorCountsOf(snapshot));
 
       // Si lo guardado ya era un tablero resuelto, o sin margen de errores, el
       // intento esta terminado.
@@ -286,8 +291,7 @@ export function useNodeConnectionGame() {
             level: snapshot.level,
             pairCount,
             solved,
-            blockedCount: snapshot.stats?.blockedCount ?? 0,
-            resetCount: snapshot.resetCount,
+            ...errorCountsOf(snapshot),
           }),
           pairCount,
           timeMs: snapshot.elapsedMs,
@@ -483,15 +487,10 @@ export function useNodeConnectionGame() {
     [],
   );
 
-  // Cierra el gesto en curso: si retrocedio celdas cuenta como una correccion.
+  // Cierra el gesto en curso. Retroceder cuenta como error en cuanto ocurre (una vez por
+  // gesto, en pointerMove), no al soltar: asi el intento puede perderse en el acto.
   const endGesture = useCallback(() => {
-    if (gestureBacktrackedRef.current) {
-      statsRef.current = {
-        ...statsRef.current,
-        backtrackGestures: statsRef.current.backtrackGestures + 1,
-      };
-      gestureBacktrackedRef.current = false;
-    }
+    gestureBacktrackedRef.current = false;
   }, []);
 
   // Anota un evento con el tiempo activo del nivel (el mismo reloj que
@@ -544,8 +543,7 @@ export function useNodeConnectionGame() {
           level,
           pairCount: levelData.pairs.length,
           solved,
-          blockedCount: statsRef.current.blockedCount,
-          resetCount: resetCountRef.current,
+          ...currentCounts(),
         }),
         pairCount: levelData.pairs.length,
         timeMs: grossMs,
@@ -564,20 +562,17 @@ export function useNodeConnectionGame() {
 
       finalizeTry(result, results);
     },
-    [level, tryNumber, levelData, clock, results, endGesture, recordStrokeEnd, finalizeTry],
+    [level, tryNumber, levelData, clock, results, endGesture, recordStrokeEnd, finalizeTry, currentCounts],
   );
 
   // Cuenta un error mas en pantalla y, si se acabo el margen, termina el intento.
   const syncErrors = useCallback(() => {
-    const total = errorsOf({
-      blockedCount: statsRef.current.blockedCount,
-      resetCount: resetCountRef.current,
-    });
+    const total = currentErrors();
 
     setErrors(total);
 
     if (total > allowedErrors(level, levelData.pairs.length)) resolveTry(false);
-  }, [level, levelData, resolveTry]);
+  }, [level, levelData, resolveTry, currentErrors]);
 
   const flashBlocked = useCallback((cell: Cell) => {
     const previous = blockedRef.current;
@@ -642,12 +637,18 @@ export function useNodeConnectionGame() {
         ...(restarted > 0 ? { restartCells: restarted } : {}),
       });
 
+      // Acortar o rehacer una ruta tocandola es un error: si agota el margen, el intento termina.
+      if (restarted > 0) {
+        syncErrors();
+        if (resolvedRef.current) return;
+      }
+
       strokeBaseRef.current = pathsRef.current;
       activeColorRef.current = started.color;
       setActiveColor(started.color);
       commitPaths(started.paths);
     },
-    [phase, levelData, commitPaths, record],
+    [phase, levelData, commitPaths, record, syncErrors],
   );
 
   const pointerMove = useCallback(
@@ -669,6 +670,8 @@ export function useNodeConnectionGame() {
         target,
       );
 
+      let backtracked = false;
+
       if (next !== pathsRef.current) {
         // Un trazo solo borra celdas al volver sobre si mismo (retroceder).
         const erased = removedCells(levelData, pathsRef.current, next);
@@ -678,17 +681,29 @@ export function useNodeConnectionGame() {
             ...statsRef.current,
             backtrackCells: statsRef.current.backtrackCells + erased,
           };
-          gestureBacktrackedRef.current = true;
           gestureBackCellsRef.current += erased;
+
+          // Un gesto que retrocede cuenta un error, una sola vez aunque borre varias celdas.
+          if (!gestureBacktrackedRef.current) {
+            gestureBacktrackedRef.current = true;
+            statsRef.current = {
+              ...statsRef.current,
+              backtrackGestures: statsRef.current.backtrackGestures + 1,
+            };
+            backtracked = true;
+          }
         }
 
         commitPaths(next);
       }
+
+      if (backtracked) syncErrors();
+      if (resolvedRef.current) return;
       if (blockedAt) flashBlocked(blockedAt);
 
       if (isSolved(levelData, next)) resolveTry(true);
     },
-    [phase, levelData, commitPaths, flashBlocked, resolveTry],
+    [phase, levelData, commitPaths, flashBlocked, resolveTry, syncErrors],
   );
 
   const pointerUp = useCallback(() => {
@@ -720,8 +735,10 @@ export function useNodeConnectionGame() {
     record({ type: "undo" });
     setCanUndo(historyRef.current.length > 0);
     commitPaths(previous);
-    persist();
-  }, [phase, commitPaths, persist, record]);
+    // Deshacer cuenta un error: si agota el margen, el intento termina.
+    syncErrors();
+    if (!resolvedRef.current) persist();
+  }, [phase, commitPaths, persist, record, syncErrors]);
 
   // Reiniciar tambien se puede deshacer: un toque por error no pierde el trabajo.
   const reset = useCallback(() => {

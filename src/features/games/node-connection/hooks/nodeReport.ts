@@ -1,6 +1,6 @@
 import { LEVELS } from "../levels";
 import type { LevelReport, MetricValue } from "../../attempts/types";
-import { allowedErrors, errorsOf, nodeResultKey } from "../rules";
+import { allowedErrors, errorCountsOf, errorsOf, nodeResultKey } from "../rules";
 import { cellsErased, corrections } from "../stats";
 import type { NodeEvent, NodeLevelResult } from "../types";
 
@@ -38,10 +38,7 @@ export function toNodeReport(
       // Sin contadores (partida anterior a registrarlos) no se inventan errores.
       ...(result.stats
         ? {
-            errors: errorsOf({
-              blockedCount: result.stats.blockedCount,
-              resetCount: result.resetCount,
-            }),
+            errors: errorsOf(errorCountsOf(result)),
             errorsAllowed: allowedErrors(result.level, result.pairCount),
           }
         : {}),
@@ -69,7 +66,7 @@ export function toNodeReport(
  * o los intentos: una partida jugada sin errores permitidos ("r1", la unica
  * hasta entonces) no se puede comparar con una jugada con ellos.
  */
-const RULES_REVISION = 3;
+const RULES_REVISION = 4;
 
 /**
  * Cambia cuando cambian los tableros o las reglas: sin ella no se pueden
