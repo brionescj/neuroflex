@@ -22,6 +22,7 @@ import { isValidRut } from "@/utils/rut";
 
 import {
   createStudentAction,
+  generateStudentPasswordAction,
   listStudentsAction,
   setStudentEnabledAction,
   updateStudentDetailsAction,
@@ -31,7 +32,7 @@ import { matchesQuery } from "../utils/matchesQuery";
 import { formatNameInput, sanitizeNameInput } from "../utils/sanitizeInput";
 import { HighlightMatch } from "./HighlightMatch";
 import { Pagination } from "./Pagination";
-import { StudentPasswordDialog } from "./StudentPasswordDialog";
+import { GeneratePasswordDialog } from "./GeneratePasswordDialog";
 
 const EMPTY_FORM = {
   rut: "",
@@ -958,8 +959,14 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
       )}
 
       {passwordFor && (
-        <StudentPasswordDialog
-          student={passwordFor}
+        <GeneratePasswordDialog
+          target={{
+            rut: passwordFor.rut,
+            fullName: `${passwordFor.firstName} ${passwordFor.paternalLastName} ${passwordFor.maternalLastName}`,
+            kind: "student",
+            notRegistered: !passwordFor.registered,
+          }}
+          generate={(adminPassword) => generateStudentPasswordAction(passwordFor.rut, adminPassword)}
           onClose={() => setPasswordFor(null)}
           onGenerated={loadStudents}
         />

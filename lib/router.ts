@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import adminAdminDetails from "./handlers/admin/adminDetails";
 import adminAdmins from "./handlers/admin/admins";
+import adminAdminPassword from "./handlers/admin/adminPassword";
 import adminAdminStatus from "./handlers/admin/adminStatus";
 import adminMiniCases from "./handlers/admin/miniCases";
 import adminStats from "./handlers/admin/statsChart";
@@ -55,6 +56,7 @@ export const ROUTES: RouteDef[] = [
 
   { pattern: "admin/admins", handler: adminAdmins },
   { pattern: "admin/admins/:rut", handler: adminAdminDetails },
+  { pattern: "admin/admins/:rut/password", handler: adminAdminPassword },
   { pattern: "admin/admins/:rut/status", handler: adminAdminStatus },
   { pattern: "admin/mini-cases", handler: adminMiniCases },
   { pattern: "admin/stats/catalog", handler: adminStatsCatalog },

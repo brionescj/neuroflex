@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   /** Cuentas de acceso por RUT (la clave ya cifrada como hash(...)). */
   accounts: {} as Record<string, { rut: string; password: string; role: string; enabled: boolean }>,
   student: null as null | { rut: string; enabled: boolean; registered: boolean; save: () => Promise<void> },
+  admin: null as null | { rut: string; enabled: boolean },
   saves: 0,
   created: [] as Doc[],
   updates: [] as { filter: Doc; update: Doc }[],
@@ -62,6 +63,11 @@ vi.mock("./models/Student", () => ({
   Student: { findOne: async () => mocks.student },
 }));
 
+vi.mock("./models/Admin", () => ({
+  Admin: { findOne: async () => mocks.admin },
+}));
+
+import adminPasswordHandler from "./handlers/admin/adminPassword";
 import studentPasswordHandler from "./handlers/admin/studentPassword";
 import ownPasswordHandler from "./handlers/auth/password";
 import { validatePasswordStrength } from "./password";
@@ -111,6 +117,7 @@ beforeEach(() => {
     [mocks.self]: { rut: mocks.self, password: `hash(${ADMIN_PASSWORD})`, role: "admin", enabled: true },
   };
   mocks.student = makeStudent();
+  mocks.admin = { rut: "11111111-1", enabled: true };
   mocks.saves = 0;
   mocks.created = [];
   mocks.updates = [];
@@ -269,5 +276,77 @@ describe("POST auth/password", () => {
     const { json } = await call({ currentPassword: OWN, newPassword: "Nueva#Clave37" });
 
     expect(JSON.stringify(json)).not.toContain("Nueva#Clave37");
+  });
+});
+
+describe("POST admin/admins/:rut/password", () => {
+  const OTHER = "11111111-1";
+  const call = (body: unknown = { adminPassword: ADMIN_PASSWORD }, rut = OTHER) =>
+    run(adminPasswordHandler, "POST", body, { rut });
+
+  beforeEach(() => {
+    mocks.accounts[OTHER] = { rut: OTHER, password: "hash(olvidada)", role: "admin", enabled: true };
+  });
+
+  it("solo un administrador con sesion, y solo POST", async () => {
+    mocks.role = "student";
+    expect((await call()).status).toBe(403);
+
+    mocks.authorized = false;
+    expect((await call()).status).toBe(401);
+
+    mocks.authorized = true;
+    mocks.role = "admin";
+    expect((await run(adminPasswordHandler, "GET", undefined, { rut: OTHER })).status).toBe(405);
+    expect(mocks.updates).toHaveLength(0);
+  });
+
+  it("un administrador reestablece la contraseña de otro: se guarda cifrada y se entrega una sola vez", async () => {
+    const { status, json } = await call();
+
+    expect(status).toBe(200);
+    expect(validatePasswordStrength(json.data.password)).toBeNull();
+    expect(mocks.updates).toEqual([{ filter: { rut: OTHER }, update: { password: `hash(${json.data.password})` } }]);
+    expect(mocks.created).toHaveLength(0);
+  });
+
+  it("sin la contraseña de quien la genera, o con una incorrecta, no cambia nada", async () => {
+    expect((await call({})).status).toBe(400);
+    expect((await call({ adminPassword: "" })).status).toBe(400);
+
+    const wrong = await call({ adminPassword: "Otra#Clave26" });
+
+    expect(wrong.status).toBe(403);
+    expect(wrong.json.message).toBe("Su contraseña no es correcta.");
+    expect(mocks.updates).toHaveLength(0);
+  });
+
+  it("para la propia cuenta no sirve: se cambia desde el perfil", async () => {
+    const { status, json } = await call({ adminPassword: ADMIN_PASSWORD }, mocks.self);
+
+    expect(status).toBe(400);
+    expect(json.message).toBe("Para cambiar su propia contraseña use su perfil.");
+    expect(mocks.updates).toHaveLength(0);
+  });
+
+  it("administrador inexistente: 404; un RUT con cuenta de otro rol: 409", async () => {
+    mocks.admin = null;
+    expect((await call()).status).toBe(404);
+
+    mocks.admin = { rut: OTHER, enabled: true };
+    mocks.accounts[OTHER] = { rut: OTHER, password: "hash(x)", role: "student", enabled: true };
+    expect((await call()).status).toBe(409);
+    expect(mocks.updates).toHaveLength(0);
+  });
+
+  it("un administrador sin cuenta de acceso la recibe creada", async () => {
+    delete mocks.accounts[OTHER];
+
+    const { status, json } = await call();
+
+    expect(status).toBe(200);
+    expect(mocks.created).toEqual([
+      { rut: OTHER, password: `hash(${json.data.password})`, role: "admin", enabled: true },
+    ]);
   });
 });

@@ -2,7 +2,8 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 import { connectDB } from "../../db";
 import { requireAuth } from "../../auth";
-import { generatePassword, hashPassword, verifyPassword } from "../../password";
+import { confirmAdminPassword } from "../../adminConfirm";
+import { generatePassword, hashPassword } from "../../password";
 import { AuthUser } from "../../models/AuthUser";
 import { Student } from "../../models/Student";
 
@@ -22,19 +23,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const payload = requireAuth(req, res, ["admin"]);
   if (!payload) return;
 
-  const adminPassword = req.body?.adminPassword;
-
-  if (typeof adminPassword !== "string" || adminPassword === "") {
-    return res.status(400).json({ success: false, message: "Ingrese su contraseña para confirmar." });
-  }
-
   await connectDB();
 
-  const self = await AuthUser.findOne({ rut: payload.rut });
+  const confirmation = await confirmAdminPassword(payload.rut, req.body?.adminPassword);
 
-  // 403 y no 401: un 401 se lee como sesion vencida.
-  if (!self || !(await verifyPassword(adminPassword, self.password))) {
-    return res.status(403).json({ success: false, message: "Su contraseña no es correcta." });
+  if (!confirmation.ok) {
+    return res.status(confirmation.status).json({ success: false, message: confirmation.message });
   }
 
   const rut = req.query.rut as string;

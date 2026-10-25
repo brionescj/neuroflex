@@ -1,5 +1,6 @@
 import {
   createAdmin,
+  generateAdminPassword,
   listAdmins,
   setAdminEnabled,
   updateAdminNames,
@@ -21,4 +22,8 @@ export async function setAdminEnabledAction(rut: string, enabled: boolean) {
 
 export async function updateAdminNamesAction(rut: string, payload: UpdateAdminNamesPayload) {
   return updateAdminNames(rut, payload);
+}
+
+export async function generateAdminPasswordAction(rut: string, adminPassword: string) {
+  return generateAdminPassword(rut, adminPassword);
 }

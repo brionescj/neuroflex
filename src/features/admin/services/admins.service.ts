@@ -82,3 +82,22 @@ export async function updateAdminNames(
     return fail("No se pudo conectar con el servidor.");
   }
 }
+
+/** Genera una contraseña aleatoria para otro administrador; pide la contraseña de quien la genera para confirmar. */
+export async function generateAdminPassword(
+  rut: string,
+  adminPassword: string,
+): Promise<ApiResponse<{ password: string }>> {
+  try {
+    const response = await api.post<ApiResponse<{ password: string }>>(
+      `/admin/admins/${rut}/password`,
+      { adminPassword },
+    );
+    return response.data;
+  } catch (error) {
+    if (isAxiosError(error) && error.response) {
+      return responseFromError<{ password: string }>(error.response);
+    }
+    return fail("No se pudo conectar con el servidor.");
+  }
+}

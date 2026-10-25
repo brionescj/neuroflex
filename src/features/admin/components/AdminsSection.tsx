@@ -1,4 +1,4 @@
-import { Dices, Pencil, Plus } from "lucide-react";
+import { Dices, KeyRound, Pencil, Plus } from "lucide-react";
 import { Fragment, useEffect, useState, type FormEvent } from "react";
 
 import { RutInput } from "@/components/forms/RutInput";
@@ -15,6 +15,7 @@ import { isValidRut } from "@/utils/rut";
 
 import {
   createAdminAction,
+  generateAdminPasswordAction,
   listAdminsAction,
   setAdminEnabledAction,
   updateAdminNamesAction,
@@ -22,6 +23,7 @@ import {
 import { matchesQuery } from "../utils/matchesQuery";
 import { formatNameInput } from "../utils/sanitizeInput";
 import { AdminNameForm, type PersonNames } from "./AdminNameForm";
+import { GeneratePasswordDialog } from "./GeneratePasswordDialog";
 import { HighlightMatch } from "./HighlightMatch";
 import { Pagination } from "./Pagination";
 
@@ -69,16 +71,31 @@ function AdminActions({
   isEditing,
   onToggle,
   onEdit,
+  onPassword,
 }: {
   admin: Admin;
   isSelf: boolean;
   isEditing: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onPassword: () => void;
 }) {
   return (
     <div className="flex items-center gap-2">
       <AdminToggle admin={admin} isSelf={isSelf} onToggle={onToggle} />
+
+      {/* La propia contraseña se cambia desde el perfil; aqui solo la de otro administrador. */}
+      {!isSelf && (
+        <button
+          type="button"
+          onClick={onPassword}
+          title="Generar nueva contraseña"
+          aria-label="Generar nueva contraseña"
+          className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+        >
+          <KeyRound className="size-4" />
+        </button>
+      )}
 
       {!isEditing && (
         <button
@@ -111,6 +128,7 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
   const [page, setPage] = useState(1);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [editingRut, setEditingRut] = useState<string | null>(null);
+  const [passwordFor, setPasswordFor] = useState<Admin | null>(null);
 
   const isCardView = !useMediaQuery("(min-width: 1024px)");
   const pageSize = isCardView ? 5 : 12;
@@ -171,6 +189,7 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
       setFormError(null);
       setPasswordVisible(false);
       setEditingRut(null);
+      setPasswordFor(null);
     }
   }, [isActive]);
 
@@ -380,6 +399,7 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
                             isEditing={editingRut === admin.rut}
                             onToggle={() => handleToggle(admin)}
                             onEdit={() => setEditingRut(admin.rut)}
+                            onPassword={() => setPasswordFor(admin)}
                           />
                         </td>
                       </tr>
@@ -438,6 +458,7 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
                       isEditing={editingRut === admin.rut}
                       onToggle={() => handleToggle(admin)}
                       onEdit={() => setEditingRut(admin.rut)}
+                      onPassword={() => setPasswordFor(admin)}
                     />
                   </div>
 
@@ -459,6 +480,19 @@ export function AdminsSection({ searchQuery, isActive }: AdminsSectionProps) {
 
           <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         </>
+      )}
+
+      {passwordFor && (
+        <GeneratePasswordDialog
+          target={{
+            rut: passwordFor.rut,
+            fullName: `${passwordFor.firstName} ${passwordFor.paternalLastName} ${passwordFor.maternalLastName}`,
+            kind: "admin",
+          }}
+          generate={(adminPassword) => generateAdminPasswordAction(passwordFor.rut, adminPassword)}
+          onClose={() => setPasswordFor(null)}
+          onGenerated={() => undefined}
+        />
       )}
     </div>
   );
