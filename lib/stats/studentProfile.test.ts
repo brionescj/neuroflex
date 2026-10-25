@@ -308,8 +308,8 @@ describe("buildStudentProfile", () => {
       const charts = profile()?.games.find((g) => g.game === "color-sequence")?.charts ?? [];
       const first = charts.find((c) => c.id === "cs-first-error")?.result;
 
-      expect(first?.categories).toEqual(["Al comienzo de la secuencia", "En la parte central", "Al final de la secuencia"]);
-      expect(charts.find((c) => c.id === "cs-first-error")?.description).toMatch(/9 colores/);
+      expect(first?.categories).toEqual(["1.ª parte (inicio)", "2.ª parte", "3.ª parte (centro)", "4.ª parte", "5.ª parte (final)"]);
+      expect(charts.find((c) => c.id === "cs-first-error")?.description).toMatch(/5 partes iguales/);
 
       for (const id of ["cs-tries", "cs-error-type", "cs-first-error"] as const) {
         const result = charts.find((c) => c.id === id)?.result;

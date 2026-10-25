@@ -27,6 +27,7 @@ describe("parseChartRequest", () => {
       period: "all",
       range: null,
       ranges: [],
+      alsoBy: [],
       filters: {},
       ageRange: null,
       students: [],
@@ -217,5 +218,21 @@ describe("parseChartRequest", () => {
       expect(message({ chart: "nc-levels", ranges: TWO })).toMatch(/solo se usan al comparar por fechas/);
       expect(message({ chart: "participation", groupBy: "dateRange", ranges: TWO })).toMatch(/comparar por fechas/);
     });
+  });
+
+  it("alsoBy: cruza hasta 2 caracteristicas mas con la principal", () => {
+    const request = ok({ chart: "cs-max-level", groupBy: "university", alsoBy: '["gender","paralelo"]' });
+
+    expect(request.alsoBy).toEqual(["gender", "paralelo"]);
+  });
+
+  it("alsoBy: rechaza repetidas, dispositivo, mas de 2 o sin una caracteristica principal", () => {
+    expect(message({ chart: "cs-max-level", groupBy: "university", alsoBy: '["university"]' })).toMatch(/se cruzan/);
+    expect(message({ chart: "cs-max-level", groupBy: "university", alsoBy: '["gender","gender"]' })).toMatch(/se cruzan/);
+    expect(message({ chart: "cs-max-level", groupBy: "university", alsoBy: '["device"]' })).toMatch(/se cruzan/);
+    expect(message({ chart: "cs-max-level", groupBy: "university", alsoBy: '["gender","paralelo","region"]' })).toMatch(/se cruzan/);
+    expect(message({ chart: "cs-max-level", groupBy: "device", alsoBy: '["gender"]' })).toMatch(/se cruzan/);
+    expect(message({ chart: "cs-max-level", groupBy: "none", alsoBy: '["gender"]' })).toMatch(/se cruzan/);
+    expect(message({ chart: "cs-max-level", groupBy: "university", alsoBy: '["colorFavorito"]' })).toMatch(/se cruzan/);
   });
 });

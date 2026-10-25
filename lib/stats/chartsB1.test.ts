@@ -183,12 +183,36 @@ describe("S6, S7 y S8: indicadores exploratorios", () => {
     expect(chart.notes.join(" ")).toMatch(/exploratorio/);
   });
 
-  it("dónde fallan primero: solo primer intento con error, por tercios de la secuencia", () => {
+  it("dónde fallan primero: solo primer intento con error, en 5 partes de la secuencia", () => {
     const chart = run(data(), { chart: "cs-first-error", partida: "" });
 
     expect(chart.exploratory).toBe(true);
-    // s1 n2: posicion 1 de 3 -> inicio. s2 n2: posicion 3 de 3 -> final. s3 n13: posicion 14 de 14 -> final.
-    expect(only(chart).ns).toEqual([1, 0, 2]);
+    expect(chart.categories).toHaveLength(5);
+    // s1 n2: posicion 1 de 3 = 33 % de la secuencia -> 2.ª parte. s2 n2: posicion 3 de 3 -> 5.ª. s3 n13: posicion 14 de 14 -> 5.ª.
+    expect(only(chart).ns).toEqual([0, 1, 0, 0, 2]);
+  });
+
+  it("dónde fallan primero como tabla: una fila por estudiante con la parte donde más falla", () => {
+    const chart = run(data(), { chart: "cs-first-error", partida: "", options: '{"show":"students"}' });
+
+    expect(chart.views).toEqual([]);
+    expect(chart.table?.columns).toEqual([
+      "Estudiante", "RUT", "Paralelo", "Universidad", "Respuestas con error",
+      "1.ª parte (inicio)", "2.ª parte", "3.ª parte (centro)", "4.ª parte", "5.ª parte (final)",
+      "Donde más falla primero",
+    ]);
+
+    const rows = chart.table?.rows ?? [];
+
+    expect(rows).toHaveLength(3);
+    // Cada fila suma sus respuestas con error: columna 4 = total, 5 a 9 = las partes.
+    for (const row of rows) {
+      const parts = row.slice(5, 10) as number[];
+
+      expect(parts.reduce((sum, n) => sum + n, 0)).toBe(row[4]);
+    }
+
+    expect(rows.map((row) => row[10]).sort()).toEqual(["2.ª parte", "5.ª parte (final)", "5.ª parte (final)"]);
   });
 });
 

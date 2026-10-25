@@ -17,10 +17,13 @@ import {
   unitLabelOf,
   unitRut,
   type ChartDef,
+  type Ctx,
   type Unit,
 } from "./engine";
+import { BASE_COLUMNS, baseCells } from "./chartsLists";
 import { percentOf } from "./numbers";
-import type { ResultRow } from "./types";
+import { studentName, type Grouped } from "./pipeline";
+import type { ChartOptionDef, ChartTable, ResultRow, StudentRow } from "./types";
 
 const GAME = "color-sequence" as const;
 
@@ -281,26 +284,135 @@ const csErrorType: ChartDef = {
   },
 };
 
-const FIRST_ERROR = ["Al comienzo de la secuencia", "En la parte central", "Al final de la secuencia"];
+/** En cuantas partes iguales se divide la secuencia para ubicar el primer error. */
+const FIRST_ERROR_PARTS = 5;
+
+const FIRST_ERROR = [
+  "1.ª parte (inicio)",
+  "2.ª parte",
+  "3.ª parte (centro)",
+  "4.ª parte",
+  "5.ª parte (final)",
+];
+
+/** La parte de la secuencia (0 a 4) donde cae el primer error, o null si falta el dato. */
+function firstErrorPart(r: ResultRow): number | null {
+  const position = analysisNumber(r, "firstErrorPosition");
+  const length = analysisNumber(r, "sequenceLength");
+
+  if (position === null || length === null || length <= 0) return null;
+
+  // El ultimo color siempre cae en la ultima parte, sea cual sea el largo de la secuencia.
+  return Math.max(0, Math.min(FIRST_ERROR_PARTS - 1, Math.ceil((position / length) * FIRST_ERROR_PARTS) - 1));
+}
+
+const FIRST_ERROR_SHOW: ChartOptionDef = {
+  id: "show",
+  label: "Mostrar",
+  default: "chart",
+  choices: [
+    { value: "chart", label: "Gráfico" },
+    { value: "students", label: "Tabla: en qué parte falla cada estudiante" },
+  ],
+};
+
+/**
+ * La tabla de «Dónde fallan primero»: un estudiante por fila, con cuantas veces
+ * fallo primero en cada parte de la secuencia y en cual falla mas. Solo salen
+ * quienes tuvieron alguna respuesta con error en el primer intento.
+ */
+function firstErrorTable(
+  ctx: Ctx,
+  grouped: Grouped<Unit>,
+  partsOf: (items: Unit[]) => number[],
+): ChartTable {
+  const manyGroups = grouped.specs.length > 1;
+  const rows: { name: string; row: (string | number | null)[] }[] = [];
+
+  for (const spec of grouped.specs) {
+    const byRut = new Map<string, Unit[]>();
+
+    for (const unit of grouped.byGroup.get(spec.key) ?? []) {
+      const list = byRut.get(unitRut(unit)) ?? [];
+
+      list.push(unit);
+      byRut.set(unitRut(unit), list);
+    }
+
+    for (const [rut, items] of byRut) {
+      const parts = partsOf(items);
+      const total = parts.reduce((sum, n) => sum + n, 0);
+
+      if (total === 0) continue;
+
+      const top = Math.max(...parts);
+      const where = FIRST_ERROR.filter((_, i) => parts[i] === top).join(" y ");
+      const student: StudentRow | undefined = ctx.students.get(rut);
+
+      rows.push({
+        name: student ? `${student.paternalLastName} ${student.firstName}` : rut,
+        row: [
+          ...(student ? baseCells(student) : [studentName(undefined, rut), rut, "", ""]),
+          ...(manyGroups ? [spec.label] : []),
+          total,
+          ...parts,
+          where,
+        ],
+      });
+    }
+  }
+
+  rows.sort((a, b) => a.name.localeCompare(b.name, "es"));
+
+  return {
+    columns: [
+      ...BASE_COLUMNS,
+      ...(manyGroups ? ["Grupo"] : []),
+      "Respuestas con error",
+      ...FIRST_ERROR,
+      "Donde más falla primero",
+    ],
+    rows: rows.map((entry) => entry.row),
+  };
+}
 
 const csFirstError: ChartDef = {
   id: "cs-first-error",
   game: GAME,
   title: "Dónde fallan primero",
   blurb:
-    "En las respuestas con error del primer intento, en qué parte de la secuencia ocurrió el primer fallo: al comienzo, en la parte central o al final. Por ejemplo, en una secuencia de 9 colores el comienzo son los colores 1 a 3, la parte central del 4 al 6 y el final del 7 al 9. Un fallo temprano suele hablar de no haber retenido el comienzo; uno tardío, de perder el hilo.",
-  views: COMPOSITION_VIEWS,
+    "En las respuestas con error del primer intento, en qué parte de la secuencia ocurrió el primer fallo. La secuencia se divide en 5 partes iguales: por ejemplo, en una de 10 colores la 1.ª parte son los colores 1 y 2, la 2.ª el 3 y 4, la 3.ª (centro) el 5 y 6, la 4.ª el 7 y 8 y la 5.ª (final) el 9 y 10. Un fallo temprano suele hablar de no haber retenido el comienzo; uno tardío, de perder el hilo. Con «Tabla» ves en qué parte falla cada estudiante.",
+  views: (options) => (options.show === "students" ? [] : COMPOSITION_VIEWS),
   exploratory: true,
   usesPartida: true,
   supportsDevice: true,
-  options: [AS_OPTION, LEVEL_BAND_OPTION],
+  options: [AS_OPTION, LEVEL_BAND_OPTION, FIRST_ERROR_SHOW],
   build: (ctx) => {
     const units = gameUnits(ctx, GAME);
     const grouped = groupUnits(ctx, units);
     const mode = asOf(ctx);
     const band = ctx.options.levels;
 
+    const partsOf = (items: Unit[]) => {
+      const parts = new Array<number>(FIRST_ERROR_PARTS).fill(0);
+
+      for (const unit of items) {
+        for (const r of unit.results) {
+          if (r.tryNumber !== 1 || !inLevelBand(r.index, band)) continue;
+
+          const part = firstErrorPart(r);
+
+          if (part !== null) parts[part] = (parts[part] ?? 0) + 1;
+        }
+      }
+
+      return parts;
+    };
+
+    const table = ctx.options.show === "students" ? firstErrorTable(ctx, grouped, partsOf) : undefined;
+
     return {
+      ...(table ? { table } : {}),
       xLabel: "Dónde fue el primer error",
       yLabel: mode === "percent" ? "% de respuestas con error" : "Respuestas con error",
       unit: mode === "percent" ? "percent" : "students",
@@ -309,34 +421,18 @@ const csFirstError: ChartDef = {
       series: compositionSeries(
         grouped,
         unitRut,
-        3,
-        (items) => {
-          const parts = [0, 0, 0];
-
-          for (const unit of items) {
-            for (const r of unit.results) {
-              if (r.tryNumber !== 1 || !inLevelBand(r.index, band)) continue;
-
-              const position = analysisNumber(r, "firstErrorPosition");
-              const length = analysisNumber(r, "sequenceLength");
-
-              if (position === null || length === null || length <= 0) continue;
-
-              const relative = (position - 1) / length;
-              const slot = relative < 1 / 3 ? 0 : relative < 2 / 3 ? 1 : 2;
-
-              parts[slot] = (parts[slot] ?? 0) + 1;
-            }
-          }
-
-          return parts;
-        },
+        FIRST_ERROR_PARTS,
+        partsOf,
         mode,
       ),
       notes: [
         ...contextNotes(ctx),
         ...(levelBandNote(ctx) ? [levelBandNote(ctx) as string] : []),
         "Solo el primer intento de cada nivel y solo las respuestas con algún error.",
+        "La secuencia se divide en 5 partes iguales según su largo en ese nivel.",
+        ...(table
+          ? [`${table.rows.length} estudiantes con al menos una respuesta con error. «Donde más falla primero» es la parte con más primeros errores; si hay empate salen las dos.`]
+          : []),
         EXPLORATORY_NOTE,
       ],
       studentsTotal: totalStudents(grouped, unitRut),

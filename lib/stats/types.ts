@@ -208,6 +208,11 @@ export type ChartResult = {
 export type ChartRequest = {
   chart: ChartId;
   groupBy: GroupBy;
+  /**
+   * Otras caracteristicas que se cruzan con `groupBy` (solo si este es una
+   * caracteristica): cada grupo es una combinacion, p. ej. «UVM · Femenino».
+   */
+  alsoBy: DimensionId[];
   partida: Partida;
   /** Con una cantidad de partidas: si son las primeras o las ultimas del periodo. */
   take: Take;

@@ -5,9 +5,10 @@ import {
   buildChartParams,
   cleanFilters,
   compareSummary,
+  comparedDimensions,
   comparedValues,
+  findChartDef,
   filtersSummary,
-  groupByLabel,
   initialSelection,
   ageSummary,
   formatRange,
@@ -22,9 +23,11 @@ import {
   selectChart,
   selectGame,
   toggleComparedValue,
+  toggleDimension,
   toggleFilterValue,
+  withDimensions,
 } from "./selection";
-import type { Catalog } from "../types";
+import type { Catalog, CatalogChart } from "../types";
 
 const LIMITS = { min: 17, max: 80 };
 
@@ -343,7 +346,7 @@ describe("filtros", () => {
 
     expect(activeFilterCount(filters)).toBe(3);
     expect(filtersSummary(catalog, filters)).toBe("Paralelo: Paralelo 1, Paralelo 2 · Género: Femenino");
-    expect(filtersSummary(catalog, {})).toBe("Sin filtros");
+    expect(filtersSummary(catalog, {})).toBe("Sin acotar");
   });
 });
 
@@ -379,12 +382,6 @@ describe("edad", () => {
 });
 
 describe("textos", () => {
-  it("describe como se compara", () => {
-    expect(groupByLabel(catalog, "none")).toBe("Ver el gráfico completo");
-    expect(groupByLabel(catalog, "gender")).toBe("Comparar por género");
-    expect(groupByLabel(catalog, "student")).toBe("Comparar estudiantes");
-  });
-
   it("la busqueda ignora tildes y mayusculas", () => {
     expect(normalizeSearch("  María Peña ")).toBe("maria pena");
   });
@@ -427,21 +424,62 @@ describe("elegir que se compara", () => {
     });
   });
 
-  it("el resumen de «Cómo verlo» dice cuantos grupos se comparan", () => {
+  it("el resumen de comparar dice que se compara y cuantos grupos", () => {
     const base = { ...initialSelection(catalog), groupBy: "paralelo" as const };
 
-    expect(compareSummary(catalog, base)).toBe("Comparar por paralelo");
-    expect(compareSummary(catalog, { ...base, filters: { paralelo: ["1"] } })).toBe(
-      "Comparar por paralelo (1 de 2)",
-    );
-    expect(compareSummary(catalog, { ...base, groupBy: "none" })).toBe("Ver el gráfico completo");
+    expect(compareSummary(catalog, base)).toBe("Por paralelo");
+    expect(compareSummary(catalog, { ...base, filters: { paralelo: ["1"] } })).toBe("Por paralelo (1 de 2)");
+    expect(compareSummary(catalog, { ...base, alsoBy: ["gender"] })).toBe("Por paralelo y género");
+    expect(compareSummary(catalog, { ...base, groupBy: "none" })).toBe("Sin comparar");
+  });
+
+  it("cruzar caracteristicas: la primera es la principal y se pueden cruzar hasta 3", () => {
+    let selection = initialSelection(catalog);
+
+    selection = toggleDimension(selection, "paralelo");
+    selection = toggleDimension(selection, "gender");
+
+    expect(selection.groupBy).toBe("paralelo");
+    expect(selection.alsoBy).toEqual(["gender"]);
+    expect(comparedDimensions(selection)).toEqual(["paralelo", "gender"]);
+
+    // Quitar la principal sube la siguiente.
+    selection = toggleDimension(selection, "paralelo");
+
+    expect(selection.groupBy).toBe("gender");
+    expect(selection.alsoBy).toEqual([]);
+
+    // Quitar la ultima deja sin comparar.
+    expect(toggleDimension(selection, "gender").groupBy).toBe("none");
+  });
+
+  it("no se cruzan mas de 3 ni el dispositivo con otras", () => {
+    const three = withDimensions(initialSelection(catalog), ["paralelo", "gender", "university"]);
+
+    expect(toggleDimension(three, "region")).toBe(three);
+
+    const device = toggleDimension(three, "device");
+
+    expect(device.groupBy).toBe("device");
+    expect(device.alsoBy).toEqual([]);
+    expect(toggleDimension(device, "gender").groupBy).toBe("gender");
+    expect(toggleDimension(device, "gender").alsoBy).toEqual([]);
+  });
+
+  it("la peticion lleva alsoBy solo al cruzar; al comparar estudiantes o fechas se descarta", () => {
+    const chart = findChartDef(catalog, initialSelection(catalog).chart) as CatalogChart;
+    const crossed = withDimensions(initialSelection(catalog), ["paralelo", "gender"]);
+
+    expect(buildChartParams(crossed, chart, LIMITS).alsoBy).toBe('["gender"]');
+    expect(buildChartParams({ ...crossed, groupBy: "student", students: ["1-9"] }, chart, LIMITS).alsoBy).toBeUndefined();
+    expect(buildChartParams(initialSelection(catalog), chart, LIMITS).alsoBy).toBeUndefined();
   });
 
   it("el resumen de filtros omite la caracteristica que se compara", () => {
     const filters = { paralelo: ["1"], gender: ["female"] };
 
-    expect(filtersSummary(catalog, filters, undefined, "paralelo")).toBe("Género: Femenino");
-    expect(filtersSummary(catalog, { paralelo: ["1"] }, undefined, "paralelo")).toBe("Sin filtros");
+    expect(filtersSummary(catalog, filters, undefined, ["paralelo"])).toBe("Género: Femenino");
+    expect(filtersSummary(catalog, { paralelo: ["1"] }, undefined, ["paralelo"])).toBe("Sin acotar");
   });
 });
 

@@ -473,6 +473,54 @@ describe("Seriacion: nivel maximo superado", () => {
     expect(withNone.series.map((s) => s.key)).toEqual(["female", "male", "none"]);
   });
 
+  it("cruza dos caracteristicas: cada combinacion es un grupo", () => {
+    const chart = run(colorData(), { chart: "cs-max-level", groupBy: "university", alsoBy: '["gender"]' });
+
+    // UVM: 1 mujer y 1 hombre; Santo Tomás: 1 mujer. El estudiante 4 no tiene ninguno de los dos datos.
+    expect(chart.series.map((s) => s.label)).toEqual([
+      "Santo Tomás · Femenino",
+      "UVM · Femenino",
+      "UVM · Masculino",
+    ]);
+    expect(chart.series.map((s) => s.n)).toEqual([1, 1, 1]);
+  });
+
+  it("al cruzar, lo que no tiene el dato queda en «Sin dato» dentro de la combinacion y se avisa", () => {
+    const data = colorData();
+    const s4a = attempt("4", "color-sequence", 1);
+
+    data.attempts.push(s4a);
+    data.results.push(level(s4a, 1, 1, true, 8));
+
+    const chart = run(data, { chart: "cs-max-level", groupBy: "university", alsoBy: '["gender"]' });
+
+    expect(chart.series.map((s) => s.label)).toContain("Sin dato · Sin dato");
+    expect(chart.warnings.join(" ")).toMatch(/Sin dato/);
+  });
+
+  it("al cruzar, los filtros eligen los valores que se comparan", () => {
+    const chart = run(colorData(), {
+      chart: "cs-max-level",
+      groupBy: "university",
+      alsoBy: '["gender"]',
+      filters: '{"gender":["female"],"university":["uvm"]}',
+    });
+
+    expect(chart.series.map((s) => s.label)).toEqual(["UVM · Femenino"]);
+  });
+
+  it("con mas de 7 combinaciones, las chicas se juntan en «Otros»", () => {
+    const items: GroupItem<string>[] = Array.from({ length: 9 }, (_, i) => ({
+      item: `i${i}`,
+      rut: `r${i}`,
+      valueOf: (dimension) => (dimension === "paralelo" ? String((i % 3) + 1) : i % 2 === 0 ? "female" : "male"),
+    }));
+    const grouped = groupItems(items, { groupBy: "paralelo", alsoBy: ["gender"], students: [] }, new Map());
+
+    expect(grouped.specs.length).toBeLessThanOrEqual(7);
+    expect([...grouped.byGroup.values()].flat()).toHaveLength(9);
+  });
+
   it("filtra por rango de edad con la edad de la partida", () => {
     const data = colorData();
 

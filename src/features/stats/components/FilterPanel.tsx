@@ -17,8 +17,8 @@ type FilterPanelProps = {
   onClear: () => void;
   /** El grafico no distingue dispositivos: no se ofrece ese filtro. */
   hideDevice?: boolean;
-  /** La caracteristica que se esta comparando: sus valores se eligen en «Cómo verlo». */
-  compareBy?: DimensionId | null;
+  /** Las caracteristicas que se estan comparando: sus valores se eligen arriba, al comparar. */
+  compareBy?: DimensionId[];
 };
 
 const FIELD =
@@ -93,13 +93,13 @@ export function FilterPanel({
   onAgeChange,
   onClear,
   hideDevice = false,
-  compareBy = null,
+  compareBy = [],
 }: FilterPanelProps) {
   const [openRow, setOpenRow] = useState<string | null>(null);
   const parsedAge = parseAge(age, catalog.ageLimits);
 
   const specs = catalog.filters.filter(
-    (spec) => spec.id !== compareBy && !(hideDevice && spec.id === "device"),
+    (spec) => !compareBy.includes(spec.id) && !(hideDevice && spec.id === "device"),
   );
 
   const active =

@@ -95,6 +95,7 @@ export function initialSelection(catalog: Catalog, game: StatGame = "general"): 
     game,
     chart: first.id,
     groupBy: "none",
+    alsoBy: [],
     students: [],
     partida: "",
     take: "first",
@@ -112,6 +113,37 @@ export function initialSelection(catalog: Catalog, game: StatGame = "general"): 
 /** La caracteristica por la que se compara, o null si se compara otra cosa (estudiantes, fechas) o nada. */
 export function comparedDimension(groupBy: GroupBy): DimensionId | null {
   return groupBy === "none" || groupBy === "student" || groupBy === "dateRange" ? null : groupBy;
+}
+
+/** Cuantas caracteristicas se pueden cruzar a la vez (la principal y 2 mas). Igual que en el servidor. */
+export const MAX_COMPARED_DIMENSIONS = 3;
+
+/** Todas las caracteristicas que se cruzan, en orden: la principal y las demas. Vacio si se compara otra cosa o nada. */
+export function comparedDimensions(selection: Pick<Selection, "groupBy" | "alsoBy">): DimensionId[] {
+  const main = comparedDimension(selection.groupBy);
+
+  return main === null ? [] : [main, ...(selection.alsoBy ?? [])];
+}
+
+/** Pone las caracteristicas elegidas en `groupBy` (la primera) y `alsoBy` (el resto). */
+export function withDimensions(selection: Selection, dimensions: DimensionId[]): Selection {
+  const [main, ...rest] = dimensions;
+
+  return { ...selection, groupBy: main ?? "none", alsoBy: rest };
+}
+
+/**
+ * Marca o desmarca una caracteristica por la que cruzar. Se cruzan hasta 3 y el
+ * dispositivo va solo (el servidor reparte las partidas por aparato).
+ */
+export function toggleDimension(selection: Selection, dimension: DimensionId): Selection {
+  const current = comparedDimensions(selection);
+
+  if (current.includes(dimension)) return withDimensions(selection, current.filter((id) => id !== dimension));
+  if (dimension === "device" || current.includes("device")) return withDimensions(selection, [dimension]);
+  if (current.length >= MAX_COMPARED_DIMENSIONS) return selection;
+
+  return withDimensions(selection, [...current, dimension]);
 }
 
 /** Cambia de grafico conservando lo que sigue valiendo (filtros, comparacion). */
@@ -144,7 +176,15 @@ export function fitSelection(selection: Selection, chart: CatalogChart): Selecti
     groupBy = "none";
   }
 
-  return { ...selection, filters, groupBy };
+  // Solo se cruzan caracteristicas (nunca estudiantes ni fechas), sin repetir y sin dispositivo.
+  const alsoBy =
+    comparedDimension(groupBy) === null || groupBy === "device"
+      ? []
+      : (selection.alsoBy ?? [])
+          .filter((id, position, list) => id !== "device" && id !== groupBy && list.indexOf(id) === position)
+          .slice(0, MAX_COMPARED_DIMENSIONS - 1);
+
+  return { ...selection, filters, groupBy, alsoBy };
 }
 
 /** Cambia de juego: parte del primer grafico; filtros y comparacion se conservan. */
@@ -160,6 +200,7 @@ export function selectGame(
     {
       ...fresh,
       groupBy: selection.groupBy,
+      alsoBy: selection.alsoBy,
       students: selection.students,
       partida: selection.partida,
       take: selection.take,
@@ -248,8 +289,11 @@ export function buildChartParams(
   chart: CatalogChart,
   limits: { min: number; max: number },
 ): Record<string, string> {
-  const groupBy = fitSelection(selection, chart).groupBy;
+  const fitted = fitSelection(selection, chart);
+  const groupBy = fitted.groupBy;
   const params: Record<string, string> = { chart: chart.id, groupBy };
+
+  if (fitted.alsoBy.length > 0) params.alsoBy = JSON.stringify(fitted.alsoBy);
   const partida = selection.partida.trim();
 
   if (chart.usesPartida) {
@@ -300,14 +344,6 @@ export function paramsKey(params: Record<string, string>): string {
   return JSON.stringify(Object.entries(params).sort(([a], [b]) => a.localeCompare(b)));
 }
 
-export function groupByLabel(catalog: Catalog, groupBy: GroupBy): string {
-  if (groupBy === "none") return "Ver el gráfico completo";
-  if (groupBy === "student") return "Comparar estudiantes";
-  if (groupBy === "dateRange") return "Comparar por rango de fechas";
-
-  return `Comparar por ${(catalog.dimensions.find((d) => d.id === groupBy)?.label ?? groupBy).toLowerCase()}`;
-}
-
 /** Los valores que se comparan: los marcados o, sin marcar nada, todos. */
 export function comparedValues(filters: Filters, dimension: DimensionId, all: string[]): string[] {
   const chosen = filters[dimension];
@@ -336,37 +372,45 @@ export function toggleComparedValue(
   return cleanFilters({ ...filters, [dimension]: next.length === all.length ? [] : next });
 }
 
-/** Lo que muestra la seccion «Cómo verlo» cerrada: como se ve y, al comparar, cuantos grupos. */
+/** Lo que muestra el bloque de comparar cerrado: que se compara y, al comparar, cuantos grupos. */
 export function compareSummary(catalog: Catalog, selection: Selection): string {
-  const base = groupByLabel(catalog, selection.groupBy);
+  if (selection.groupBy === "none") return "Sin comparar";
+  if (selection.groupBy === "student") return `Estudiantes específicos (${selection.students.length})`;
+  if (selection.groupBy === "dateRange") return `Rangos de fechas (${selection.ranges.length})`;
 
-  if (selection.groupBy === "dateRange") return `${base} (${selection.ranges.length} rangos)`;
-  if (selection.groupBy === "none" || selection.groupBy === "student") return base;
+  const dimensions = comparedDimensions(selection);
+  const labels = dimensions.map((id) => (catalog.dimensions.find((d) => d.id === id)?.label ?? id).toLowerCase());
+  const base = `Por ${labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(", ")} y ${labels[labels.length - 1]}`}`;
 
-  const spec = catalog.filters.find((item) => item.id === selection.groupBy);
+  // Con una sola caracteristica se dice cuantos de sus valores quedan.
+  if (dimensions.length === 1) {
+    const spec = catalog.filters.find((item) => item.id === dimensions[0]);
 
-  if (!spec) return base;
+    if (spec) {
+      const all = spec.options.map((option) => option.value);
+      const chosen = comparedValues(selection.filters, dimensions[0] as DimensionId, all);
 
-  const all = spec.options.map((option) => option.value);
-  const chosen = comparedValues(selection.filters, selection.groupBy, all);
+      if (chosen.length < all.length) return `${base} (${chosen.length} de ${all.length})`;
+    }
+  }
 
-  return chosen.length < all.length ? `${base} (${chosen.length} de ${all.length})` : base;
+  return base;
 }
 
 /**
- * Resumen de los filtros. `skip` es la caracteristica que se esta comparando:
- * sus valores se eligen en «Cómo verlo», no aqui.
+ * Resumen de lo que acota el grafico. `skip` son las caracteristicas que se
+ * estan comparando: sus valores se eligen al comparar, no aqui.
  */
 export function filtersSummary(
   catalog: Catalog,
   filters: Filters,
   age: AgeInput = EMPTY_AGE,
-  skip: DimensionId | null = null,
+  skip: DimensionId[] = [],
 ): string {
   const parts: string[] = [];
 
   for (const spec of catalog.filters) {
-    if (spec.id === skip) continue;
+    if (skip.includes(spec.id)) continue;
 
     const values = filters[spec.id];
 
@@ -383,7 +427,7 @@ export function filtersSummary(
 
   if (ageText) parts.push(ageText);
 
-  return parts.length === 0 ? "Sin filtros" : parts.join(" · ");
+  return parts.length === 0 ? "Sin acotar" : parts.join(" · ");
 }
 
 /** Quita o agrega un valor de un filtro. */

@@ -8,16 +8,15 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { getStatsCatalogAction, getStatsChartAction } from "../actions/stats.action";
 import { ChartCard } from "../components/ChartCard";
 import { ChartPicker } from "../components/ChartPicker";
-import { CompareControls } from "../components/CompareControls";
-import { FilterPanel } from "../components/FilterPanel";
+import { ChartSettings } from "../components/ChartSettings";
+import { ComparePanel } from "../components/ComparePanel";
 import { GamePicker } from "../components/GamePicker";
 import { Section } from "../components/Section";
 import {
-  EMPTY_AGE,
   buildChartParams,
   chartsOf,
   compareSummary,
-  comparedDimension,
+  comparedDimensions,
   filtersSummary,
   findChartDef,
   initialSelection,
@@ -94,7 +93,7 @@ export default function StatsPage() {
     if (!catalog || !selection || !chart || !params) return;
 
     const gameName = catalog.games.find((g) => g.id === selection.game)?.label ?? "";
-    const comparing = chart.canCompare ? comparedDimension(selection.groupBy) : null;
+    const comparing = chart.canCompare ? comparedDimensions(selection) : [];
 
     setLoading(true);
     setError(null);
@@ -113,11 +112,13 @@ export default function StatsPage() {
       key: paramsKey(params),
       subtitle: [
         gameName,
-        compareSummary(catalog, selection),
+        chart.canCompare && selection.groupBy !== "none" ? compareSummary(catalog, selection) : null,
         chart.usesPartida ? partidaText(selection) : null,
         chart.usesPartida && canChooseCount(selection) && selection.countBy === "attempts" ? "Contando partidas" : null,
         chart.usesPeriod && selection.groupBy !== "dateRange" ? periodText(catalog, selection) : null,
-        filtersSummary(catalog, selection.filters, selection.age, comparing),
+        filtersSummary(catalog, selection.filters, selection.age, comparing) === "Sin acotar"
+          ? null
+          : filtersSummary(catalog, selection.filters, selection.age, comparing),
       ]
         .filter(Boolean)
         .join(" · "),
@@ -172,8 +173,6 @@ export default function StatsPage() {
   // Partida y fechas: con un numero de partida hay que elegir el periodo antes de mostrar.
   const timeIssue = timeProblem(selection, chart, catalog.maxPartida);
   const gameLabel = catalog.games.find((g) => g.id === selection.game)?.label ?? "";
-  // La caracteristica que se compara: sus valores se eligen en «Cómo verlo», no en los filtros.
-  const compareBy = chart.canCompare ? comparedDimension(selection.groupBy) : null;
 
   function toggle(step: number) {
     setOpen((current) => ({ ...current, [step]: !current[step] }));
@@ -190,7 +189,7 @@ export default function StatsPage() {
       <header>
         <h1 className="text-xl font-semibold text-white">Estadísticas</h1>
         <p className="mt-1 text-sm text-zinc-400">
-          Elige un juego y un gráfico, decide cómo verlo y presiona «Mostrar».
+          Elige un juego y un gráfico, compáralo si quieres y presiona «Mostrar».
         </p>
       </header>
 
@@ -207,7 +206,9 @@ export default function StatsPage() {
           <Section
             step={2}
             title="Gráfico"
-            summary={chart.title}
+            summary={[chart.title, chart.canCompare && selection.groupBy !== "none" ? compareSummary(catalog, selection) : null]
+              .filter(Boolean)
+              .join(" · ")}
             open={!!open[2]}
             onToggle={() => toggle(2)}
             help={{ label: `Qué muestra «${chart.title}»`, text: chart.blurb }}
@@ -217,47 +218,19 @@ export default function StatsPage() {
               value={selection.chart}
               onChange={(id) => update(selectChart(catalog, selection, id))}
             />
-          </Section>
 
-          <Section
-            step={3}
-            title="Cómo verlo"
-            summary={compareSummary(catalog, selection)}
-            open={!!open[3]}
-            onToggle={() => toggle(3)}
-          >
-            <CompareControls
-              catalog={catalog}
-              chart={chart}
-              selection={selection}
-              onChange={update}
-            />
-          </Section>
+            <div className="mt-4 flex flex-col gap-4">
+              <ChartSettings catalog={catalog} chart={chart} selection={selection} onChange={update} />
 
-          <Section
-            step={4}
-            title="Filtros"
-            summary={filtersSummary(catalog, selection.filters, selection.age, compareBy)}
-            open={!!open[4]}
-            onToggle={() => toggle(4)}
-          >
-            <FilterPanel
-              catalog={catalog}
-              value={selection.filters}
-              age={selection.age}
-              onChange={(filters) => update({ ...selection, filters })}
-              onAgeChange={(age) => update({ ...selection, age })}
-              onClear={() =>
-                update({
-                  ...selection,
-                  // Lo que se compara se elige en «Cómo verlo»: aqui no se toca.
-                  filters: compareBy && selection.filters[compareBy] ? { [compareBy]: selection.filters[compareBy] } : {},
-                  age: EMPTY_AGE,
-                })
-              }
-              hideDevice={!chart.supportsDevice}
-              compareBy={compareBy}
-            />
+              <ComparePanel
+                catalog={catalog}
+                chart={chart}
+                selection={selection}
+                onChange={update}
+                open={!!open[3]}
+                onToggle={() => toggle(3)}
+              />
+            </div>
           </Section>
 
           <Button onClick={() => void show()} disabled={loading || needsStudents || !ageProblem.ok || timeIssue !== null} size="md" className="w-full">
@@ -273,13 +246,13 @@ export default function StatsPage() {
 
           {!ageProblem.ok && (
             <p role="alert" className="text-xs text-red-300">
-              Corrige la edad en «Filtros» para poder mostrar el gráfico.
+              Corrige la edad en «Gráfico», dentro de «Comparar este gráfico», para poder mostrarlo.
             </p>
           )}
 
           {timeIssue !== null && (
             <p role="status" className="text-xs text-amber-200">
-              {timeIssue} Se completa en «Cómo verlo».
+              {timeIssue} Se completa en «Gráfico».
             </p>
           )}
 

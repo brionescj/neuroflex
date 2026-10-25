@@ -17,6 +17,9 @@ import { MAX_PARTIDA } from "./types";
 
 export const MAX_COMPARED_STUDENTS = 6;
 
+/** Cuantas caracteristicas extra se cruzan con la principal (3 en total). */
+export const MAX_ALSO_BY = 2;
+
 const MAX_PARAM_LENGTH = 6_000;
 const MAX_FILTER_VALUES = 60;
 const MAX_VALUE_LENGTH = 80;
@@ -144,6 +147,29 @@ function parseRanges(raw: unknown): DateRange[] | null {
   return ranges.every((range): range is DateRange => range !== null) ? ranges : null;
 }
 
+/** Las caracteristicas que se cruzan con la principal. null = invalido. */
+function parseAlsoBy(raw: unknown, groupBy: GroupBy): DimensionId[] | null {
+  const json = readJson(raw);
+
+  if (!json.ok) return null;
+  if (json.value === undefined) return [];
+
+  const list = json.value;
+
+  if (!Array.isArray(list) || list.length > MAX_ALSO_BY) return null;
+  if (list.length === 0) return [];
+
+  // Solo se cruzan caracteristicas, y el dispositivo parte las partidas por aparato: va solo.
+  if (groupBy === "none" || groupBy === "student" || groupBy === "dateRange" || groupBy === "device") return null;
+
+  const valid = list.every(
+    (v): v is DimensionId =>
+      typeof v === "string" && v !== "device" && v !== groupBy && (DIMENSION_IDS as readonly string[]).includes(v),
+  );
+
+  return valid && new Set(list).size === list.length ? (list as DimensionId[]) : null;
+}
+
 function parseStudents(raw: unknown): string[] | null {
   const json = readJson(raw);
 
@@ -258,6 +284,12 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
     }
   }
 
+  const alsoBy = parseAlsoBy(query.alsoBy, groupBy);
+
+  if (alsoBy === null) {
+    return fail("Las características que se cruzan no son válidas: hasta 2 más, distintas entre sí y sin dispositivo.");
+  }
+
   const ageRange = parseAgeRange(query.age);
 
   if (ageRange === null) {
@@ -309,6 +341,7 @@ export function parseChartRequest(query: Record<string, unknown>): ParsedRequest
     request: {
       chart: def.id,
       groupBy,
+      alsoBy,
       partida,
       take: takeRaw as Take,
       // Con una sola partida por estudiante, contar partidas y estudiantes es lo mismo.

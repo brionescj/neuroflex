@@ -31,6 +31,7 @@ import {
   DIMENSION_LABELS,
   FILTER_DIMENSIONS,
   NO_DATA_KEY,
+  NO_DATA_LABEL,
   TABLET_MIN_SHORT_SIDE,
   ageOf,
   dimensionValue,
@@ -595,7 +596,7 @@ export function buildChart(
   }
 
   // El grupo "Sin dato" existe solo si hay estudiantes sin esa caracteristica.
-  if (series.some((item) => item.key === NO_DATA_KEY)) {
+  if (series.some((item) => item.key === NO_DATA_KEY || (request.alsoBy.length > 0 && item.label.includes(NO_DATA_LABEL)))) {
     warnings.push(
       "«Sin dato» son estudiantes a los que les falta esa característica en su ficha.",
     );

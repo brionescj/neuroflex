@@ -52,7 +52,7 @@ export function chileDate(at: Date): string {
 }
 
 /** Los primeros datos de cada fila: quien es. */
-const BASE_COLUMNS = ["Estudiante", "RUT", "Paralelo", "Universidad"];
+export const BASE_COLUMNS = ["Estudiante", "RUT", "Paralelo", "Universidad"];
 
 export const baseCells = (student: StudentRow) => [
   fullName(student),

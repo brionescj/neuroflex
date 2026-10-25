@@ -304,7 +304,7 @@ function singleTexts(id: ChartId, result: ChartResult, { counts, scopes }: Texts
     case "cs-first-error":
       return {
         description:
-          "En las respuestas con error del primer intento, en qué parte de la secuencia ocurrió el primer fallo: al comienzo, en la parte central o al final. Por ejemplo, en una secuencia de 9 colores el comienzo son los colores 1 a 3, la parte central del 4 al 6 y el final del 7 al 9. Un fallo temprano suele hablar de no haber retenido el comienzo; uno tardío, de perder el hilo.",
+          "En las respuestas con error del primer intento, en qué parte de la secuencia ocurrió el primer fallo. La secuencia se divide en 5 partes iguales: por ejemplo, en una de 10 colores la 1.ª parte son los colores 1 y 2, la 2.ª el 3 y 4, la 3.ª (centro) el 5 y 6, la 4.ª el 7 y 8 y la 5.ª (final) el 9 y 10. Un fallo temprano suele hablar de no haber retenido el comienzo; uno tardío, de perder el hilo.",
         basis: `Calculado con ${counted} respuestas con error en ${cs}.`,
       };
     case "nc-time":

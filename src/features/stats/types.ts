@@ -201,6 +201,8 @@ export type Selection = {
   game: StatGame;
   chart: ChartId;
   groupBy: GroupBy;
+  /** Otras caracteristicas que se cruzan con `groupBy` (hasta 2): «universidad y género», por ejemplo. */
+  alsoBy: DimensionId[];
   students: string[];
   /** Lo escrito en «Cantidad de partidas»: cuantas partidas de cada estudiante se miran, o vacio (todas). */
   partida: string;

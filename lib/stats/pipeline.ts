@@ -156,7 +156,7 @@ export type GroupItem<T> = {
  */
 export function groupItems<T>(
   items: GroupItem<T>[],
-  request: Pick<ChartRequest, "groupBy" | "students"> & Partial<Pick<ChartRequest, "ranges">>,
+  request: Pick<ChartRequest, "groupBy" | "students"> & Partial<Pick<ChartRequest, "ranges" | "alsoBy">>,
   students: Map<string, StudentRow>,
 ): Grouped<T> {
   const { groupBy } = request;
@@ -210,6 +210,11 @@ export function groupItems<T>(
   }
 
   const dimension = groupBy;
+
+  if ((request.alsoBy ?? []).length > 0) {
+    return groupByCombination(items, [dimension, ...(request.alsoBy ?? [])]);
+  }
+
   const members = new Map<string, Set<string>>();
   const valueByItem = new Map<T, string>();
 
@@ -265,6 +270,81 @@ export function groupItems<T>(
       value === NO_DATA_KEY || shown.includes(value) ? value : OTHERS_KEY;
 
     byGroup.get(key)?.push(entry.item);
+  }
+
+  return { specs, byGroup };
+}
+
+/** Separador de las partes de la clave de un grupo combinado. */
+const COMBINED_SEPARATOR = "|";
+
+/** Compara dos combinaciones caracteristica por caracteristica; «sin dato» queda al final. */
+function compareCombinations(dimensions: DimensionId[], a: string[], b: string[]): number {
+  for (const [position, dimension] of dimensions.entries()) {
+    const left = a[position] as string;
+    const right = b[position] as string;
+
+    if (left === right) continue;
+    if (left === NO_DATA_KEY) return 1;
+    if (right === NO_DATA_KEY) return -1;
+
+    return compareValues(dimension, left, right);
+  }
+
+  return 0;
+}
+
+/**
+ * Grupos que cruzan varias caracteristicas (universidad y genero, por ejemplo).
+ * Cada combinacion que existe es un grupo; con mas de MAX_COLORED_GROUPS se
+ * quedan las de mas estudiantes y el resto va a «Otros». Lo que no tiene una
+ * de las caracteristicas queda en «Sin dato» dentro de su combinacion.
+ */
+function groupByCombination<T>(items: GroupItem<T>[], dimensions: DimensionId[]): Grouped<T> {
+  const partsOf = new Map<string, string[]>();
+  const members = new Map<string, Set<string>>();
+  const keyByItem = new Map<T, string>();
+
+  for (const entry of items) {
+    const parts = dimensions.map((dimension) => entry.valueOf(dimension) ?? NO_DATA_KEY);
+    const key = parts.join(COMBINED_SEPARATOR);
+    const set = members.get(key) ?? new Set<string>();
+
+    set.add(entry.rut);
+    members.set(key, set);
+    partsOf.set(key, parts);
+    keyByItem.set(entry.item, key);
+  }
+
+  const ordered = [...members.keys()].sort((a, b) =>
+    compareCombinations(dimensions, partsOf.get(a) as string[], partsOf.get(b) as string[]),
+  );
+
+  const biggest = new Set(
+    [...ordered]
+      .sort((a, b) => (members.get(b)?.size ?? 0) - (members.get(a)?.size ?? 0))
+      .slice(0, MAX_COLORED_GROUPS),
+  );
+  const shown = ordered.length > MAX_COLORED_GROUPS ? ordered.filter((key) => biggest.has(key)) : ordered;
+
+  const specs: GroupSpec[] = shown.map((key, position) => ({
+    key,
+    label: (partsOf.get(key) as string[])
+      .map((part, index) =>
+        part === NO_DATA_KEY ? NO_DATA_LABEL : dimensionValueLabel(dimensions[index] as DimensionId, part),
+      )
+      .join(" · "),
+    slot: position,
+  }));
+
+  if (shown.length < ordered.length) specs.push({ key: OTHERS_KEY, label: OTHERS_LABEL, slot: -1 });
+
+  const byGroup = new Map<string, T[]>(specs.map((spec) => [spec.key, []]));
+
+  for (const entry of items) {
+    const key = keyByItem.get(entry.item) as string;
+
+    byGroup.get(shown.includes(key) ? key : OTHERS_KEY)?.push(entry.item);
   }
 
   return { specs, byGroup };
