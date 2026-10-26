@@ -54,7 +54,7 @@ export type Built = Pick<
   | "notes"
   | "studentsTotal"
 > &
-  Partial<Pick<ChartResult, "table" | "cards" | "partLabel" | "totalLabel">>;
+  Partial<Pick<ChartResult, "table" | "cards" | "pdfListsOnly" | "partLabel" | "totalLabel">>;
 
 export type ChartDef = {
   id: ChartId;

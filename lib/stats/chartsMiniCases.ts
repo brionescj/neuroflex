@@ -94,6 +94,18 @@ function placeText(counts: Map<number, number>, of: number): string {
   return top ? `${stepText(top.value)} (${top.times} de ${of})` : "";
 }
 
+/**
+ * Lo que el PDF agrega al titulo de cada lista. El porcentaje es una fraccion de PARTIDAS (cada vez
+ * que alguien jugo el caso), no de estudiantes: se dice con todas sus letras para que el papel se
+ * entienda solo.
+ */
+function failNote(expected: number | null, stats: OptionStats, percent: number): string {
+  const top = topOf(stats.placedAt);
+  const where = top ? `; la suelen poner en el ${stepText(top.value).toLowerCase()}` : "";
+
+  return `Debía ir en el ${stepText(expected).toLowerCase()}${where}. En el ${percent} % de las partidas en que se jugó este caso (${stats.wrong} de ${stats.plays} partidas) quedó mal ubicado; un mismo estudiante puede sumar más de una partida`;
+}
+
 export const mcOptions: ChartDef = {
   id: "mc-options",
   game: "mini-cases",
@@ -209,6 +221,7 @@ export const mcOptions: ChartDef = {
                 : [
                     {
                       title: "Estudiantes que la ubicaron mal",
+                      note: failNote(expected, stats, percent),
                       columns: [...BASE_COLUMNS, "Veces que falló", "Veces que la jugó", "Dónde la puso más"],
                       rows: failing.map(([rut, own]) => {
                         const student: StudentRow | undefined = ctx.students.get(rut);
@@ -235,6 +248,7 @@ export const mcOptions: ChartDef = {
       categories: [],
       series: [],
       cards,
+      pdfListsOnly: true,
       table: {
         columns: [
           "Caso",

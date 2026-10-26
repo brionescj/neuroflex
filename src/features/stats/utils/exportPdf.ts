@@ -49,6 +49,8 @@ function nextFrames(): Promise<void> {
 const MAX_CANVAS_AREA = 16_000_000;
 /** 3 pixeles por pixel: unos 290 ppp en la hoja, de sobra para imprimir. */
 const PIXEL_RATIO = 3;
+/** Las tablas de texto se leen igual de nitidas con menos pixeles; con decenas de listas el PDF tardaba y pesaba demasiado. */
+const LIST_PIXEL_RATIO = 2;
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -147,7 +149,8 @@ export async function downloadPdf({ fileName, ...sheet }: PdfInput): Promise<voi
 
       if (!shot) {
         const { width, height } = element.getBoundingClientRect();
-        const ratio = Math.min(PIXEL_RATIO, Math.sqrt(MAX_CANVAS_AREA / (width * height)));
+        const wanted = element.dataset.sheetKind === "list" ? LIST_PIXEL_RATIO : PIXEL_RATIO;
+        const ratio = Math.min(wanted, Math.sqrt(MAX_CANVAS_AREA / (width * height)));
         const url = await toPng(element, { pixelRatio: ratio, skipFonts: true, backgroundColor: "#ffffff" });
 
         shot = { url, image: await loadImage(url), width };

@@ -19,7 +19,7 @@ export type PrintSheetProps = {
   warnings: string[];
   /** La leyenda de grupos, ya sin sus instrucciones de tocar. */
   legend?: ReactNode;
-  /** El dibujo, en la forma elegida. */
+  /** El dibujo, en la forma elegida; `null` si el PDF lleva solo las listas. */
   plot: ReactNode;
   /** Las listas de estudiantes de un resumen, todas, a continuacion del dibujo. */
   lists: PrintList[];
@@ -141,10 +141,12 @@ export function PrintSheet({
             ))}
           </header>
 
-          <div data-sheet-part="plot" data-sheet-kind="plot" className="flex flex-col gap-3 bg-white py-2">
-            {legend}
-            {plot}
-          </div>
+          {plot !== null && (
+            <div data-sheet-part="plot" data-sheet-kind="plot" className="flex flex-col gap-3 bg-white py-2">
+              {legend}
+              {plot}
+            </div>
+          )}
 
           {lists.map((list) => (
             <ListTable key={list.title} list={list} />

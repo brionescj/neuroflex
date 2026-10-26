@@ -39,6 +39,18 @@ describe("listsOfCards", () => {
     expect(lists[0]?.rows).toHaveLength(2);
   });
 
+  it("agrega la aclaración de la lista entre paréntesis al final del título", () => {
+    const withNote: ChartCards = [
+      {
+        group: "Caso 1",
+        slot: 0,
+        items: [{ label: "Paso A", value: "x", lists: [{ title: "Quiénes la fallaron", note: "31 % de las partidas", columns: COLUMNS, rows: [["Ana", "1-9"]] }] }],
+      },
+    ];
+
+    expect(listsOfCards(withNote)[0]?.title).toBe("Quiénes la fallaron (1) · Paso A (31 % de las partidas)");
+  });
+
   it("omite las listas vacías", () => {
     expect(listsOfCards(cards).some((list) => list.title.includes("ya lo desbloquearon"))).toBe(false);
   });

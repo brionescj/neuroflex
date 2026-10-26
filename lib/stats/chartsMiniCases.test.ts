@@ -119,6 +119,15 @@ describe("Mini casos: alternativas que más fallan", () => {
     expect(list?.rows[0]?.slice(-3)).toEqual([1, 1, "Paso 3 (1 de 1)"]);
   });
 
+  it("el PDF lleva solo las listas, y cada una explica que el porcentaje es de partidas", () => {
+    const chart = run(data());
+    const list = chart.cards?.[0]?.items[0]?.lists?.[0];
+
+    expect(chart.pdfListsOnly).toBe(true);
+    expect(list?.note).toMatch(/^Debía ir en el paso 2; la suelen poner en el paso 3\./);
+    expect(list?.note).toMatch(/En el 67 % de las partidas en que se jugó este caso \(2 de 3 partidas\) quedó mal ubicado/);
+  });
+
   it("la tabla junta los casos y las respuestas sin detalle se avisan sin romper", () => {
     const chart = run(data());
 

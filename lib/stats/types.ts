@@ -164,7 +164,13 @@ export type ChartCards = {
     value: string;
     hint?: string;
     /** Listas de estudiantes que se abren al tocar la tarjeta (quienes si, quienes no). */
-    lists?: { title: string; columns: string[]; rows: (string | number | null)[][] }[];
+    lists?: {
+      title: string;
+      /** Aclaracion que el PDF agrega entre parentesis al final del titulo de la lista. */
+      note?: string;
+      columns: string[];
+      rows: (string | number | null)[][];
+    }[];
   }[];
 }[];
 
@@ -184,6 +190,8 @@ export type ChartResult = {
   /** Si viene, la vista de tabla muestra esto en vez de categorias por series. */
   table?: ChartTable;
   cards?: ChartCards;
+  /** El PDF lleva solo las listas con su titulo, sin el dibujo de las tarjetas. */
+  pdfListsOnly?: boolean;
   xLabel: string;
   yLabel: string;
   unit: ChartUnit;

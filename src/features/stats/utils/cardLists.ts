@@ -15,7 +15,7 @@ export function listsOfCards(cards: ChartCards): PrintList[] {
       (item.lists ?? [])
         .filter((list) => list.rows.length > 0)
         .map((list) => ({
-          title: `${cards.length > 1 ? `${block.group} · ` : ""}${list.title} (${list.rows.length}) · ${item.label}`,
+          title: `${cards.length > 1 ? `${block.group} · ` : ""}${list.title} (${list.rows.length}) · ${item.label}${list.note ? ` (${list.note})` : ""}`,
           columns: list.columns,
           rows: list.rows,
         })),
