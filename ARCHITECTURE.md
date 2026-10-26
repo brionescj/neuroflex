@@ -192,10 +192,14 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
     - Solo lee los datos del estudiante de la sesión (el RUT nunca viene de la solicitud).
 
 14. **Panel de estadísticas del administrador** (`src/features/stats/`, `lib/stats/`):
-    - Solo hay dos secciones: «Juego» y «Gráfico». Dentro de «Gráfico» van las opciones propias del
-      gráfico (`ChartSettings`) y el bloque plegable «Comparar este gráfico» (`ComparePanel`).
-      Ya no existen «Cómo verlo» ni «Filtros»: los filtros son «Compararlo solo entre quienes…» dentro
-      de ese bloque (`FilterPanel`).
+    - Solo hay dos secciones: «Juego» y «Gráfico». Dentro de «Gráfico» van solo las opciones propias del
+      gráfico (`ChartSettings`). Comparar y acotar NO está en la selección: es una barra (`CompareBar`)
+      justo encima del gráfico, con un botón «Comparar» (o «Acotar», en los gráficos que son listas) y lo
+      activo como chips con «×» (`activeChips`). El botón abre una hoja (`CompareSheet`, `<dialog>`: sube
+      desde abajo en el celular, se centra en pantallas grandes) con dos pestañas, «Comparar» y «Filtrar»
+      (`FilterPanel`), que edita una copia y entrega todo junto con «Aplicar». Con un gráfico a la vista,
+      aplicar o quitar un chip lo recalcula al instante sin plegar la selección ni mover la pantalla
+      (`applyCompare` en `StatsPage`). Ya no existen «Cómo verlo» ni «Filtros».
     - Comparar = una o varias características a la vez (hasta 3). La primera viaja como `groupBy` y las
       demás como `alsoBy`; cada combinación existente es un grupo («UVM · Femenino»), con tope de 7
       grupos y el resto en «Otros» (`groupByCombination` en `pipeline.ts`). El dispositivo va solo,
@@ -208,6 +212,9 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
     - «Alternativas que más fallan» (Mini casos, `chartsMiniCases.ts`): por caso, % de veces que cada paso
       se ubicó mal, lugar donde más lo ponen y lista de estudiantes (tarjetas con listas, vista Tabla).
       Pide a la base las métricas `placements` y `options` solo para este gráfico (`EXTRA_METRICS`).
+      Su PDF lleva solo las tablas (`pdfListsOnly`, sin el dibujo de las tarjetas); cada lista agrega al
+      título una aclaración (`note`: dónde debía ir, dónde la ponen y el % de PARTIDAS que la ubicó mal).
+      Las tablas del PDF se rasterizan a 2× (`LIST_PIXEL_RATIO`) para que no pese ni tarde de más.
     - Los ejes muestran el número completo con separador de miles (nunca «K»).
     - Desempeño > «Partida a partida»: cada fila trae un icono que abre, en el mismo recuadro, los datos
       de la partida (`GET /api/admin/stats/students/:rut/partidas/:attemptId`, `lib/stats/partidaDetail.ts`):
