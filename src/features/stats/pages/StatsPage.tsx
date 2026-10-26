@@ -16,12 +16,9 @@ import {
   buildChartParams,
   chartsOf,
   compareSummary,
-  comparedDimensions,
-  filtersSummary,
   findChartDef,
   initialSelection,
   paramsKey,
-  parseAge,
   periodText,
   selectChart,
   selectGame,
@@ -96,7 +93,6 @@ export default function StatsPage() {
     const sel = from;
     const request = buildChartParams(sel, chart, catalog.ageLimits);
     const gameName = catalog.games.find((g) => g.id === sel.game)?.label ?? "";
-    const comparing = chart.canCompare ? comparedDimensions(sel) : [];
 
     setLoading(true);
     setError(null);
@@ -119,9 +115,6 @@ export default function StatsPage() {
         chart.usesPartida ? partidaText(sel) : null,
         chart.usesPartida && canChooseCount(sel) && sel.countBy === "attempts" ? "Contando partidas" : null,
         chart.usesPeriod && sel.groupBy !== "dateRange" ? periodText(catalog, sel) : null,
-        filtersSummary(catalog, sel.filters, sel.age, comparing) === "Sin acotar"
-          ? null
-          : filtersSummary(catalog, sel.filters, sel.age, comparing),
       ]
         .filter(Boolean)
         .join(" · "),
@@ -171,7 +164,6 @@ export default function StatsPage() {
     );
   }
 
-  const ageProblem = parseAge(selection.age, catalog.ageLimits);
   const needsStudents = selection.groupBy === "student" && selection.students.length === 0;
   // Partida y fechas: con un numero de partida hay que elegir el periodo antes de mostrar.
   const timeIssue = timeProblem(selection, chart, catalog.maxPartida);
@@ -194,7 +186,6 @@ export default function StatsPage() {
 
     const blocked =
       (next.groupBy === "student" && next.students.length === 0) ||
-      !parseAge(next.age, catalog.ageLimits).ok ||
       timeProblem(next, chart, catalog.maxPartida) !== null;
 
     if (!blocked) void show(true, next);
@@ -242,7 +233,7 @@ export default function StatsPage() {
             </div>
           </Section>
 
-          <Button onClick={() => void show()} disabled={loading || needsStudents || !ageProblem.ok || timeIssue !== null} size="md" className="w-full">
+          <Button onClick={() => void show()} disabled={loading || needsStudents || timeIssue !== null} size="md" className="w-full">
             {loading ? (
               <>
                 <LoaderCircle aria-hidden="true" className="mr-2 size-4 animate-spin" />
@@ -252,12 +243,6 @@ export default function StatsPage() {
               "Mostrar"
             )}
           </Button>
-
-          {!ageProblem.ok && (
-            <p role="alert" className="text-xs text-red-300">
-              Corrige la edad en «Filtrar», dentro del botón de comparar sobre el gráfico, para poder mostrarlo.
-            </p>
-          )}
 
           {timeIssue !== null && (
             <p role="status" className="text-xs text-amber-200">

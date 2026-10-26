@@ -26,8 +26,8 @@ export type StatsMemory = {
 let memory: StatsMemory | null = null;
 
 const KEY = "stats";
-/** Subir si cambia la forma de `Selection`: lo guardado con otra forma se descarta. */
-const VERSION = 2;
+/** Subir si cambia la forma o el significado de `Selection` (3: ya no hay filtros sueltos): lo guardado antes se descarta. */
+const VERSION = 3;
 
 type Saved = { v: number; owner: string; selection: Selection; open: Record<number, boolean>; hadChart: boolean };
 

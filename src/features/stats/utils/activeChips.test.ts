@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { activeChips, withoutChips } from "./activeChips";
+import { activeChips } from "./activeChips";
 import { findChartDef, initialSelection } from "./selection";
 import type { Catalog, Selection } from "../types";
 
@@ -90,18 +90,19 @@ function chipsOf(selection: Selection) {
   return activeChips(catalog, selection, chart);
 }
 
-describe("chips de lo que está activo", () => {
-  it("sin comparar ni filtrar no hay chips", () => {
+describe("chip de lo que se compara", () => {
+  it("sin comparar no hay chips, aunque haya filtros guardados de antes", () => {
     expect(chipsOf(base)).toEqual([]);
+    expect(chipsOf({ ...base, filters: { paralelo: ["1"] }, age: { min: "20", max: "25" } })).toEqual([]);
   });
 
-  it("la comparación es un chip y sus valores no se repiten como filtros", () => {
+  it("la comparación es un único chip que dice por qué se compara", () => {
     const chips = chipsOf({ ...base, groupBy: "gender", filters: { gender: ["female"], paralelo: ["1"] } });
 
-    expect(chips.map((chip) => chip.label)).toEqual(["Por género", "Paralelo: Paralelo 1"]);
+    expect(chips.map((chip) => chip.label)).toEqual(["Por género"]);
   });
 
-  it("quitar el chip de comparar olvida también los valores comparados, pero deja los filtros", () => {
+  it("quitar el chip olvida también los valores comparados", () => {
     const selection: Selection = { ...base, groupBy: "gender", alsoBy: ["paralelo"], filters: { paralelo: ["1"], gender: ["female"] } };
     const cleared = chipsOf(selection)[0]!.clear(selection);
 
@@ -110,33 +111,9 @@ describe("chips de lo que está activo", () => {
     expect(cleared.filters).toEqual({});
   });
 
-  it("cada filtro y la edad son chips que se quitan por separado", () => {
-    const selection: Selection = { ...base, filters: { paralelo: ["1", "2"] }, age: { min: "20", max: "25" } };
-    const chips = chipsOf(selection);
-
-    expect(chips.map((chip) => chip.label)).toEqual(["Paralelo: Paralelo 1, Paralelo 2", "Edad: 20 a 25"]);
-    expect(chips[0]!.clear(selection).filters).toEqual({});
-    expect(chips[1]!.clear(selection).age).toEqual({ min: "", max: "" });
-  });
-
-  it("con muchos valores el chip dice cuántos hay", () => {
-    const wide: Catalog = {
-      ...catalog,
-      filters: [{ id: "paralelo", label: "Paralelo", options: ["1", "2", "3"].map((v) => ({ value: v, label: v })) }],
-    };
-
-    expect(activeChips(wide, { ...base, filters: { paralelo: ["1", "2", "3"] } }, chart)[0]?.label).toBe("Paralelo: 3 elegidos");
-  });
-
-  it("en un gráfico que no se compara, la comparación no aparece como chip", () => {
+  it("en un gráfico que no se compara no aparece ningún chip", () => {
     const list = { ...chart, canCompare: false };
 
     expect(activeChips(catalog, { ...base, groupBy: "gender" }, list)).toEqual([]);
-  });
-
-  it("withoutChips deja la selección sin comparación, filtros ni edad", () => {
-    const selection: Selection = { ...base, groupBy: "gender", filters: { paralelo: ["1"] }, age: { min: "20", max: "" } };
-
-    expect(withoutChips(selection)).toMatchObject({ groupBy: "none", alsoBy: [], filters: {}, age: { min: "", max: "" } });
   });
 });
