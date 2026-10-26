@@ -193,18 +193,21 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
 
 14. **Panel de estadísticas del administrador** (`src/features/stats/`, `lib/stats/`):
     - Solo hay dos secciones: «Juego» y «Gráfico». Dentro de «Gráfico» van solo las opciones propias del
-      gráfico (`ChartSettings`). Comparar y acotar NO está en la selección: es una barra (`CompareBar`)
-      justo encima del gráfico, con un botón «Comparar» (o «Acotar», en los gráficos que son listas) y lo
-      activo como chips con «×» (`activeChips`). El botón abre una hoja (`CompareSheet`, `<dialog>`: sube
-      desde abajo en el celular, se centra en pantallas grandes) con dos pestañas, «Comparar» y «Filtrar»
-      (`FilterPanel`), que edita una copia y entrega todo junto con «Aplicar». Con un gráfico a la vista,
-      aplicar o quitar un chip lo recalcula al instante sin plegar la selección ni mover la pantalla
-      (`applyCompare` en `StatsPage`). Ya no existen «Cómo verlo» ni «Filtros».
+      gráfico (`ChartSettings`). Comparar NO está en la selección: es una barra (`CompareBar`) justo
+      encima del gráfico, con un botón «Comparar» y lo que se compara como un chip con «×»
+      (`activeChips`). La barra solo existe en los gráficos que se pueden comparar. El botón abre una hoja
+      (`CompareSheet`, `<dialog>`: sube desde abajo en el celular, se centra en pantallas grandes) que
+      edita una copia y entrega todo junto con «Aplicar». Con un gráfico a la vista, aplicar o quitar el
+      chip lo recalcula al instante sin plegar la selección ni mover la pantalla (`applyCompare` en
+      `StatsPage`). **No hay filtros de ningún tipo** (se quitaron «Cómo verlo», «Filtros» y la pestaña
+      «Filtrar»): lo único que acota es elegir qué valores de lo comparado entran. Por eso al aplicar solo
+      se guardan los valores de las características comparadas, y los gráficos que son listas
+      (`compare: false`) no se pueden acotar.
     - Comparar = una o varias características a la vez (hasta 3). La primera viaja como `groupBy` y las
       demás como `alsoBy`; cada combinación existente es un grupo («UVM · Femenino»), con tope de 7
       grupos y el resto en «Otros» (`groupByCombination` en `pipeline.ts`). El dispositivo va solo,
-      igual que «Estudiantes específicos» y «Rangos de fechas». Los gráficos que son listas
-      (`compare: false`) solo se acotan. Los valores que se comparan se eligen con el mismo filtro.
+      igual que «Estudiantes específicos» y «Rangos de fechas». Los valores que se comparan se eligen en
+      la misma hoja.
     - Gráficos de perfil (`profileOnly`): «Intentos para superar un nivel» y «Mejora entre partidas» de
       Seriación solo existen en el desempeño del estudiante; no están en el catálogo del panel.
     - «Dónde fallan primero»: la secuencia se divide en 5 partes iguales (el último color siempre cae en
