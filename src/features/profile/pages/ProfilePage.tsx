@@ -24,14 +24,6 @@ import {
   type ProfileFormInput,
 } from "../schemas/profileForm.schema";
 
-function nameRows(details: ProfileDetails) {
-  return [
-    { label: "Nombres", value: details.firstName },
-    { label: "Apellido paterno", value: details.paternalLastName },
-    { label: "Apellido materno", value: details.maternalLastName },
-  ];
-}
-
 /**
  * Lo que el estudiante no edita desde el perfil, ordenado como en las tarjetas de
  * estudiantes del panel de administracion en el celular. (Los nombres de un
@@ -50,6 +42,9 @@ function studentFields(details: Extract<ProfileDetails, { role: "student" }>) {
     },
   ];
 }
+
+/** El formulario del perfil: el correo del administrador esta en su tarjeta, fuera de el, y se une por este id. */
+const FORM_ID = "profile-form";
 
 export default function ProfilePage() {
   const { user, login } = useAuth();
@@ -138,6 +133,72 @@ export default function ProfilePage() {
     return null;
   }
 
+  /**
+   * El correo con su lapiz para editarlo. En el estudiante va suelto en el formulario; en el administrador
+   * va dentro de su tarjeta, como un dato mas (`inCard`): el campo sigue siendo del formulario
+   * («profile-form») aunque este fuera de el, para que Enter lo guarde.
+   */
+  function emailField(inCard: boolean) {
+    return (
+      <Controller
+        control={form.control}
+        name="email"
+        render={({ field, fieldState }) => (
+          <Field data-invalid={fieldState.invalid} className={inCard ? "min-w-0 gap-1" : undefined}>
+            <div className="flex items-center justify-between">
+              {inCard ? (
+                <label htmlFor="email" className="text-xs text-zinc-500">
+                  Correo
+                </label>
+              ) : (
+                <FieldLabel htmlFor="email">Correo</FieldLabel>
+              )}
+
+              {!isEditingEmail && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingEmail(true)}
+                  title="Editar correo"
+                  aria-label="Editar correo"
+                  className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                >
+                  <Pencil className="size-4" />
+                </button>
+              )}
+            </div>
+
+            {isEditingEmail ? (
+              <div className="space-y-2">
+                <EmailInput
+                  id="email"
+                  form={FORM_ID}
+                  autoComplete="email"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  aria-invalid={fieldState.invalid}
+                  autoFocus
+                />
+
+                <button
+                  type="button"
+                  onClick={cancelEmailEdit}
+                  className="min-h-11 rounded-lg px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                >
+                  Cancelar cambio de correo
+                </button>
+              </div>
+            ) : (
+              <p className="break-words text-sm text-white">{field.value || "Sin registrar"}</p>
+            )}
+
+            <FieldError errors={[fieldState.error]} />
+          </Field>
+        )}
+      />
+    );
+  }
+
   if (!user || isLoading) {
     return <p className="text-zinc-400">Cargando perfil...</p>;
   }
@@ -160,23 +221,7 @@ export default function ProfilePage() {
       </div>
 
       {details.role === "admin" && (
-        <div className="space-y-3 rounded-xl border border-zinc-800 p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-zinc-400">Nombre</h2>
-
-            {!isEditingNames && (
-              <button
-                type="button"
-                onClick={() => setIsEditingNames(true)}
-                title="Editar nombre"
-                aria-label="Editar nombre"
-                className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
-              >
-                <Pencil className="size-4" />
-              </button>
-            )}
-          </div>
-
+        <div className="rounded-2xl border border-zinc-800 p-4">
           {isEditingNames ? (
             <AdminNameForm
               idPrefix="profile"
@@ -186,13 +231,31 @@ export default function ProfilePage() {
               stacked
             />
           ) : (
-            nameRows(details).map((field) => (
-              <div key={field.label} className="flex justify-between text-sm">
-                <span className="text-zinc-400">{field.label}</span>
-                <span className="text-white">{field.value}</span>
-              </div>
-            ))
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-medium text-white">
+                {details.firstName} {details.paternalLastName} {details.maternalLastName}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setIsEditingNames(true)}
+                title="Editar nombre"
+                aria-label="Editar nombre"
+                className="-my-1 shrink-0 rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+              >
+                <Pencil className="size-4" />
+              </button>
+            </div>
           )}
+
+          <div className="mt-3 grid grid-cols-1 gap-4 border-t border-zinc-800 pt-3 min-[420px]:grid-cols-2">
+            <div className="min-w-0">
+              <p className="text-xs text-zinc-500">RUT</p>
+              <p className="break-words text-sm text-white">{details.rut}</p>
+            </div>
+
+            {emailField(true)}
+          </div>
         </div>
       )}
 
@@ -221,57 +284,8 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-        <Controller
-          control={form.control}
-          name="email"
-          render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
-              <div className="flex items-center justify-between">
-                <FieldLabel htmlFor="email">Correo</FieldLabel>
-
-                {!isEditingEmail && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingEmail(true)}
-                    title="Editar correo"
-                    className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
-                  >
-                    <Pencil className="size-4" />
-                  </button>
-                )}
-              </div>
-
-              {isEditingEmail ? (
-                <div className="space-y-2">
-                  <EmailInput
-                    id="email"
-                    autoComplete="email"
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    aria-invalid={fieldState.invalid}
-                    autoFocus
-                  />
-
-                  <button
-                    type="button"
-                    onClick={cancelEmailEdit}
-                    className="min-h-11 rounded-lg px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
-                  >
-                    Cancelar cambio de correo
-                  </button>
-                </div>
-              ) : (
-                <p className="text-sm text-white">
-                  {field.value || "Sin registrar"}
-                </p>
-              )}
-
-              <FieldError errors={[fieldState.error]} />
-            </Field>
-          )}
-        />
+      <form id={FORM_ID} className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+        {details.role === "student" && emailField(false)}
 
         <Controller
           control={form.control}
