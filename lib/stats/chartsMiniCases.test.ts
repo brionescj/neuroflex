@@ -133,6 +133,9 @@ describe("Mini casos: alternativas que más fallan", () => {
 
     expect(chart.table?.rows).toHaveLength(4);
     expect(chart.table?.rows[0]?.slice(0, 3)).toEqual(["Caso 1 · Cruzar la calle", "Esperar la luz verde", "Paso 2"]);
+    // «Mal ubicado» es un porcentaje: la celda lleva su símbolo.
+    expect(chart.table?.columns[4]).toBe("Mal ubicado");
+    expect(chart.table?.rows[0]?.[4]).toBe("67 %");
     expect(chart.notes.join(" ")).toMatch(/1 respuestas antiguas/);
     expect(chart.studentsTotal).toBe(3);
   });

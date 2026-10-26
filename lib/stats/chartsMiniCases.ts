@@ -203,7 +203,7 @@ export const mcOptions: ChartDef = {
             stats.text,
             stepText(expected),
             stats.plays,
-            percent,
+            `${percent} %`,
             stats.wrong === 0 ? "—" : placeText(stats.placedAt, stats.wrong),
             failing.length,
           ]);
@@ -255,7 +255,7 @@ export const mcOptions: ChartDef = {
           "Paso",
           "Lugar correcto",
           "Veces que se jugó",
-          "% ubicado mal",
+          "Mal ubicado",
           "Dónde lo ponen más",
           "Estudiantes que lo fallaron",
         ],
