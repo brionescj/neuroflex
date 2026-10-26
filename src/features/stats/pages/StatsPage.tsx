@@ -9,7 +9,7 @@ import { getStatsCatalogAction, getStatsChartAction } from "../actions/stats.act
 import { ChartCard } from "../components/ChartCard";
 import { ChartPicker } from "../components/ChartPicker";
 import { ChartSettings } from "../components/ChartSettings";
-import { ComparePanel } from "../components/ComparePanel";
+import { CompareBar } from "../components/CompareBar";
 import { GamePicker } from "../components/GamePicker";
 import { Section } from "../components/Section";
 import {
@@ -89,16 +89,19 @@ export default function StatsPage() {
 
   // «Mostrar». `resume`: se vuelve a pedir el gráfico que estaba a la vista antes de que el navegador
   // recargara la página; no se pliega la selección ni se desplaza la pantalla (ya estaba como la dejó la persona).
-  async function show(resume = false) {
-    if (!catalog || !selection || !chart || !params) return;
+  async function show(resume = false, from: Selection | null = selection) {
+    if (!catalog || !from || !chart) return;
 
-    const gameName = catalog.games.find((g) => g.id === selection.game)?.label ?? "";
-    const comparing = chart.canCompare ? comparedDimensions(selection) : [];
+    // `from` es la seleccion a mostrar: la de la pantalla o, al aplicar una comparacion, la recien elegida.
+    const sel = from;
+    const request = buildChartParams(sel, chart, catalog.ageLimits);
+    const gameName = catalog.games.find((g) => g.id === sel.game)?.label ?? "";
+    const comparing = chart.canCompare ? comparedDimensions(sel) : [];
 
     setLoading(true);
     setError(null);
 
-    const response = await getStatsChartAction(params);
+    const response = await getStatsChartAction(request);
 
     setLoading(false);
 
@@ -109,16 +112,16 @@ export default function StatsPage() {
 
     setShown({
       result: response.data,
-      key: paramsKey(params),
+      key: paramsKey(request),
       subtitle: [
         gameName,
-        chart.canCompare && selection.groupBy !== "none" ? compareSummary(catalog, selection) : null,
-        chart.usesPartida ? partidaText(selection) : null,
-        chart.usesPartida && canChooseCount(selection) && selection.countBy === "attempts" ? "Contando partidas" : null,
-        chart.usesPeriod && selection.groupBy !== "dateRange" ? periodText(catalog, selection) : null,
-        filtersSummary(catalog, selection.filters, selection.age, comparing) === "Sin acotar"
+        chart.canCompare && sel.groupBy !== "none" ? compareSummary(catalog, sel) : null,
+        chart.usesPartida ? partidaText(sel) : null,
+        chart.usesPartida && canChooseCount(sel) && sel.countBy === "attempts" ? "Contando partidas" : null,
+        chart.usesPeriod && sel.groupBy !== "dateRange" ? periodText(catalog, sel) : null,
+        filtersSummary(catalog, sel.filters, sel.age, comparing) === "Sin acotar"
           ? null
-          : filtersSummary(catalog, selection.filters, selection.age, comparing),
+          : filtersSummary(catalog, sel.filters, sel.age, comparing),
       ]
         .filter(Boolean)
         .join(" · "),
@@ -182,6 +185,21 @@ export default function StatsPage() {
     setSelection(next);
   }
 
+  // Comparar o acotar desde la barra del grafico: con uno a la vista se recalcula de inmediato, sin plegar
+  // la seleccion ni mover la pantalla; si lo elegido deja algo por completar en «Gráfico», solo se guarda.
+  function applyCompare(next: Selection) {
+    setSelection(next);
+
+    if (!shown || !chart || !catalog) return;
+
+    const blocked =
+      (next.groupBy === "student" && next.students.length === 0) ||
+      !parseAge(next.age, catalog.ageLimits).ok ||
+      timeProblem(next, chart, catalog.maxPartida) !== null;
+
+    if (!blocked) void show(true, next);
+  }
+
   const charts = chartsOf(catalog, selection.game);
 
   return (
@@ -189,7 +207,7 @@ export default function StatsPage() {
       <header>
         <h1 className="text-xl font-semibold text-white">Estadísticas</h1>
         <p className="mt-1 text-sm text-zinc-400">
-          Elige un juego y un gráfico, compáralo si quieres y presiona «Mostrar».
+          Elige un juego y un gráfico, presiona «Mostrar» y compáralo con el botón que aparece sobre el gráfico.
         </p>
       </header>
 
@@ -219,17 +237,8 @@ export default function StatsPage() {
               onChange={(id) => update(selectChart(catalog, selection, id))}
             />
 
-            <div className="mt-4 flex flex-col gap-4">
+            <div className="mt-4">
               <ChartSettings catalog={catalog} chart={chart} selection={selection} onChange={update} />
-
-              <ComparePanel
-                catalog={catalog}
-                chart={chart}
-                selection={selection}
-                onChange={update}
-                open={!!open[3]}
-                onToggle={() => toggle(3)}
-              />
             </div>
           </Section>
 
@@ -246,7 +255,7 @@ export default function StatsPage() {
 
           {!ageProblem.ok && (
             <p role="alert" className="text-xs text-red-300">
-              Corrige la edad en «Gráfico», dentro de «Comparar este gráfico», para poder mostrarlo.
+              Corrige la edad en «Filtrar», dentro del botón de comparar sobre el gráfico, para poder mostrarlo.
             </p>
           )}
 
@@ -257,7 +266,7 @@ export default function StatsPage() {
           )}
 
           {needsStudents && (
-            <p className="text-xs text-zinc-400">Elige al menos un estudiante para compararlo.</p>
+            <p className="text-xs text-zinc-400">Elige al menos un estudiante en el botón de comparar sobre el gráfico.</p>
           )}
         </div>
 
@@ -271,6 +280,8 @@ export default function StatsPage() {
             </p>
           )}
 
+          <CompareBar catalog={catalog} chart={chart} selection={selection} onApply={applyCompare} />
+
           {shown ? (
             <ChartCard
               key={shown.result.chart}
@@ -282,7 +293,7 @@ export default function StatsPage() {
             />
           ) : (
             <div className="rounded-2xl border border-dashed border-zinc-700 p-8 text-center text-sm text-zinc-400">
-              El gráfico aparecerá aquí.
+              El gráfico aparecerá aquí. Elige un juego y un gráfico, y presiona «Mostrar».
             </div>
           )}
         </div>
