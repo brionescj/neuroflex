@@ -89,6 +89,8 @@ export async function updateAdminNames(
       `/admin/admins/${rut}`,
       payload,
     );
+    // Si es el propio perfil, la ficha guardada ya no es la actual.
+    forgetRequests("profile:");
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response) {

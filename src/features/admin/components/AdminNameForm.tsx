@@ -1,9 +1,11 @@
 import { Save } from "lucide-react";
 import { useState, type FormEvent } from "react";
 
+import { EmailInput } from "@/components/forms/EmailInput";
 import { Field, FieldLabel } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
+import { emailProblem, normalizeEmail } from "@/utils/email";
 
 import { formatNameInput } from "../utils/sanitizeInput";
 
@@ -17,8 +19,13 @@ type AdminNameFormProps = {
   initial: PersonNames;
   /** Prefijo de los id de los campos, para que no se repitan si hay varios formularios en pantalla. */
   idPrefix: string;
-  /** Guarda los nombres; devuelve el mensaje de error, o null si salio bien. */
-  onSubmit: (names: PersonNames) => Promise<string | null>;
+  /**
+   * El correo actual, solo si el formulario tambien lo edita (el propio perfil del administrador): el
+   * campo aparece junto a los nombres y se guarda con el mismo boton.
+   */
+  email?: string;
+  /** Guarda los nombres (y el correo, si se edita); devuelve el mensaje de error, o null si salio bien. */
+  onSubmit: (names: PersonNames, email: string) => Promise<string | null>;
   onCancel: () => void;
   stacked?: boolean;
 };
@@ -27,8 +34,9 @@ type AdminNameFormProps = {
  * Corrige nombres y apellidos de un administrador (el propio o el de otro). El
  * servidor guarda cada palabra con su inicial en mayuscula, igual que se ve aqui.
  */
-export function AdminNameForm({ initial, idPrefix, onSubmit, onCancel, stacked }: AdminNameFormProps) {
+export function AdminNameForm({ initial, idPrefix, email, onSubmit, onCancel, stacked }: AdminNameFormProps) {
   const [names, setNames] = useState(initial);
+  const [mail, setMail] = useState(email ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -46,10 +54,20 @@ export function AdminNameForm({ initial, idPrefix, onSubmit, onCancel, stacked }
       return;
     }
 
+    // Solo se revisa si lo cambio: quien aun no tiene correo puede corregir su nombre sin escribir uno.
+    if (email !== undefined && mail !== email) {
+      const problem = emailProblem(normalizeEmail(mail));
+
+      if (problem) {
+        setError(problem);
+        return;
+      }
+    }
+
     setError(null);
     setIsSaving(true);
 
-    const message = await onSubmit(clean);
+    const message = await onSubmit(clean, normalizeEmail(mail));
 
     setIsSaving(false);
 
@@ -76,6 +94,19 @@ export function AdminNameForm({ initial, idPrefix, onSubmit, onCancel, stacked }
           />
         </Field>
       ))}
+
+      {email !== undefined && (
+        <Field className={cn(!stacked && "sm:col-span-3")}>
+          <FieldLabel htmlFor={`${idPrefix}-email`}>Correo</FieldLabel>
+          <EmailInput
+            id={`${idPrefix}-email`}
+            className="h-10"
+            autoComplete="email"
+            value={mail}
+            onChange={setMail}
+          />
+        </Field>
+      )}
 
       {error && <p className={cn("text-sm text-rose-400", !stacked && "sm:col-span-3")}>{error}</p>}
 

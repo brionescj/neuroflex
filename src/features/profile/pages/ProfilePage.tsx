@@ -43,30 +43,32 @@ function studentFields(details: Extract<ProfileDetails, { role: "student" }>) {
   ];
 }
 
-/** El formulario del perfil: el correo del administrador esta en su tarjeta, fuera de el, y se une por este id. */
-const FORM_ID = "profile-form";
-
 export default function ProfilePage() {
   const { user, login } = useAuth();
 
   const [details, setDetails] = useState<ProfileDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
-  const [isEditingNames, setIsEditingNames] = useState(false);
+  const [isEditingData, setIsEditingData] = useState(false);
 
   const form = useForm<ProfileFormInput>({
     resolver: zodResolver(ProfileFormSchema),
     defaultValues: { email: "", avatarId: "cat" },
   });
 
+  // Solo depende de QUIEN es, no del objeto de sesion: `login()` lo reemplaza al guardar el nombre o el
+  // avatar, y recargar la ficha ahi pisaria con una copia vieja lo que se acaba de guardar.
+  const rut = user?.rut;
+  const role = user?.role;
+
   useEffect(() => {
-    if (!user) {
+    if (!rut || !role) {
       return;
     }
 
     let active = true;
 
-    getProfileAction(user.rut, user.role).then((profile) => {
+    getProfileAction(rut, role).then((profile) => {
       if (!active || !profile) {
         return;
       }
@@ -79,7 +81,7 @@ export default function ProfilePage() {
     return () => {
       active = false;
     };
-  }, [user, form]);
+  }, [rut, role, form]);
 
   async function onSubmit(data: ProfileFormInput) {
     if (!user) {
@@ -117,86 +119,45 @@ export default function ProfilePage() {
     setIsEditingEmail(false);
   }
 
-  async function saveNames(names: PersonNames): Promise<string | null> {
-    if (!user) return null;
+  /**
+   * Los datos del administrador (nombres y correo) se guardan juntos desde su tarjeta. El avatar es
+   * aparte, con «Guardar cambios». Si los nombres se guardan y el correo no, se dice cual quedo sin guardar.
+   */
+  async function saveAdminData(names: PersonNames, email: string): Promise<string | null> {
+    if (!user || details?.role !== "admin") return null;
 
-    const result = await updateAdminNamesAction(user.rut, names);
+    const namesChanged =
+      names.firstName !== details.firstName ||
+      names.paternalLastName !== details.paternalLastName ||
+      names.maternalLastName !== details.maternalLastName;
+    const emailChanged = email !== details.email;
 
-    if (!result.success) return result.message;
+    if (namesChanged) {
+      const result = await updateAdminNamesAction(user.rut, names);
 
-    // El saludo de la sesion se arma con el nombre: se actualiza junto con la ficha.
-    login({ ...user, displayName: `${result.data.firstName} ${result.data.paternalLastName}` });
-    setDetails((current) => (current ? { ...current, ...names } : current));
-    setIsEditingNames(false);
-    toast.success(result.message);
+      if (!result.success) return result.message;
+
+      // El saludo de la sesion se arma con el nombre: se actualiza junto con la ficha.
+      login({ ...user, displayName: `${result.data.firstName} ${result.data.paternalLastName}` });
+      setDetails((current) => (current ? { ...current, ...names } : current));
+    }
+
+    if (emailChanged) {
+      // Se guarda el avatar que ya estaba guardado, no uno elegido abajo y sin guardar todavia.
+      const result = await updateProfileAction({ rut: user.rut, role: user.role, email, avatarId: details.avatarId });
+
+      if (!result.success) {
+        return namesChanged ? `Los nombres se guardaron, pero el correo no: ${result.message}` : result.message;
+      }
+
+      form.resetField("email", { defaultValue: email });
+      setDetails((current) => (current ? { ...current, email } : current));
+    }
+
+    setIsEditingData(false);
+    toast.success(namesChanged || emailChanged ? "Datos actualizados." : "No había cambios que guardar.");
 
     return null;
-  }
-
-  /**
-   * El correo con su lapiz para editarlo. En el estudiante va suelto en el formulario; en el administrador
-   * va dentro de su tarjeta, como un dato mas (`inCard`): el campo sigue siendo del formulario
-   * («profile-form») aunque este fuera de el, para que Enter lo guarde.
-   */
-  function emailField(inCard: boolean) {
-    return (
-      <Controller
-        control={form.control}
-        name="email"
-        render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid} className={inCard ? "min-w-0 gap-1" : undefined}>
-            <div className="flex items-center justify-between">
-              {inCard ? (
-                <label htmlFor="email" className="text-xs text-zinc-500">
-                  Correo
-                </label>
-              ) : (
-                <FieldLabel htmlFor="email">Correo</FieldLabel>
-              )}
-
-              {!isEditingEmail && (
-                <button
-                  type="button"
-                  onClick={() => setIsEditingEmail(true)}
-                  title="Editar correo"
-                  aria-label="Editar correo"
-                  className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
-                >
-                  <Pencil className="size-4" />
-                </button>
-              )}
-            </div>
-
-            {isEditingEmail ? (
-              <div className="space-y-2">
-                <EmailInput
-                  id="email"
-                  form={FORM_ID}
-                  autoComplete="email"
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  aria-invalid={fieldState.invalid}
-                  autoFocus
-                />
-
-                <button
-                  type="button"
-                  onClick={cancelEmailEdit}
-                  className="min-h-11 rounded-lg px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
-                >
-                  Cancelar cambio de correo
-                </button>
-              </div>
-            ) : (
-              <p className="break-words text-sm text-white">{field.value || "Sin registrar"}</p>
-            )}
-
-            <FieldError errors={[fieldState.error]} />
-          </Field>
-        )}
-      />
-    );
   }
 
   if (!user || isLoading) {
@@ -222,12 +183,13 @@ export default function ProfilePage() {
 
       {details.role === "admin" && (
         <div className="rounded-2xl border border-zinc-800 p-4">
-          {isEditingNames ? (
+          {isEditingData ? (
             <AdminNameForm
               idPrefix="profile"
               initial={details}
-              onSubmit={saveNames}
-              onCancel={() => setIsEditingNames(false)}
+              email={details.email}
+              onSubmit={saveAdminData}
+              onCancel={() => setIsEditingData(false)}
               stacked
             />
           ) : (
@@ -238,9 +200,9 @@ export default function ProfilePage() {
 
               <button
                 type="button"
-                onClick={() => setIsEditingNames(true)}
-                title="Editar nombre"
-                aria-label="Editar nombre"
+                onClick={() => setIsEditingData(true)}
+                title="Editar datos"
+                aria-label="Editar datos"
                 className="-my-1 shrink-0 rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
               >
                 <Pencil className="size-4" />
@@ -254,7 +216,12 @@ export default function ProfilePage() {
               <p className="break-words text-sm text-white">{details.rut}</p>
             </div>
 
-            {emailField(true)}
+            {!isEditingData && (
+              <div className="min-w-0">
+                <p className="text-xs text-zinc-500">Correo</p>
+                <p className="break-words text-sm text-white">{details.email || "Sin registrar"}</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -284,8 +251,57 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <form id={FORM_ID} className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-        {details.role === "student" && emailField(false)}
+      <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+        {details.role === "student" && (
+          <Controller
+            control={form.control}
+            name="email"
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <div className="flex items-center justify-between">
+                  <FieldLabel htmlFor="email">Correo</FieldLabel>
+
+                  {!isEditingEmail && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingEmail(true)}
+                      title="Editar correo"
+                      className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+                  )}
+                </div>
+
+                {isEditingEmail ? (
+                  <div className="space-y-2">
+                    <EmailInput
+                      id="email"
+                      autoComplete="email"
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      aria-invalid={fieldState.invalid}
+                      autoFocus
+                    />
+
+                    <button
+                      type="button"
+                      onClick={cancelEmailEdit}
+                      className="min-h-11 rounded-lg px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                    >
+                      Cancelar cambio de correo
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-white">{field.value || "Sin registrar"}</p>
+                )}
+
+                <FieldError errors={[fieldState.error]} />
+              </Field>
+            )}
+          />
+        )}
 
         <Controller
           control={form.control}
@@ -320,6 +336,12 @@ export default function ProfilePage() {
             </Field>
           )}
         />
+
+        {details.role === "admin" && form.formState.errors.email && (
+          <p role="alert" className="text-sm text-rose-400">
+            Para guardar el avatar, primero registra un correo válido con el lápiz de tu tarjeta.
+          </p>
+        )}
 
         <Button
           type="submit"
