@@ -9,3 +9,5 @@ export * from "./auth-user";
 export * from "./student";
 
 export * from "./admin";
+
+export * from "./miniCase";

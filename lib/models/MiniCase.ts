@@ -10,7 +10,10 @@ export type MiniCaseOptionDocument = {
 
 export type MiniCaseDocument = {
   caseKey: string;
+  /** Titulo que ve el estudiante, solo el area («Área de Lenguaje y Comunicación»), sin numero de caso. */
   title: string;
+  /** Clave del dibujo del catalogo (lib/miniCaseImages.ts) que se muestra como distractor. */
+  imageKey?: string;
   baseText: string;
   twistText: string;
   promptText: string;
@@ -38,6 +41,7 @@ const miniCaseSchema = new Schema<MiniCaseDocument>(
   {
     caseKey: { type: String, required: true, unique: true },
     title: { type: String, required: true },
+    imageKey: { type: String },
     baseText: { type: String, required: true },
     twistText: { type: String, required: true },
     promptText: { type: String, required: true },
