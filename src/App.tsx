@@ -47,6 +47,7 @@ const loadNodeConnection = () =>
 const ProfilePage = lazy(loadProfile);
 const StatsPage = lazy(loadStats);
 const StudentStatsPage = lazy(loadStudentStats);
+const MiniCasesAdminPage = lazy(() => import("@/features/admin/pages/MiniCasesAdminPage"));
 const RequireGameAccess = lazy(loadRequireGameAccess);
 const ColorSequenceGame = lazy(loadColorSequence);
 const MiniCasesGame = lazy(loadMiniCases);
@@ -205,6 +206,7 @@ export default function App() {
           <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
           <Route path={ROUTES.ADMIN_STATS} element={<StatsPage />} />
           <Route path={ROUTES.ADMIN_STUDENT_STATS} element={<StudentStatsPage />} />
+          <Route path={ROUTES.ADMIN_MINI_CASES} element={<MiniCasesAdminPage />} />
           <Route path={ROUTES.ADMIN_PROFILE} element={<ProfilePage />} />
         </Route>
 

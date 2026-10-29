@@ -3,6 +3,7 @@ import {
   CircleUser,
   Gamepad2,
   House,
+  NotebookPen,
   Trophy,
   UserSearch,
 } from "lucide-react";
@@ -36,6 +37,8 @@ export const ROLE_MENUS: Record<UserRole, MenuItem[]> = {
     { label: "Estadísticas", path: ROUTES.ADMIN_STATS, icon: BarChart3 },
 
     { label: "Desempeño", path: ROUTES.ADMIN_STUDENT_STATS, icon: UserSearch },
+
+    { label: "Mini casos", path: ROUTES.ADMIN_MINI_CASES, icon: NotebookPen },
 
     { label: "Mi perfil", path: ROUTES.ADMIN_PROFILE, icon: CircleUser },
   ],

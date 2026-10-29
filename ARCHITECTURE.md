@@ -224,6 +224,46 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       colores pedidos frente a marcados (Seriación), errores y orden de unión (Nodos) u orden correcto
       frente al elegido (Mini casos), más el tiempo por nivel. «Volver» regresa a la lista y la impresora
       baja solo esos datos en PDF.
+    - «Alternativas que más fallan» se puede comparar por grupos: cada caso muestra un bloque por grupo
+      (color del grupo) y la tabla agrega la columna «Grupo». Sin comparar, nada cambia.
+
+15. **Mini casos: banco, título, imagen y sonido** (no deshacer sin hablar):
+    - Cada `MiniCase` tiene `title` (solo el área, «Área de Lenguaje y Comunicación»; **nunca** «Mini Caso N»),
+      `imageKey` (dibujo del catálogo) y los textos de siempre. El banco (`GET /api/mini-cases`) entrega
+      `title` e `imageKey` (si falta, `aula`), jamás `correctStep`. El juego muestra el título en la lectura,
+      el ordenamiento y el resultado, y el estudiante sigue viendo «Caso N de M» por posición en su partida.
+    - El resultado rotula el texto como «Retroalimentación». La alerta de cambio no repite «¡Alerta de
+      Cambio!» si el texto ya lo trae (`alertText.ts`).
+    - Distractor: 4 s (`DISTRACTOR_MS`) la imagen del caso y un sonido, exactamente los mismos 4 s. Solo hay
+      3 sonidos (`lluvia`, `olas`, `campanillas`, sintetizados en `audio/distractorSounds.ts`), elegidos al
+      azar cada vez, con entrada y salida graduales y volumen bajo. Respeta el botón de silencio del juego
+      (`SoundToggle`, `audibleContext()` de `src/lib/gameSound.ts`). El registro de la partida guarda en
+      `distractorMotif` la clave de la imagen y en `distractorSound` el nombre del sonido, o `silenciado` si
+      no se oyó. Partidas anteriores guardaron motivos y sonidos del diseño viejo (pixel-art, 9 sonidos).
+    - Catálogo de 20 dibujos SVG sin texto ni personas: claves en `lib/miniCaseImages.ts` y
+      `src/config/miniCaseImages.ts` (un test exige que coincidan, y que cada clave tenga dibujo en
+      `features/games/mini-cases/images/scenes.tsx`). Para agregar uno: dibujo en `scenes.tsx` + clave en los dos
+      catálogos.
+    - Administración: página «Mini casos» (`ROUTES.ADMIN_MINI_CASES`, menú del administrador). Lista, alta y
+      edición en `POST /api/admin/mini-cases` (`lib/miniCaseInput.ts` valida). Las 4 alternativas se escriben
+      en el orden **correcto** (la 1.ª va en el paso 1) y el juego las baraja. Sin `caseKey` se crea el
+      siguiente `caso-N`. Al editar, las alternativas **conservan su `optionKey`** (los resultados y las
+      estadísticas las usan) y las secuencias alternativas se conservan si no se envían. `enabled: false` retira
+      el caso sin borrarlo.
+    - Cambiar el texto de un caso, de su alerta, de su consigna o de sus alternativas, o agregar/retirar casos,
+      cambia la versión del banco (`miniCasesContentVersion`): esas partidas dejan de ser comparables con las
+      anteriores. Título, imagen y retroalimentación no la cambian.
+    - Banco inicial: `server-scripts/seedMiniCases.ts` (25 casos, idempotente por `caseKey`; un test lo valida).
+      Su clave de respuesta del documento lista NÚMEROS de alternativa en orden cronológico (3-2-1-4 = la
+      alternativa 3 va primero); el `correctStep` de cada alternativa es su posición en esa lista.
+
+16. **Inicio del estudiante** (`ROUTES.STUDENT`): página con el nombre del proyecto, su financiamiento y el
+    equipo (`src/config/projectInfo.ts`). Las fotos del equipo no se suben desde la app: se dejan en
+    `public/equipo/` (ver `LEEME.txt`). Los juegos están en `ROUTES.STUDENT_GAMES`.
+
+17. **Ficha del estudiante:** jornada (`studyShift`: diurna/vespertina) y 5 paralelos. En el alta manual,
+    «Universidad» va antes que «Paralelo». El estudiante puede editar correo, fecha de nacimiento y jornada
+    desde su perfil con un solo lápiz (`PATCH /api/profile/:rut/contact`).
 
 ---
 
@@ -413,8 +453,8 @@ abierta y rebote de rol incorrecto.
 **Fase C — Corazón del producto**
 4. Juego 1: seriación de colores (autocontrol + memoria de trabajo)
 5. Juego 2: conexión de nodos sin cruce (planificación + flexibilidad cognitiva)
-6. Mini casos: 5 fases (lectura 10s → desvanecimiento → distractores →
-   giro inesperado → ordenar 1-4), drag & drop
+6. Mini casos: 5 fases (lectura 10s → desvanecimiento → distractor de 4s (imagen + sonido) →
+   giro inesperado → ordenar 1-4)
 7. Métricas: tiempo, errores, intentos, nivel, desbloqueos
 
 **Fase D — Gestión**

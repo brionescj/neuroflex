@@ -26,6 +26,8 @@ export const ROUTES = {
 
   ADMIN_STUDENT_STATS: "/administracion/desempeno",
 
+  ADMIN_MINI_CASES: "/administracion/mini-casos",
+
   ADMIN_PROFILE: "/administracion/perfil",
 } as const;
 
