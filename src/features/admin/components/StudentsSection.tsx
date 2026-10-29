@@ -9,13 +9,16 @@ import { Field, FieldLabel } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import {
   GENDER_OPTIONS,
+  PARALELO_OPTIONS,
   REGION_OPTIONS,
+  STUDY_SHIFT_OPTIONS,
   UNIVERSITY_OPTIONS,
   genderLabel,
+  studyShiftLabel,
   universityLabel,
 } from "@/config/studentOptions";
 import { cn } from "@/lib/utils";
-import type { Gender, Student, University } from "@/types";
+import type { Gender, Paralelo, Student, StudyShift, University } from "@/types";
 import { optionalEmailProblem } from "@/utils/email";
 import { normalizeRegion } from "@/utils/region";
 import { isValidRut } from "@/utils/rut";
@@ -46,6 +49,7 @@ const EMPTY_FORM = {
   email: "",
   gender: "" as Gender | "",
   university: "" as University | "",
+  studyShift: "" as StudyShift | "",
   birthDate: "",
 };
 
@@ -59,6 +63,7 @@ type EditFormState = {
   celular: string;
   gender: Gender | "";
   university: University | "";
+  studyShift: StudyShift | "";
   /** AAAA-MM-DD, como lo entrega <input type="date">. */
   birthDate: string;
 };
@@ -73,6 +78,7 @@ const EMPTY_EDIT_FORM: EditFormState = {
   celular: "",
   gender: "",
   university: "",
+  studyShift: "",
   birthDate: "",
 };
 
@@ -239,6 +245,25 @@ function StudentEditForm({
       </Field>
 
       <Field>
+        <FieldLabel htmlFor={`edit-studyShift-${studentRut}`}>Jornada</FieldLabel>
+        <select
+          id={`edit-studyShift-${studentRut}`}
+          className={SELECT_CLASS}
+          value={editForm.studyShift}
+          onChange={(e) =>
+            setEditForm({ ...editForm, studyShift: e.target.value as StudyShift | "" })
+          }
+        >
+          <option value="">Sin registrar</option>
+          {STUDY_SHIFT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field>
         <FieldLabel htmlFor={`edit-birthDate-${studentRut}`}>
           Fecha de nacimiento
         </FieldLabel>
@@ -295,6 +320,7 @@ function StudentDetailsView({
     },
     { label: "Género", value: genderLabel(student.gender) },
     { label: "Universidad", value: universityLabel(student.university) },
+    { label: "Jornada", value: studyShiftLabel(student.studyShift) },
     { label: "Fecha de nacimiento", value: formatBirthDate(student.birthDate) },
   ];
 
@@ -463,13 +489,14 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
       firstName: form.firstName,
       paternalLastName: form.paternalLastName,
       maternalLastName: form.maternalLastName,
-      paralelo: Number(form.paralelo) as 1 | 2 | 3 | 4,
+      paralelo: Number(form.paralelo) as Paralelo,
       ciudad: form.ciudad || undefined,
       region: form.region || undefined,
       celular: form.celular || undefined,
       email: form.email || undefined,
       gender: form.gender || undefined,
       university: form.university || undefined,
+      studyShift: form.studyShift || undefined,
       birthDate: form.birthDate || undefined,
     });
 
@@ -521,6 +548,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
       celular: student.celular ?? "",
       gender: student.gender ?? "",
       university: student.university ?? "",
+      studyShift: student.studyShift ?? "",
       birthDate: toInputDate(student.birthDate),
     });
   }
@@ -573,6 +601,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
       celular: editForm.celular,
       gender: editForm.gender,
       university: editForm.university,
+      studyShift: editForm.studyShift,
       ...(birthDateChanged && { birthDate: editForm.birthDate }),
       // Igual que la fecha: una region antigua que la lista no reconoce se veria
       // vacia y se borraria sin querer al guardar otro dato.
@@ -662,6 +691,27 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
           </Field>
 
           <Field>
+            <FieldLabel htmlFor="university">Universidad</FieldLabel>
+            <select
+              id="university"
+              value={form.university}
+              onChange={(e) =>
+                setForm({ ...form, university: e.target.value as University | "" })
+              }
+              className="h-12 w-full rounded-xl border border-zinc-700 bg-transparent px-4 text-white outline-none transition focus:border-white"
+            >
+              <option value="" className="bg-zinc-900">
+                Sin registrar
+              </option>
+              {UNIVERSITY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-zinc-900">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field>
             <FieldLabel htmlFor="paralelo">Paralelo</FieldLabel>
             <select
               id="paralelo"
@@ -673,10 +723,32 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
               <option value="" disabled className="bg-zinc-900">
                 Seleccione
               </option>
-              <option value="1" className="bg-zinc-900">1</option>
-              <option value="2" className="bg-zinc-900">2</option>
-              <option value="3" className="bg-zinc-900">3</option>
-              <option value="4" className="bg-zinc-900">4</option>
+              {PARALELO_OPTIONS.map((n) => (
+                <option key={n} value={n} className="bg-zinc-900">
+                  {n}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="studyShift">Jornada</FieldLabel>
+            <select
+              id="studyShift"
+              value={form.studyShift}
+              onChange={(e) =>
+                setForm({ ...form, studyShift: e.target.value as StudyShift | "" })
+              }
+              className="h-12 w-full rounded-xl border border-zinc-700 bg-transparent px-4 text-white outline-none transition focus:border-white"
+            >
+              <option value="" className="bg-zinc-900">
+                Sin registrar
+              </option>
+              {STUDY_SHIFT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-zinc-900">
+                  {option.label}
+                </option>
+              ))}
             </select>
           </Field>
 
@@ -752,27 +824,6 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
                 Sin registrar
               </option>
               {GENDER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} className="bg-zinc-900">
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="university">Universidad</FieldLabel>
-            <select
-              id="university"
-              value={form.university}
-              onChange={(e) =>
-                setForm({ ...form, university: e.target.value as University | "" })
-              }
-              className="h-12 w-full rounded-xl border border-zinc-700 bg-transparent px-4 text-white outline-none transition focus:border-white"
-            >
-              <option value="" className="bg-zinc-900">
-                Sin registrar
-              </option>
-              {UNIVERSITY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value} className="bg-zinc-900">
                   {option.label}
                 </option>

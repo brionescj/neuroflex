@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-import { GENDERS, UNIVERSITIES } from "../studentFields";
+import { GENDERS, PARALELOS, STUDY_SHIFTS, UNIVERSITIES } from "../studentFields";
 
 const { Schema, model, models } = mongoose;
 
@@ -9,10 +9,10 @@ export type StudentDocument = {
   firstName: string;
   paternalLastName: string;
   maternalLastName: string;
-  paralelo: 1 | 2 | 3 | 4;
+  paralelo: (typeof PARALELOS)[number];
   entryYear: number;
   birthDate?: string;
-  studyShift?: "day" | "evening";
+  studyShift?: (typeof STUDY_SHIFTS)[number];
   gender?: (typeof GENDERS)[number];
   university?: (typeof UNIVERSITIES)[number];
   enabled: boolean;
@@ -33,7 +33,7 @@ const studentSchema = new Schema<StudentDocument>({
   firstName: { type: String, required: true },
   paternalLastName: { type: String, required: true },
   maternalLastName: { type: String, required: true },
-  paralelo: { type: Number, enum: [1, 2, 3, 4], required: true },
+  paralelo: { type: Number, enum: PARALELOS, required: true },
   entryYear: {
     type: Number,
     required: true,
@@ -41,7 +41,7 @@ const studentSchema = new Schema<StudentDocument>({
     default: () => new Date().getFullYear(),
   },
   birthDate: String,
-  studyShift: { type: String, enum: ["day", "evening"] },
+  studyShift: { type: String, enum: STUDY_SHIFTS },
   gender: { type: String, enum: GENDERS },
   university: { type: String, enum: UNIVERSITIES },
   enabled: { type: Boolean, required: true, default: true },

@@ -1,7 +1,7 @@
 import type { AvatarId } from "@/config/avatars";
 import type { Gender, StudyShift, University } from "./common";
 
-export type Paralelo = 1 | 2 | 3 | 4;
+export type Paralelo = 1 | 2 | 3 | 4 | 5;
 
 export type Student = {
   rut: string;

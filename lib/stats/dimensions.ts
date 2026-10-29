@@ -1,5 +1,5 @@
 import { ageAt } from "../gameAttempts";
-import { MAX_STUDENT_AGE } from "../studentFields";
+import { MAX_STUDENT_AGE, PARALELOS } from "../studentFields";
 import { REGIONS, normalizeRegion } from "../region";
 import type {
   AttemptRow,
@@ -63,7 +63,7 @@ for (let from = 21; from <= MAX_STUDENT_AGE; from += 5) {
 }
 
 const FIXED: Partial<Record<DimensionId, OptionChoice[]>> = {
-  paralelo: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `Paralelo ${n}` })),
+  paralelo: PARALELOS.map((n) => ({ value: String(n), label: `Paralelo ${n}` })),
   university: [
     { value: "santo-tomas", label: "Santo Tomás" },
     { value: "uvm", label: "UVM" },

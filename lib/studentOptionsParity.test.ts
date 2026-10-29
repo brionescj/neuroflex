@@ -3,13 +3,15 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { REGIONS } from "./region";
-import { GENDERS, MAX_STUDENT_AGE, MIN_STUDENT_AGE, UNIVERSITIES } from "./studentFields";
+import { GENDERS, MAX_STUDENT_AGE, MIN_STUDENT_AGE, PARALELOS, STUDY_SHIFTS, UNIVERSITIES } from "./studentFields";
 
 // El servidor no importa codigo del navegador: se lee el archivo del frontend
 // como texto para comprobar que ofrece exactamente los mismos valores.
 const source = readFileSync("src/config/studentOptions.ts", "utf8");
 
-function valuesIn(block: "GENDER_OPTIONS" | "UNIVERSITY_OPTIONS" | "REGION_OPTIONS"): string[] {
+function valuesIn(
+  block: "GENDER_OPTIONS" | "UNIVERSITY_OPTIONS" | "REGION_OPTIONS" | "STUDY_SHIFT_OPTIONS",
+): string[] {
   const start = source.indexOf(`export const ${block}`);
   const end = source.indexOf("];", start);
 
@@ -25,6 +27,17 @@ describe("opciones de la ficha del estudiante: servidor y navegador coinciden", 
 
   it("universidades", () => {
     expect(valuesIn("UNIVERSITY_OPTIONS")).toEqual([...UNIVERSITIES]);
+  });
+
+  it("jornadas", () => {
+    expect(valuesIn("STUDY_SHIFT_OPTIONS")).toEqual([...STUDY_SHIFTS]);
+  });
+
+  it("paralelos (1 a 5)", () => {
+    expect(source).toContain(`export const PARALELO_OPTIONS: readonly Paralelo[] = [${PARALELOS.join(", ")}];`);
+    expect(readFileSync("src/types/student.ts", "utf8")).toContain(
+      `export type Paralelo = ${PARALELOS.join(" | ")};`,
+    );
   });
 
   it("regiones, en el mismo orden", () => {

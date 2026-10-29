@@ -7,7 +7,9 @@ import {
   fail,
   type ApiResponse,
   type Gender,
+  type Paralelo,
   type Student,
+  type StudyShift,
   type University,
 } from "@/types";
 
@@ -16,13 +18,14 @@ export type CreateStudentPayload = {
   firstName: string;
   paternalLastName: string;
   maternalLastName: string;
-  paralelo: 1 | 2 | 3 | 4;
+  paralelo: Paralelo;
   ciudad?: string;
   region?: string;
   celular?: string;
   email?: string;
   gender?: Gender;
   university?: University;
+  studyShift?: StudyShift;
   /** AAAA-MM-DD. */
   birthDate?: string;
 };
@@ -41,6 +44,7 @@ export type UpdateStudentDetailsPayload = {
   email?: string;
   gender?: Gender | "";
   university?: University | "";
+  studyShift?: StudyShift | "";
   /** AAAA-MM-DD. */
   birthDate?: string;
 };

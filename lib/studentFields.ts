@@ -14,6 +14,16 @@ export const GENDERS = ["female", "male", "other", "undisclosed"] as const;
 
 export const UNIVERSITIES = ["santo-tomas", "uvm"] as const;
 
+/** Jornada de estudio: Diurna o Vespertina. */
+export const STUDY_SHIFTS = ["day", "evening"] as const;
+
+/** Los cinco paralelos de la cohorte (1 a 5). */
+export const PARALELOS = [1, 2, 3, 4, 5] as const;
+
+export function isParalelo(value: unknown): value is (typeof PARALELOS)[number] {
+  return (PARALELOS as readonly unknown[]).includes(value);
+}
+
 const FIELDS = [
   "ciudad",
   "region",
@@ -21,6 +31,7 @@ const FIELDS = [
   "email",
   "gender",
   "university",
+  "studyShift",
   "birthDate",
 ] as const;
 
@@ -33,6 +44,7 @@ const LABELS: Record<Field, string> = {
   email: "El correo",
   gender: "El género",
   university: "La universidad",
+  studyShift: "La jornada",
   birthDate: "La fecha de nacimiento",
 };
 
@@ -116,6 +128,10 @@ function invalidReason(field: Field, value: string, now: Date): string | null {
 
   if (field === "university" && !(UNIVERSITIES as readonly string[]).includes(value)) {
     return "La universidad indicada no es válida.";
+  }
+
+  if (field === "studyShift" && !(STUDY_SHIFTS as readonly string[]).includes(value)) {
+    return "La jornada indicada no es válida.";
   }
 
   if (field === "birthDate") {

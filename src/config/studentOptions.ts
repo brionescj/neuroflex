@@ -1,4 +1,4 @@
-import type { Gender, University } from "@/types";
+import type { Gender, Paralelo, StudyShift, University } from "@/types";
 
 /**
  * Valores y etiquetas de los datos que el admin completa en la ficha del
@@ -16,6 +16,19 @@ export const UNIVERSITY_OPTIONS: readonly { value: University; label: string }[]
   { value: "santo-tomas", label: "Santo Tomás" },
   { value: "uvm", label: "UVM" },
 ];
+
+/** Jornada de estudio. Los valores deben coincidir con STUDY_SHIFTS de lib/studentFields.ts. */
+export const STUDY_SHIFT_OPTIONS: readonly { value: StudyShift; label: string }[] = [
+  { value: "day", label: "Diurna" },
+  { value: "evening", label: "Vespertina" },
+];
+
+/** Los cinco paralelos. Deben coincidir con PARALELOS de lib/studentFields.ts. */
+export const PARALELO_OPTIONS: readonly Paralelo[] = [1, 2, 3, 4, 5];
+
+export function studyShiftLabel(value: StudyShift | undefined): string | undefined {
+  return STUDY_SHIFT_OPTIONS.find((option) => option.value === value)?.label;
+}
 
 export function genderLabel(value: Gender | undefined): string | undefined {
   return GENDER_OPTIONS.find((option) => option.value === value)?.label;

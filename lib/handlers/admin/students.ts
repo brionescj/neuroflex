@@ -3,7 +3,7 @@ import { connectDB } from "../../db";
 import { requireAuth } from "../../auth";
 import { isValidRut, normalizeForDatabase } from "../../rut";
 import { Student } from "../../models/Student";
-import { parseStudentDetails } from "../../studentFields";
+import { isParalelo, parseStudentDetails } from "../../studentFields";
 
 export default async function handler(
   req: VercelRequest,
@@ -38,6 +38,13 @@ export default async function handler(
       });
     }
 
+    if (!isParalelo(Number(paralelo))) {
+      return res.status(400).json({
+        success: false,
+        message: "El paralelo debe ser un número del 1 al 5.",
+      });
+    }
+
     const normalizedRut = normalizeForDatabase(rut);
 
     if (!isValidRut(normalizedRut)) {
@@ -49,7 +56,7 @@ export default async function handler(
 
     // Nombres y apellidos (con la inicial de cada palabra en mayuscula) y datos
     // opcionales de la ficha: ciudad, region, celular, correo, genero,
-    // universidad y fecha de nacimiento. Se validan igual que al editarlos.
+    // universidad, jornada y fecha de nacimiento. Se validan igual que al editarlos.
     const details = parseStudentDetails(req.body, { requireChanges: false });
 
     if (!details.ok) {
@@ -67,7 +74,7 @@ export default async function handler(
 
     const created = await Student.create({
       rut: normalizedRut,
-      paralelo,
+      paralelo: Number(paralelo),
       ...details.set,
     });
 

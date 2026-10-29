@@ -119,6 +119,23 @@ describe("POST admin/students (alta manual)", () => {
     ]);
   });
 
+  it("guarda la jornada y acepta los paralelos del 1 al 5", async () => {
+    for (const paralelo of [1, 2, 3, 4, 5]) {
+      expect((await run({ ...BASE, paralelo, studyShift: "evening" })).status, String(paralelo)).toBe(201);
+    }
+
+    expect(mocks.created.map((c) => c.paralelo)).toEqual([1, 2, 3, 4, 5]);
+    expect(mocks.created[0]).toMatchObject({ studyShift: "evening" });
+  });
+
+  it("rechaza un paralelo fuera del 1 al 5 y una jornada que no existe, sin crear nada", async () => {
+    for (const extra of [{ paralelo: 6 }, { paralelo: 0 }, { paralelo: "x" }, { studyShift: "night" }]) {
+      expect((await run({ ...BASE, ...extra })).status, JSON.stringify(extra)).toBe(400);
+    }
+
+    expect(mocks.created).toHaveLength(0);
+  });
+
   it("guarda los nombres con la inicial de cada palabra en mayuscula, sin importar como se escribieron", async () => {
     const { status } = await run({
       ...BASE,

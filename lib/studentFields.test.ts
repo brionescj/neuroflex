@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { GENDERS, UNIVERSITIES, parseStudentDetails } from "./studentFields";
+import { GENDERS, STUDY_SHIFTS, UNIVERSITIES, parseStudentDetails } from "./studentFields";
 
 const NOW = new Date("2026-10-21T12:00:00Z");
 
@@ -97,6 +97,26 @@ describe("parseStudentDetails", () => {
       message: "La ciudad no es válido.",
     });
     expect(parseStudentDetails({ gender: ["female"] }, { now: NOW }).ok).toBe(false);
+  });
+
+  it("acepta la jornada Diurna o Vespertina, la borra si viene vacia y rechaza otra", () => {
+    for (const studyShift of STUDY_SHIFTS) {
+      expect(parseStudentDetails({ studyShift }, { now: NOW })).toEqual({
+        ok: true,
+        set: { studyShift },
+        unset: {},
+      });
+    }
+
+    expect(parseStudentDetails({ studyShift: "" }, { now: NOW })).toEqual({
+      ok: true,
+      set: {},
+      unset: { studyShift: 1 },
+    });
+    expect(parseStudentDetails({ studyShift: "night" }, { now: NOW })).toEqual({
+      ok: false,
+      message: "La jornada indicada no es válida.",
+    });
   });
 
   it("valida la fecha de nacimiento: formato, calendario, futuro y rango", () => {
