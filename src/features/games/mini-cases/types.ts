@@ -1,5 +1,4 @@
 import type { AttemptHandle } from "../attempts/types";
-import type { SoundArchetype } from "./audio/distractorSounds";
 
 /**
  * Forma que entrega /api/mini-cases. A propósito NO incluye correctStep:
@@ -20,6 +19,12 @@ export type ApiMiniCase = {
    * cada resultado con su caso real.
    */
   caseKey: string;
+
+  /** Titulo del area («Área de Lenguaje y Comunicación»): lo que el estudiante ve en el encabezado. */
+  title: string;
+
+  /** Clave del dibujo del catalogo (config/miniCaseImages.ts) que se muestra como distractor. */
+  imageKey: string;
 
   /** Fase 1: texto del caso base, visible 10 segundos. */
   baseText: string;
@@ -71,7 +76,7 @@ export type MiniCaseBehavior = {
   twistReadMs: number | null;
   /** Tiempo real desde que aparece el ordenamiento hasta enviarlo; menos el tiempo activo, es cuanto estuvo fuera de la pestana. */
   wallMs: number;
-  /** Motivo y sonido del distractor que vio en este caso. */
+  /** Imagen (clave del catalogo) y sonido del distractor de este caso; el sonido es «silenciado» si no se oyo. */
   distractorMotif: string | null;
   distractorSound: string | null;
   /** Los primeros toques en orden (los contadores siguen exactos aunque se corte). */
@@ -117,17 +122,4 @@ export type MiniCasesProgress = {
 
   /** Partida a la que pertenece (ausente en avances anteriores al registro). */
   attempt?: AttemptHandle;
-};
-
-export type PixelMotif = {
-  name: string;
-
-  /** Mapa de caracter -> color hex. */
-  palette: Record<string, string>;
-
-  /** Cada string es una fila; cada caracter referencia una clave de palette. */
-  grid: string[];
-
-  /** Sonido procedural acorde al motivo (no ruido genérico). */
-  sound: SoundArchetype;
 };

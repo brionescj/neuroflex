@@ -15,8 +15,8 @@ const MAX_COUNT = 1000;
  * esperar.
  */
 export type BehaviorTracker = {
-  /** El distractor (imagen y sonido) que acaba de mostrarse. */
-  noteDistractor: (motif: string, sound: string) => void;
+  /** El distractor que acaba de mostrarse: clave de la imagen y nombre del sonido (o «silenciado»). */
+  noteDistractor: (image: string, sound: string) => void;
   /** Aparece el giro de contexto. */
   twistShown: () => void;
   /** El estudiante pasa al ordenamiento; `displayedOptionKeys` es el orden en que se le muestran. */
@@ -50,8 +50,8 @@ export function createBehaviorTracker(
   } | null = null;
 
   return {
-    noteDistractor(motif, sound) {
-      distractor = { motif, sound };
+    noteDistractor(image, sound) {
+      distractor = { motif: image, sound };
     },
 
     twistShown() {

@@ -10,6 +10,8 @@ import type { ApiMiniCase, MiniCaseResult } from "./types";
 function makeCase(n: number): ApiMiniCase {
   return {
     caseKey: `caso-${n}`,
+    title: `Área de prueba ${n}`,
+    imageKey: "aula",
     baseText: `base ${n}`,
     twistText: `giro ${n}`,
     promptText: `consigna ${n}`,
@@ -157,6 +159,21 @@ describe("buildResumePlan", () => {
       "caso-2-a",
     ]);
     expect(plan!.snapshot.caseIndex).toBe(2);
+  });
+
+  it("al reanudar el caso conserva su título y su imagen", () => {
+    const plan = buildResumePlan(
+      bank.map((c, i) => ({ ...c, title: `Área ${i + 1}`, imageKey: i === 0 ? "lupa" : "aula" })),
+      buildProgressSnapshot(
+        [bank[2]!, bank[0]!, bank[1]!],
+        0,
+        "reading",
+        [],
+      ),
+    );
+
+    expect(plan?.orderedCases.map((c) => c.title)).toEqual(["Área 3", "Área 1", "Área 2"]);
+    expect(plan?.orderedCases[1]?.imageKey).toBe("lupa");
   });
 
   it("ignora casos nuevos del banco que no estaban en la partida", () => {

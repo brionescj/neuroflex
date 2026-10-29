@@ -1,36 +1,29 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/Button";
 import { ROUTES } from "@/config/routes";
+import { audibleContext, unlockSound } from "@/lib/gameSound";
 import { BackToGameHub } from "../../components/BackToGameHub";
 import { GameLeaseLostNotice } from "../../components/GameLeaseLostNotice";
 import { SaveAndExitButton } from "../../components/SaveAndExitButton";
+import { SoundToggle } from "../../components/SoundToggle";
 import { useGameLease } from "../../hooks/useGameLease";
 import { GAME_GUARD_CLASS, useScreenshotDeterrents } from "../../hooks/useScreenshotDeterrents";
 import { useLockNavigation } from "../../hooks/useLockNavigation";
 import { useWarnBeforeUnload } from "../../hooks/useWarnBeforeUnload";
-import { playDistractorSound } from "../audio/distractorSounds";
-import { PIXEL_MOTIFS } from "../data/pixelMotifs.data";
+import { pickDistractorSound, playDistractorSound } from "../audio/distractorSounds";
 import {
   DISTRACTOR_MS,
   READING_MS,
   useMiniCasesGame,
 } from "../hooks/useMiniCasesGame";
-import type { PixelMotif } from "../types";
-import { PixelMotifDistractor } from "./PixelMotifDistractor";
+import { MiniCaseImage } from "../images/MiniCaseImage";
+import { withoutAlertPrefix } from "../alertText";
 import { ReadingProgressBar } from "./ReadingProgressBar";
 
-function pickRandomMotif(): PixelMotif {
-  const index = Math.floor(Math.random() * PIXEL_MOTIFS.length);
-  const motif = PIXEL_MOTIFS[index];
-
-  if (!motif) {
-    throw new Error("PIXEL_MOTIFS esta vacio.");
-  }
-
-  return motif;
-}
+/** Lo que se anota cuando el sonido no se oyo (silenciado o bloqueado por el navegador). */
+const SILENCED = "silenciado";
 
 export function MiniCasesGame() {
   const navigate = useNavigate();
@@ -78,63 +71,19 @@ export function MiniCasesGame() {
   // cerrar la pestana o recargar mientras hay una partida en curso.
   useWarnBeforeUnload(phase !== "idle" && phase !== "finished");
 
-  // Se elige un solo motivo por caso y se comparte entre la imagen y el
-  // sonido (para que "correspondan" tiene que ser la misma eleccion, no
-  // dos aleatorios independientes).
-  const [currentMotif, setCurrentMotif] = useState<PixelMotif | null>(null);
+  // Distractor: la imagen es la del caso (la elige el administrador) y el sonido es uno de tres,
+  // al azar. Los dos duran lo mismo (DISTRACTOR_MS) y se registran para el analisis. Si el sonido esta
+  // silenciado o el navegador no lo deja sonar, se anota «silenciado»: el estudiante no lo oyo.
+  const imageKey = currentCase?.imageKey ?? null;
 
   useEffect(() => {
-    if (phase !== "distractors") return;
-    setCurrentMotif(pickRandomMotif());
-  }, [phase, caseIndex]);
+    if (phase !== "distractors" || !imageKey) return;
 
-  // El analisis necesita saber que distractor vio el estudiante.
-  useEffect(() => {
-    if (phase === "distractors" && currentMotif) {
-      registerDistractor(currentMotif.name, currentMotif.sound);
-    }
-  }, [phase, currentMotif, registerDistractor]);
+    const ctx = audibleContext();
+    const sound = pickDistractorSound();
 
-  // El AudioContext se crea (o se reactiva) dentro de un click real del
-  // usuario ("Comenzar"). Es el unico gesto disponible en todo el flujo:
-  // el resto de las transiciones de fase son automaticas por temporizador,
-  // y la mayoria de navegadores bloquea sonido que no cuelga de un gesto.
-  const audioContextRef = useRef<AudioContext | null>(null);
+    registerDistractor(imageKey, ctx ? sound : SILENCED);
 
-  function unlockAudio() {
-    if (!audioContextRef.current) {
-      try {
-        audioContextRef.current = new AudioContext();
-      } catch {
-        audioContextRef.current = null;
-      }
-    }
-    audioContextRef.current?.resume().catch(() => {});
-  }
-
-  function handleStart() {
-    unlockAudio();
-    start();
-  }
-
-  function handleResume() {
-    unlockAudio();
-    resume();
-  }
-
-  useEffect(() => {
-    return () => {
-      audioContextRef.current?.close().catch(() => {});
-    };
-  }, []);
-
-  // Sonido acorde al motivo mostrado (no ruido generico): usa el mismo
-  // "currentMotif" que ya eligio la imagen, y arma su sonido segun
-  // motif.sound (ver distractorSounds.ts para el mapeo por arquetipo).
-  useEffect(() => {
-    if (phase !== "distractors" || !currentMotif) return;
-
-    const ctx = audioContextRef.current;
     if (!ctx) return;
 
     const master = ctx.createGain();
@@ -142,25 +91,29 @@ export function MiniCasesGame() {
     master.connect(ctx.destination);
 
     try {
-      playDistractorSound(
-        ctx,
-        master,
-        currentMotif.sound,
-        DISTRACTOR_MS / 1000,
-      );
+      playDistractorSound(ctx, master, sound, DISTRACTOR_MS / 1000);
     } catch {
-      // Bloqueado por politica de autoplay del navegador; se ignora, el
-      // distractor visual sigue funcionando igual.
+      // Un navegador que no deja sonar no debe romper el juego: la imagen se ve igual.
     }
 
     return () => {
-      // playDistractorSound programa varias fuentes internamente; no hay
-      // una sola referencia que detener. Desconectar el gain maestro corta
-      // la salida de audio inmediatamente aunque algun nodo interno siga
-      // "vivo" un instante mas.
+      // El sonido programa varias fuentes; desconectar el volumen general corta todo de inmediato
+      // (por ejemplo, si se sale del juego a mitad del distractor).
       master.disconnect();
     };
-  }, [phase, currentMotif]);
+  }, [phase, caseIndex, imageKey, registerDistractor]);
+
+  // El audio se crea o reactiva dentro de un toque real de la persona («Comenzar» o «Continuar»): el
+  // resto de las fases cambia solo por temporizador y los navegadores no dejan sonar sin un toque.
+  function handleStart() {
+    unlockSound();
+    start();
+  }
+
+  function handleResume() {
+    unlockSound();
+    resume();
+  }
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -201,9 +154,13 @@ export function MiniCasesGame() {
 
       {phase === "idle" && !hasResumable && <BackToGameHub />}
 
-      <h1 className="text-2xl font-bold sm:text-3xl md:text-4xl">
-        Banco de Mini Casos
-      </h1>
+      <div className="flex w-full items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold sm:text-3xl md:text-4xl">
+          Banco de Mini Casos
+        </h1>
+
+        <SoundToggle />
+      </div>
 
       {phase === "idle" && (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-10 text-center">
@@ -219,8 +176,9 @@ export function MiniCasesGame() {
                 desaparece.
               </li>
               <li>
-                Verás un dibujo breve para despejar la mente y después un aviso
-                de cambio con información nueva.
+                Verás una imagen y escucharás un sonido suave durante 4 segundos para
+                despejar la mente, y después un aviso de cambio con información
+                nueva. Con el botón de arriba puedes silenciar el sonido.
               </li>
               <li>
                 Ordena las 4 acciones: toca primero la que harías
@@ -279,6 +237,10 @@ export function MiniCasesGame() {
             Caso {caseIndex + 1} de {totalCases}
           </p>
 
+          <h2 className="text-lg font-semibold text-sky-300">
+            {currentCase.title}
+          </h2>
+
           <ReadingProgressBar key={caseIndex} durationMs={READING_MS} />
 
           <p className="text-base leading-relaxed text-white">
@@ -293,7 +255,10 @@ export function MiniCasesGame() {
 
       {phase === "distractors" && (
         <div className="flex w-full flex-col items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <PixelMotifDistractor motif={currentMotif} />
+          <MiniCaseImage
+            imageKey={currentCase?.imageKey}
+            className="aspect-[8/5] w-full rounded-xl border border-zinc-700"
+          />
         </div>
       )}
 
@@ -305,7 +270,7 @@ export function MiniCasesGame() {
             </p>
 
             <p className="text-base leading-relaxed text-white">
-              {currentCase.twistText}
+              {withoutAlertPrefix(currentCase.twistText)}
             </p>
 
             <Button onClick={proceedToOrdering} className="self-center">
@@ -322,6 +287,10 @@ export function MiniCasesGame() {
         phase === "submit-error") &&
         currentCase && (
           <div className="flex w-full flex-col gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+            <p className="text-sm font-semibold text-sky-300">
+              {currentCase.title}
+            </p>
+
             <p className="text-sm text-zinc-400">{currentCase.promptText}</p>
 
             <div className="flex flex-col gap-2">
@@ -409,7 +378,7 @@ export function MiniCasesGame() {
       {phase === "result" && lastResult && currentCase && (
         <div className="flex w-full flex-col items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-8 text-center">
           <p className="text-sm text-zinc-400">
-            Caso {caseIndex + 1} de {totalCases}
+            Caso {caseIndex + 1} de {totalCases} · {currentCase.title}
           </p>
 
           <p className="text-lg font-semibold text-white">
@@ -417,9 +386,13 @@ export function MiniCasesGame() {
             la posición correcta
           </p>
 
-          <p className="max-w-md text-sm text-zinc-400">
-            {currentCase.feedback}
-          </p>
+          <div className="flex max-w-md flex-col gap-1">
+            <p className="text-sm font-semibold text-sky-300">
+              Retroalimentación
+            </p>
+
+            <p className="text-sm text-zinc-400">{currentCase.feedback}</p>
+          </div>
 
           <Button onClick={nextCase} className="mt-1">
             {isLastCase ? "Ver resumen final" : "Siguiente caso"}

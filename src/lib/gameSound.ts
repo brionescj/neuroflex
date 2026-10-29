@@ -77,6 +77,15 @@ export function unlockSound(): void {
   }
 }
 
+/**
+ * El audio, solo si puede sonar ahora: no esta silenciado, el navegador lo tiene y ya lo dejo sonar.
+ * Lo usa quien necesita programar sus propios sonidos (el distractor de Mini casos) respetando el
+ * boton de silencio.
+ */
+export function audibleContext(): AudioContext | null {
+  return !muted && ctx && ctx.state === "running" ? ctx : null;
+}
+
 type ToneOptions = {
   /** Segundos desde ahora. */
   at?: number;

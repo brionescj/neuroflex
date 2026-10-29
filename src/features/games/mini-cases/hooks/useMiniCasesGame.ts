@@ -24,7 +24,8 @@ const CONTENT_VERSION = "mini-cases";
 export const READING_MS = 10_000;
 
 const FADING_MS = 1_500;
-export const DISTRACTOR_MS = 3_000;
+/** Lo que dura el distractor: la imagen y el sonido, los dos. */
+export const DISTRACTOR_MS = 4_000;
 
 type CasesStatus = "loading" | "loaded" | "error";
 
@@ -338,9 +339,9 @@ export function useMiniCasesGame() {
     setPhase("ordering");
   }, [clock, currentCase, setSelection]);
 
-  // El componente avisa que distractor eligio para este caso.
-  const registerDistractor = useCallback((motif: string, sound: string) => {
-    trackerRef.current.noteDistractor(motif, sound);
+  // El componente avisa que imagen y que sonido tuvo el distractor de este caso.
+  const registerDistractor = useCallback((image: string, sound: string) => {
+    trackerRef.current.noteDistractor(image, sound);
   }, []);
 
   // Alterna la seleccion de una opcion: si ya estaba elegida, la saca del

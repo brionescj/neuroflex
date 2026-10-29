@@ -1,256 +1,193 @@
-export type SoundArchetype =
-  | "meow"
-  | "bark"
-  | "chirp"
-  | "splash"
-  | "rain"
-  | "wind"
-  | "chime"
-  | "twinkle"
-  | "knock";
+/**
+ * Sonidos del distractor de los mini casos. Son solo tres, suaves y sin sobresaltos (nada de ladridos,
+ * golpes ni alarmas), y suenan exactamente lo que dura la imagen: 4 segundos, con entrada y salida
+ * graduales. Se sintetizan con Web Audio (ruido filtrado y tonos), sin archivos.
+ *
+ * Cada vez que aparece el distractor se elige uno al azar. Su nombre queda registrado en la partida
+ * (`distractorSound`) para el analisis.
+ */
+export const DISTRACTOR_SOUNDS = ["lluvia", "olas", "campanillas"] as const;
 
-function noiseBuffer(ctx: AudioContext, durationSeconds: number): AudioBuffer {
-  const size = Math.max(1, Math.floor(ctx.sampleRate * durationSeconds));
+export type DistractorSoundName = (typeof DISTRACTOR_SOUNDS)[number];
+
+export function pickDistractorSound(random: () => number = Math.random): DistractorSoundName {
+  const index = Math.min(DISTRACTOR_SOUNDS.length - 1, Math.floor(random() * DISTRACTOR_SOUNDS.length));
+
+  return DISTRACTOR_SOUNDS[index] as DistractorSoundName;
+}
+
+/** Cuanto tardan en subir y en bajar el volumen: sin esto el sonido empezaria o terminaria con un corte. */
+const FADE_IN = 0.5;
+const FADE_OUT = 0.8;
+
+type NoiseKind = "white" | "brown";
+
+function noiseBuffer(ctx: AudioContext, seconds: number, kind: NoiseKind): AudioBuffer {
+  const size = Math.max(1, Math.floor(ctx.sampleRate * seconds));
   const buffer = ctx.createBuffer(1, size, ctx.sampleRate);
   const data = buffer.getChannelData(0);
 
+  if (kind === "white") {
+    for (let i = 0; i < size; i++) data[i] = Math.random() * 2 - 1;
+
+    return buffer;
+  }
+
+  // Ruido "marron": grave y envolvente, como el oleaje lejano.
+  let last = 0;
+
   for (let i = 0; i < size; i++) {
-    data[i] = Math.random() * 2 - 1;
+    last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+    data[i] = last * 3.5;
   }
 
   return buffer;
 }
 
-type ToneOptions = {
-  startTime: number;
-  duration: number;
-  freqStart: number;
-  freqEnd?: number;
-  peakGain?: number;
-  type?: OscillatorType;
-};
-
-function playTone(ctx: AudioContext, destination: AudioNode, opts: ToneOptions) {
-  const {
-    startTime,
-    duration,
-    freqStart,
-    freqEnd = freqStart,
-    peakGain = 0.15,
-    type = "sine",
-  } = opts;
-
-  const osc = ctx.createOscillator();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freqStart, startTime);
-  osc.frequency.linearRampToValueAtTime(freqEnd, startTime + duration);
-
+/** Un volumen general que sube y baja suave, para que el sonido no empiece ni termine de golpe. */
+function envelope(ctx: AudioContext, destination: AudioNode, seconds: number): GainNode {
+  const start = ctx.currentTime;
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0, startTime);
-  gain.gain.linearRampToValueAtTime(
-    peakGain,
-    startTime + Math.min(0.05, duration / 3),
-  );
-  gain.gain.linearRampToValueAtTime(0, startTime + duration);
 
-  osc.connect(gain).connect(destination);
-  osc.start(startTime);
-  osc.stop(startTime + duration + 0.02);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.linearRampToValueAtTime(1, start + FADE_IN);
+  gain.gain.setValueAtTime(1, start + seconds - FADE_OUT);
+  gain.gain.linearRampToValueAtTime(0.0001, start + seconds);
+  gain.connect(destination);
+
+  return gain;
 }
 
-type NoiseBurstOptions = {
-  startTime: number;
-  duration: number;
-  peakGain?: number;
-  filterType?: BiquadFilterType;
-  filterFreqStart?: number;
-  filterFreqEnd?: number;
-};
-
-function playNoiseBurst(
+function noiseSource(
   ctx: AudioContext,
   destination: AudioNode,
-  opts: NoiseBurstOptions,
-) {
-  const {
-    startTime,
-    duration,
-    peakGain = 0.15,
-    filterType = "lowpass",
-    filterFreqStart = 1200,
-    filterFreqEnd = filterFreqStart,
-  } = opts;
-
+  seconds: number,
+  kind: NoiseKind,
+): AudioBufferSourceNode {
   const source = ctx.createBufferSource();
-  source.buffer = noiseBuffer(ctx, duration);
 
-  const filter = ctx.createBiquadFilter();
-  filter.type = filterType;
-  filter.frequency.setValueAtTime(filterFreqStart, startTime);
-  filter.frequency.linearRampToValueAtTime(filterFreqEnd, startTime + duration);
+  source.buffer = noiseBuffer(ctx, seconds + 0.1, kind);
+  source.connect(destination);
+  source.start(ctx.currentTime);
+  source.stop(ctx.currentTime + seconds + 0.05);
 
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0, startTime);
-  gain.gain.linearRampToValueAtTime(
-    peakGain,
-    startTime + Math.min(0.03, duration / 4),
-  );
-  gain.gain.linearRampToValueAtTime(0, startTime + duration);
-
-  source.connect(filter).connect(gain).connect(destination);
-  source.start(startTime);
-  source.stop(startTime + duration + 0.02);
+  return source;
 }
 
+/** Una nota con ataque corto y caida larga, como una campanilla de viento. */
+function bell(ctx: AudioContext, destination: AudioNode, at: number, freq: number, level: number, decay: number) {
+  const start = ctx.currentTime + at;
+  const end = start + decay;
+
+  // Un parcial inarmonico (2,76 veces) le da el timbre metalico suave de la campanilla.
+  for (const [ratio, part] of [
+    [1, 1],
+    [2.76, 0.22],
+  ] as const) {
+    const osc = ctx.createOscillator();
+    const amp = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq * ratio, start);
+    amp.gain.setValueAtTime(0.0001, start);
+    amp.gain.exponentialRampToValueAtTime(level * part, start + 0.008);
+    amp.gain.exponentialRampToValueAtTime(0.0001, end);
+    osc.connect(amp).connect(destination);
+    osc.start(start);
+    osc.stop(end + 0.02);
+  }
+}
+
+// Escala pentatonica aguda: cualquier combinacion suena armonica.
+const CHIME_NOTES = [1046.5, 1174.66, 1318.51, 1567.98, 1760];
+
 /**
- * Genera un sonido acorde al motivo visual mostrado, en vez de ruido
- * generico. Son sintesis procedural (osciladores + ruido filtrado), no
- * clips de audio: no hay pipeline de assets de sonido en el proyecto, y
- * esto evita depender de archivos externos.
+ * Programa el sonido elegido. Todo lo que arranca termina antes de `seconds` (mas un margen de
+ * centesimas); para cortarlo antes basta con desconectar `destination`.
  */
 export function playDistractorSound(
   ctx: AudioContext,
   destination: AudioNode,
-  archetype: SoundArchetype,
-  totalDurationSeconds: number,
-) {
-  const now = ctx.currentTime;
+  name: DistractorSoundName,
+  seconds: number,
+): void {
+  const master = envelope(ctx, destination, seconds);
+  const start = ctx.currentTime;
 
-  switch (archetype) {
-    case "meow": {
-      playTone(ctx, destination, {
-        startTime: now + 0.1,
-        duration: 0.5,
-        freqStart: 500,
-        freqEnd: 750,
-        type: "triangle",
-        peakGain: 0.14,
-      });
-      playTone(ctx, destination, {
-        startTime: now + 0.65,
-        duration: 0.35,
-        freqStart: 700,
-        freqEnd: 350,
-        type: "triangle",
-        peakGain: 0.12,
-      });
-      break;
-    }
+  switch (name) {
+    case "lluvia": {
+      const level = ctx.createGain();
+      const high = ctx.createBiquadFilter();
+      const low = ctx.createBiquadFilter();
 
-    case "bark": {
-      [0.1, 0.4].forEach((t) => {
-        playNoiseBurst(ctx, destination, {
-          startTime: now + t,
-          duration: 0.15,
-          filterType: "bandpass",
-          filterFreqStart: 500,
-          peakGain: 0.18,
-        });
-      });
-      break;
-    }
+      level.gain.value = 0.08;
+      high.type = "highpass";
+      high.frequency.value = 1400;
+      low.type = "lowpass";
+      low.frequency.value = 7000;
+      level.connect(master);
+      high.connect(low).connect(level);
+      noiseSource(ctx, high, seconds, "white");
 
-    case "chirp": {
-      [0.1, 0.4, 0.8, 1.3].forEach((t, i) => {
-        playTone(ctx, destination, {
-          startTime: now + t,
-          duration: 0.08,
-          freqStart: 2200 + i * 200,
-          freqEnd: 2800 + i * 150,
-          peakGain: 0.1,
-        });
-      });
-      break;
-    }
+      // Alguna gota mas clara sobre el rumor de fondo.
+      for (let i = 0; i < 12; i++) {
+        const at = 0.3 + Math.random() * (seconds - 1.2);
+        const osc = ctx.createOscillator();
+        const amp = ctx.createGain();
+        const freq = 1800 + Math.random() * 1600;
 
-    case "splash": {
-      playNoiseBurst(ctx, destination, {
-        startTime: now + 0.1,
-        duration: 0.4,
-        filterType: "lowpass",
-        filterFreqStart: 3000,
-        filterFreqEnd: 300,
-        peakGain: 0.16,
-      });
-      playTone(ctx, destination, {
-        startTime: now + 0.45,
-        duration: 0.15,
-        freqStart: 900,
-        freqEnd: 500,
-        peakGain: 0.08,
-      });
-      break;
-    }
-
-    case "rain": {
-      const dropCount = 18;
-      for (let i = 0; i < dropCount; i++) {
-        const t = Math.random() * (totalDurationSeconds - 0.1);
-        playNoiseBurst(ctx, destination, {
-          startTime: now + t,
-          duration: 0.04,
-          filterType: "highpass",
-          filterFreqStart: 2000,
-          peakGain: 0.06,
-        });
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, start + at);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.7, start + at + 0.07);
+        amp.gain.setValueAtTime(0.0001, start + at);
+        amp.gain.exponentialRampToValueAtTime(0.025, start + at + 0.006);
+        amp.gain.exponentialRampToValueAtTime(0.0001, start + at + 0.08);
+        osc.connect(amp).connect(master);
+        osc.start(start + at);
+        osc.stop(start + at + 0.1);
       }
+
       break;
     }
 
-    case "wind": {
-      playNoiseBurst(ctx, destination, {
-        startTime: now,
-        duration: totalDurationSeconds,
-        filterType: "lowpass",
-        filterFreqStart: 500,
-        filterFreqEnd: 800,
-        peakGain: 0.09,
-      });
-      break;
-    }
+    case "olas": {
+      const swell = ctx.createGain();
+      const low = ctx.createBiquadFilter();
 
-    case "chime": {
-      playTone(ctx, destination, {
-        startTime: now + 0.05,
-        duration: 1.4,
-        freqStart: 523.25,
-        peakGain: 0.12,
-      });
-      playTone(ctx, destination, {
-        startTime: now + 0.15,
-        duration: 1.2,
-        freqStart: 659.25,
-        peakGain: 0.09,
-      });
-      break;
-    }
+      low.type = "lowpass";
+      low.Q.value = 0.4;
+      swell.gain.setValueAtTime(0.02, start);
 
-    case "twinkle": {
-      const notes = [784, 880, 988, 1046, 1175];
-      let t = 0.1;
-      for (let i = 0; i < 6; i++) {
-        const freq = notes[Math.floor(Math.random() * notes.length)] ?? 880;
-        playTone(ctx, destination, {
-          startTime: now + t,
-          duration: 0.12,
-          freqStart: freq,
-          peakGain: 0.09,
-        });
-        t += 0.25 + Math.random() * 0.2;
+      // Dos olas: el volumen y el brillo suben y bajan despacio, de 2 s cada una.
+      const half = seconds / 4;
+
+      for (let i = 0; i < 4; i++) {
+        const rising = i % 2 === 0;
+        const at = start + (i + 1) * half;
+
+        swell.gain.linearRampToValueAtTime(rising ? 0.18 : 0.04, at);
+        low.frequency.linearRampToValueAtTime(rising ? 1100 : 450, at);
       }
+
+      low.frequency.setValueAtTime(450, start);
+      noiseSource(ctx, low, seconds, "brown");
+      low.connect(swell).connect(master);
+
       break;
     }
 
-    case "knock": {
-      [0.1, 0.45, 0.8].forEach((t) => {
-        playNoiseBurst(ctx, destination, {
-          startTime: now + t,
-          duration: 0.06,
-          filterType: "lowpass",
-          filterFreqStart: 250,
-          peakGain: 0.2,
-        });
-      });
+    case "campanillas": {
+      // 8 notas repartidas en los primeros ~2,6 s; la ultima alcanza a apagarse antes de los 4 s.
+      const notes = 8;
+      const span = Math.max(0.5, seconds - 1.4 - 0.15);
+
+      for (let i = 0; i < notes; i++) {
+        const note = CHIME_NOTES[Math.floor(Math.random() * CHIME_NOTES.length)] ?? 1318.51;
+        const at = 0.15 + (i / notes) * span + Math.random() * 0.1;
+
+        bell(ctx, master, at, note, 0.08, 1.25);
+      }
+
       break;
     }
   }
