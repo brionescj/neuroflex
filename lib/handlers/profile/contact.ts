@@ -7,6 +7,7 @@ import { readSessionCookie } from "../../cookies";
 import { emailProblem, normalizeEmail } from "../../email";
 import { Student } from "../../models/Student";
 import { Admin } from "../../models/Admin";
+import { parseStudentDetails } from "../../studentFields";
 
 function modelFor(role: string) {
   if (role === "student") return Student;
@@ -36,13 +37,33 @@ export default async function handler(
     return res.status(403).json({ success: false, message: "No autorizado." });
   }
 
-  const { email: rawEmail, avatarId } = req.body ?? {};
+  const { email: rawEmail, avatarId, birthDate, studyShift } = req.body ?? {};
 
   const email = typeof rawEmail === "string" ? normalizeEmail(rawEmail) : "";
   const problem = emailProblem(email);
 
   if (problem) {
     return res.status(400).json({ success: false, message: problem });
+  }
+
+  // La fecha de nacimiento y la jornada son del estudiante: se validan con las
+  // mismas reglas que usa el panel de administracion (edad de 17 a 80 anos).
+  // Vacio las borra; ausente no las toca. Un administrador no las tiene.
+  const extras: { set: Record<string, string>; unset: Record<string, 1> } = { set: {}, unset: {} };
+
+  if (birthDate !== undefined || studyShift !== undefined) {
+    if (payload.role !== "student") {
+      return res.status(400).json({ success: false, message: "Ese dato no corresponde a este perfil." });
+    }
+
+    const parsed = parseStudentDetails({ birthDate, studyShift }, { requireChanges: false });
+
+    if (!parsed.ok) {
+      return res.status(400).json({ success: false, message: parsed.message });
+    }
+
+    extras.set = parsed.set;
+    extras.unset = parsed.unset as Record<string, 1>;
   }
 
   await connectDB();
@@ -55,11 +76,15 @@ export default async function handler(
     return res.status(403).json({ success: false, message: "No autorizado." });
   }
 
-  const updated = await Model.findOneAndUpdate(
-    { rut },
-    { email, avatarId },
-    { new: true },
-  );
+  // Mongo rechaza un $unset vacio: solo se manda cuando hay algo que borrar.
+  const update = {
+    email,
+    avatarId,
+    ...extras.set,
+    ...(Object.keys(extras.unset).length > 0 && { $unset: extras.unset }),
+  };
+
+  const updated = await Model.findOneAndUpdate({ rut }, update, { new: true });
 
   if (!updated) {
     return res.status(404).json({ success: false, message: "No se pudo actualizar el perfil." });
@@ -68,6 +93,13 @@ export default async function handler(
   return res.status(200).json({
     success: true,
     message: "Perfil actualizado.",
-    data: { email: updated.email, avatarId: updated.avatarId },
+    data: {
+      email: updated.email,
+      avatarId: updated.avatarId,
+      ...(payload.role === "student" && {
+        birthDate: updated.birthDate,
+        studyShift: updated.studyShift,
+      }),
+    },
   });
 }

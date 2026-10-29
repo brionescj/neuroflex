@@ -14,10 +14,15 @@ vi.mock("./db", () => ({ connectDB: async () => undefined }));
 
 function model(name: string) {
   return {
-    findOneAndUpdate: async (filter: unknown, update: { email: string; avatarId: string }) => {
+    findOneAndUpdate: async (
+      filter: unknown,
+      update: { email: string; avatarId: string; birthDate?: string; studyShift?: string },
+    ) => {
       mocks.writes.push({ model: name, filter, update });
 
-      return mocks.found ? { email: update.email, avatarId: update.avatarId } : null;
+      return mocks.found
+        ? { email: update.email, avatarId: update.avatarId, birthDate: update.birthDate, studyShift: update.studyShift }
+        : null;
     },
   };
 }
@@ -110,6 +115,72 @@ describe("PATCH profile/:rut/contact (perfil propio)", () => {
     mocks.session = null;
     expect((await run({ email: "a@b.cl" })).status).toBe(401);
 
+    expect(mocks.writes).toHaveLength(0);
+  });
+});
+
+describe("PATCH profile/:rut/contact: fecha de nacimiento y jornada del estudiante", () => {
+  it("guarda la fecha de nacimiento y la jornada junto con el correo y devuelve lo guardado", async () => {
+    const { status, json } = await run({
+      email: "ana@uvm.cl",
+      avatarId: "cat",
+      birthDate: "2000-05-17",
+      studyShift: "evening",
+    });
+
+    expect(status).toBe(200);
+    expect(mocks.writes[0]?.update).toEqual({
+      email: "ana@uvm.cl",
+      avatarId: "cat",
+      birthDate: "2000-05-17",
+      studyShift: "evening",
+    });
+    expect(json.data).toEqual({
+      email: "ana@uvm.cl",
+      avatarId: "cat",
+      birthDate: "2000-05-17",
+      studyShift: "evening",
+    });
+  });
+
+  it("sin esos campos no los toca (ni los borra)", async () => {
+    await run({ email: "ana@uvm.cl", avatarId: "cat" });
+
+    expect(mocks.writes[0]?.update).toEqual({ email: "ana@uvm.cl", avatarId: "cat" });
+  });
+
+  it("un valor vacio los borra con $unset", async () => {
+    await run({ email: "ana@uvm.cl", avatarId: "cat", birthDate: "", studyShift: "" });
+
+    expect(mocks.writes[0]?.update).toEqual({
+      email: "ana@uvm.cl",
+      avatarId: "cat",
+      $unset: { birthDate: 1, studyShift: 1 },
+    });
+  });
+
+  it("rechaza una fecha inexistente, futura o fuera de 17 a 80 años, y una jornada que no existe", async () => {
+    const year = new Date().getFullYear();
+
+    for (const [body, message] of [
+      [{ birthDate: "2001-02-31" }, "La fecha de nacimiento no es válida."],
+      [{ birthDate: `${year + 1}-01-01` }, "La fecha de nacimiento no es válida."],
+      [{ birthDate: `${year - 10}-01-01` }, "La edad del estudiante debe estar entre 17 y 80 años."],
+      [{ studyShift: "night" }, "La jornada indicada no es válida."],
+    ] as const) {
+      const { status, json } = await run({ email: "ana@uvm.cl", avatarId: "cat", ...body });
+
+      expect(status, JSON.stringify(body)).toBe(400);
+      expect(json.message).toBe(message);
+    }
+
+    expect(mocks.writes).toHaveLength(0);
+  });
+
+  it("un administrador no tiene fecha de nacimiento ni jornada: 400 sin escribir", async () => {
+    mocks.session = { rut: "12345678-5", role: "admin" };
+
+    expect((await run({ email: "adm@uvm.cl", avatarId: "cat", studyShift: "day" })).status).toBe(400);
     expect(mocks.writes).toHaveLength(0);
   });
 });

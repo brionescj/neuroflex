@@ -9,6 +9,7 @@ import {
   type ApiResponse,
   type Admin,
   type Student,
+  type StudyShift,
   type UserRole,
 } from "@/types";
 
@@ -50,12 +51,23 @@ export type UpdateContactPayload = {
   email: string;
 
   avatarId: AvatarId;
+
+  /** Solo estudiantes. AAAA-MM-DD; vacio la borra, ausente no la toca. */
+  birthDate?: string;
+
+  /** Solo estudiantes. Vacio la borra, ausente no la toca. */
+  studyShift?: StudyShift | "";
 };
 
 type ContactData = {
   email: string;
 
   avatarId: AvatarId;
+
+  /** Solo en la respuesta a un estudiante: lo que quedo guardado. */
+  birthDate?: string;
+
+  studyShift?: StudyShift;
 };
 
 export async function updateProfileContact(
@@ -64,7 +76,12 @@ export async function updateProfileContact(
   try {
     const response = await api.patch<ApiResponse<ContactData>>(
       `/profile/${payload.rut}/contact`,
-      { email: payload.email, avatarId: payload.avatarId },
+      {
+        email: payload.email,
+        avatarId: payload.avatarId,
+        ...(payload.birthDate !== undefined && { birthDate: payload.birthDate }),
+        ...(payload.studyShift !== undefined && { studyShift: payload.studyShift }),
+      },
     );
 
     // La ficha guardada ya no es la actual.

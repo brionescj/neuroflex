@@ -6,16 +6,18 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Input";
 import { EmailInput } from "@/components/forms/EmailInput";
 import { AVATARS, type AvatarId } from "@/config/avatars";
-import { universityLabel } from "@/config/studentOptions";
+import { STUDY_SHIFT_OPTIONS, studyShiftLabel, universityLabel } from "@/config/studentOptions";
 import { useAuth } from "@/context";
 import { updateAdminNamesAction } from "@/features/admin/actions/admins.action";
 import { AdminNameForm, type PersonNames } from "@/features/admin/components/AdminNameForm";
-import { formatBirthDate } from "@/features/admin/utils/birthDate";
+import { birthDateRange, formatBirthDate, toInputDate } from "@/features/admin/utils/birthDate";
 import { ChangePasswordForm } from "@/features/auth/components";
 import { cn } from "@/lib/utils";
 import type { ProfileDetails } from "@/services/profile.service";
+import type { StudyShift } from "@/types";
 
 import { getProfileAction } from "../actions/getProfile.action";
 import { updateProfileAction } from "../actions/updateProfile.action";
@@ -24,16 +26,18 @@ import {
   type ProfileFormInput,
 } from "../schemas/profileForm.schema";
 
+type StudentDetails = Extract<ProfileDetails, { role: "student" }>;
+
 /**
  * Lo que el estudiante no edita desde el perfil, ordenado como en las tarjetas de
  * estudiantes del panel de administracion en el celular. (Los nombres de un
- * administrador los puede corregir: van aparte.)
+ * administrador los puede corregir: van aparte. El correo, la fecha de nacimiento
+ * y la jornada del estudiante se editan juntos con el lapiz de su tarjeta.)
  */
-function studentFields(details: Extract<ProfileDetails, { role: "student" }>) {
+function institutionalFields(details: StudentDetails) {
   return [
     { label: "RUT", value: details.rut },
     { label: "Universidad", value: universityLabel(details.university) },
-    { label: "Fecha de nacimiento", value: formatBirthDate(details.birthDate) },
     { label: "Ciudad", value: details.ciudad },
     { label: "Región", value: details.region },
     {
@@ -43,17 +47,31 @@ function studentFields(details: Extract<ProfileDetails, { role: "student" }>) {
   ];
 }
 
+/** Los tres datos que el estudiante edita con el lápiz, tal como están guardados. */
+function contactValues(details: ProfileDetails) {
+  return details.role === "student"
+    ? {
+        email: details.email ?? "",
+        birthDate: toInputDate(details.birthDate),
+        studyShift: (details.studyShift ?? "") as StudyShift | "",
+      }
+    : { email: details.email ?? "", birthDate: "", studyShift: "" as const };
+}
+
+const SELECT_CLASS =
+  "h-12 w-full rounded-xl border border-zinc-700 bg-transparent px-4 text-white outline-none transition focus:border-white";
+
 export default function ProfilePage() {
   const { user, login } = useAuth();
 
   const [details, setDetails] = useState<ProfileDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [isEditingContact, setIsEditingContact] = useState(false);
   const [isEditingData, setIsEditingData] = useState(false);
 
   const form = useForm<ProfileFormInput>({
     resolver: zodResolver(ProfileFormSchema),
-    defaultValues: { email: "", avatarId: "cat" },
+    defaultValues: { email: "", avatarId: "cat", birthDate: "", studyShift: "" },
   });
 
   // Solo depende de QUIEN es, no del objeto de sesion: `login()` lo reemplaza al guardar el nombre o el
@@ -74,7 +92,7 @@ export default function ProfilePage() {
       }
 
       setDetails(profile);
-      form.reset({ email: profile.email, avatarId: profile.avatarId });
+      form.reset({ ...contactValues(profile), avatarId: profile.avatarId });
       setIsLoading(false);
     });
 
@@ -84,15 +102,22 @@ export default function ProfilePage() {
   }, [rut, role, form]);
 
   async function onSubmit(data: ProfileFormInput) {
-    if (!user) {
+    if (!user || !details) {
       return;
     }
 
+    const isStudent = details.role === "student";
+    const saved = contactValues(details);
+
+    // La fecha y la jornada solo viajan si cambiaron: una fecha antigua que el selector no entiende
+    // se ve vacia, y mandarla vacia la borraria sin querer al guardar otro dato.
     const result = await updateProfileAction({
       rut: user.rut,
       role: user.role,
       email: data.email,
       avatarId: data.avatarId,
+      ...(isStudent && data.birthDate !== saved.birthDate && { birthDate: data.birthDate }),
+      ...(isStudent && data.studyShift !== saved.studyShift && { studyShift: data.studyShift }),
     });
 
     if (!result.success) {
@@ -105,18 +130,32 @@ export default function ProfilePage() {
     // disponible. Deuda tecnica: agregar updateUser() en AuthProvider.
     login({ ...user, avatarId: data.avatarId });
 
-    // La ficha en pantalla pasa a ser la guardada: "Cancelar" vuelve a ESTE correo, no al anterior.
-    setDetails((current) =>
-      current ? { ...current, email: data.email, avatarId: data.avatarId } : current,
-    );
-    setIsEditingEmail(false);
+    // La ficha en pantalla pasa a ser la guardada: «Cancelar» vuelve a ESTOS datos, no a los anteriores.
+    const stored = result.data;
+    const next = {
+      ...details,
+      email: data.email,
+      avatarId: data.avatarId,
+      ...(isStudent && { birthDate: stored.birthDate, studyShift: stored.studyShift }),
+    } as ProfileDetails;
+
+    setDetails(next);
+    form.reset({ ...contactValues(next), avatarId: data.avatarId });
+    setIsEditingContact(false);
     toast.success(result.message);
   }
 
-  /** Descarta lo escrito en el correo y vuelve al ultimo guardado. */
-  function cancelEmailEdit() {
-    form.resetField("email", { defaultValue: details?.email ?? "" });
-    setIsEditingEmail(false);
+  /** Descarta lo escrito en correo, fecha de nacimiento y jornada y vuelve a lo ultimo guardado. */
+  function cancelContactEdit() {
+    if (details) {
+      const saved = contactValues(details);
+
+      form.resetField("email", { defaultValue: saved.email });
+      form.resetField("birthDate", { defaultValue: saved.birthDate });
+      form.resetField("studyShift", { defaultValue: saved.studyShift });
+    }
+
+    setIsEditingContact(false);
   }
 
   /**
@@ -170,6 +209,8 @@ export default function ProfilePage() {
     );
   }
 
+  const range = birthDateRange();
+
   return (
     <div className="max-w-xl space-y-8">
       <div className="flex flex-col gap-1">
@@ -177,7 +218,7 @@ export default function ProfilePage() {
         <p className="text-[16px] text-zinc-400">
           {details.role === "admin"
             ? "Puedes actualizar tu nombre, tu correo, tu avatar y tu contraseña."
-            : "Los datos institucionales no son editables. Puedes actualizar tu correo, tu avatar y tu contraseña."}
+            : "Los datos institucionales no son editables. Puedes actualizar tu correo, tu fecha de nacimiento, tu jornada, tu avatar y tu contraseña."}
         </p>
       </div>
 
@@ -226,81 +267,148 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {details.role === "student" && (
-        <div className="rounded-2xl border border-zinc-800 p-4">
-          <p className="font-medium text-white">
-            {details.firstName} {details.paternalLastName}{" "}
-            {details.maternalLastName}
-          </p>
-
-          <div className="mt-1 flex gap-4 text-xs text-zinc-400">
-            <span>Paralelo {details.paralelo}</span>
-            <span>Ingreso {details.entryYear}</span>
-          </div>
-
-          <div className="mt-3 grid grid-cols-1 gap-4 border-t border-zinc-800 pt-3 min-[420px]:grid-cols-2">
-            {studentFields(details).map((field) => (
-              <div key={field.label} className="min-w-0">
-                <p className="text-xs text-zinc-500">{field.label}</p>
-                <p className="break-words text-sm text-white">
-                  {field.value || "Sin registrar"}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         {details.role === "student" && (
-          <Controller
-            control={form.control}
-            name="email"
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <div className="flex items-center justify-between">
-                  <FieldLabel htmlFor="email">Correo</FieldLabel>
+          <div className="rounded-2xl border border-zinc-800 p-4">
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-medium text-white">
+                {details.firstName} {details.paternalLastName}{" "}
+                {details.maternalLastName}
+              </p>
 
-                  {!isEditingEmail && (
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingEmail(true)}
-                      title="Editar correo"
-                      className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
-                    >
-                      <Pencil className="size-4" />
-                    </button>
-                  )}
+              {!isEditingContact && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingContact(true)}
+                  title="Editar correo, fecha de nacimiento y jornada"
+                  aria-label="Editar correo, fecha de nacimiento y jornada"
+                  className="-my-1 shrink-0 rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                >
+                  <Pencil className="size-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="mt-1 flex gap-4 text-xs text-zinc-400">
+              <span>Paralelo {details.paralelo}</span>
+              <span>Ingreso {details.entryYear}</span>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-4 border-t border-zinc-800 pt-3 min-[420px]:grid-cols-2">
+              {institutionalFields(details).map((field) => (
+                <div key={field.label} className="min-w-0">
+                  <p className="text-xs text-zinc-500">{field.label}</p>
+                  <p className="break-words text-sm text-white">
+                    {field.value || "Sin registrar"}
+                  </p>
                 </div>
+              ))}
 
-                {isEditingEmail ? (
-                  <div className="space-y-2">
-                    <EmailInput
-                      id="email"
-                      autoComplete="email"
-                      value={field.value}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      aria-invalid={fieldState.invalid}
-                      autoFocus
-                    />
+              {isEditingContact ? (
+                <>
+                  <Controller
+                    control={form.control}
+                    name="email"
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid} className="min-[420px]:col-span-2">
+                        <FieldLabel htmlFor="email">Correo</FieldLabel>
+                        <EmailInput
+                          id="email"
+                          autoComplete="email"
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          aria-invalid={fieldState.invalid}
+                          autoFocus
+                        />
+                        <FieldError errors={[fieldState.error]} />
+                      </Field>
+                    )}
+                  />
 
+                  <Controller
+                    control={form.control}
+                    name="birthDate"
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor="birthDate">Fecha de nacimiento</FieldLabel>
+                        <Input
+                          id="birthDate"
+                          type="date"
+                          className="scheme-dark"
+                          min={range.min}
+                          max={range.max}
+                          value={field.value}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          onBlur={field.onBlur}
+                          aria-invalid={fieldState.invalid}
+                        />
+                        <FieldError errors={[fieldState.error]} />
+                      </Field>
+                    )}
+                  />
+
+                  <Controller
+                    control={form.control}
+                    name="studyShift"
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor="studyShift">Jornada</FieldLabel>
+                        <select
+                          id="studyShift"
+                          value={field.value}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          onBlur={field.onBlur}
+                          className={SELECT_CLASS}
+                        >
+                          <option value="" className="bg-zinc-900">
+                            Sin registrar
+                          </option>
+                          {STUDY_SHIFT_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value} className="bg-zinc-900">
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <FieldError errors={[fieldState.error]} />
+                      </Field>
+                    )}
+                  />
+
+                  <div className="min-[420px]:col-span-2">
                     <button
                       type="button"
-                      onClick={cancelEmailEdit}
+                      onClick={cancelContactEdit}
                       className="min-h-11 rounded-lg px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
                     >
-                      Cancelar cambio de correo
+                      Cancelar cambios
                     </button>
                   </div>
-                ) : (
-                  <p className="text-sm text-white">{field.value || "Sin registrar"}</p>
-                )}
+                </>
+              ) : (
+                <>
+                  <div className="min-w-0 min-[420px]:col-span-2">
+                    <p className="text-xs text-zinc-500">Correo</p>
+                    <p className="break-words text-sm text-white">{details.email || "Sin registrar"}</p>
+                  </div>
 
-                <FieldError errors={[fieldState.error]} />
-              </Field>
-            )}
-          />
+                  <div className="min-w-0">
+                    <p className="text-xs text-zinc-500">Fecha de nacimiento</p>
+                    <p className="break-words text-sm text-white">
+                      {formatBirthDate(details.birthDate) || "Sin registrar"}
+                    </p>
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-xs text-zinc-500">Jornada</p>
+                    <p className="break-words text-sm text-white">
+                      {studyShiftLabel(details.studyShift) || "Sin registrar"}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         )}
 
         <Controller
