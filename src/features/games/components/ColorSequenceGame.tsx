@@ -13,7 +13,7 @@ import {
   useColorSequenceGame,
 } from "../hooks/useColorSequenceGame";
 import { MIN_LEVELS } from "../hooks/colorSequenceConfig";
-import { requiredCorrect } from "../hooks/colorSequenceRules";
+import { passThresholdPercent, requiredCorrect } from "../hooks/colorSequenceRules";
 import { ColorGrid } from "./ColorGrid";
 import { FinishGameControl } from "./FinishGameControl";
 import { GameLeaseLostNotice } from "./GameLeaseLostNotice";
@@ -104,7 +104,6 @@ export function ColorSequenceGame() {
 
   const lastResult = levelResults[levelResults.length - 1];
   const showBoard =
-    phase === "idle" ||
     phase === "countdown" ||
     phase === "illuminating" ||
     phase === "answering";
@@ -169,16 +168,119 @@ export function ColorSequenceGame() {
       <h1 className="text-center text-2xl font-bold sm:text-3xl md:text-4xl">
         Seriación de colores
       </h1>
+      {phase === "idle" && (
+        <div className="flex w-full max-w-md flex-col items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 px-6 py-6 text-center">
+          <p className="text-sm text-zinc-300">
+            {hasResumable
+              ? `Tienes una partida en curso: vas en el ${levelLabel(resumeLevel ?? 1).toLowerCase()}.`
+              : "Memoriza el orden en que se iluminan los colores y repítelo."}
+          </p>
+
+          {!hasResumable && (
+            <div className="flex w-full flex-col gap-3 text-left text-sm text-zinc-400">
+              <section aria-labelledby="colors-how">
+                <h2 id="colors-how" className="mb-1 text-sm font-semibold text-zinc-200">
+                  Cómo se juega
+                </h2>
+                <ul className="flex list-disc flex-col gap-1 pl-5">
+                  <li>
+                    Mira cómo se iluminan los colores y luego tócalos en el mismo orden. Antes de cada intento hay
+                    una cuenta regresiva.
+                  </li>
+                  <li>
+                    Cada nivel agrega un color más a la secuencia. Cuenta cada color que aciertes en su lugar.
+                  </li>
+                </ul>
+              </section>
+
+              <section aria-labelledby="colors-pass">
+                <h2 id="colors-pass" className="mb-1 text-sm font-semibold text-zinc-200">
+                  Qué se necesita para pasar un nivel
+                </h2>
+                <ul className="flex list-disc flex-col gap-1 pl-5">
+                  <li>
+                    Hay que acertar un mínimo de colores: {passThresholdPercent(1)} % en los niveles 1 al 5,{" "}
+                    {passThresholdPercent(6)} % del 6 al 8, {passThresholdPercent(9)} % en el 9 y el 10, y{" "}
+                    {passThresholdPercent(MIN_LEVELS + 1)} % desde el {MIN_LEVELS + 1}.
+                  </li>
+                </ul>
+              </section>
+
+              <section aria-labelledby="colors-tries">
+                <h2 id="colors-tries" className="mb-1 text-sm font-semibold text-zinc-200">
+                  Intentos y fin de la partida
+                </h2>
+                <ul className="flex list-disc flex-col gap-1 pl-5">
+                  <li>
+                    Tienes {MAX_TRIES_PER_LEVEL} intentos por nivel, y cada intento trae una secuencia nueva del mismo
+                    largo.
+                  </li>
+                  <li>
+                    Si no pasas un nivel en {MAX_TRIES_PER_LEVEL} intentos, la partida termina. Del nivel 1 al{" "}
+                    {MIN_LEVELS} se vuelve a empezar desde el 1; desde el {MIN_LEVELS + 1} se guarda hasta dónde
+                    llegaste y puedes elegir «Terminar juego» cuando quieras.
+                  </li>
+                </ul>
+              </section>
+            </div>
+          )}
+
+          {canStart && (
+            <button
+              type="button"
+              onClick={handleStart}
+              className="min-h-12 rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
+            >
+              Comenzar
+            </button>
+          )}
+
+          {hasResumable && (
+            <div className="flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResume}
+                className="min-h-12 rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
+              >
+                Continuar
+              </button>
+
+              {canFinish && (
+                <FinishGameControl
+                  onConfirm={finish}
+                  levelInProgress={resumeLevelInProgress}
+                />
+              )}
+            </div>
+          )}
+
+          {progressStatus === "error" && (
+            <div className="flex flex-col items-center gap-2 text-center">
+              <p className="text-sm text-rose-400">
+                {progressError ?? "No se pudo verificar tu avance guardado."}
+              </p>
+              <button
+                type="button"
+                onClick={retryProgress}
+                className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
+
+          {progressStatus === "loading" && (
+            <p className="text-sm text-zinc-500">Cargando...</p>
+          )}
+        </div>
+      )}
+
       {showBoard && (
         <>
           <p className="text-center text-sm text-zinc-400">
-            {phase === "idle"
-              ? hasResumable
-                ? `Tienes una partida en curso: vas en el ${levelLabel(resumeLevel ?? 1).toLowerCase()}`
-                : "Memoriza el orden en que se iluminan los colores y repítelo"
-              : phase === "countdown"
-                ? `${levelLabel(level)} · Prepárate...`
-                : `${levelLabel(level)} · Intento ${tryNumber} de ${MAX_TRIES_PER_LEVEL} — recuerda ${sequence.length} colores`}
+            {phase === "countdown"
+              ? `${levelLabel(level)} · Prepárate...`
+              : `${levelLabel(level)} · Intento ${tryNumber} de ${MAX_TRIES_PER_LEVEL} — recuerda ${sequence.length} colores`}
           </p>
 
           {/* Mismo ancho que el tablero de Conexion de nodos: ocupa el ancho del
@@ -206,93 +308,9 @@ export function ColorSequenceGame() {
                 </span>
               </div>
             )}
-
-            {phase === "idle" && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                {canStart && (
-                  <button
-                    type="button"
-                    onClick={handleStart}
-                    className="min-h-12 rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
-                  >
-                    Comenzar
-                  </button>
-                )}
-
-                {hasResumable && (
-                  <div className="flex flex-col items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleResume}
-                      className="min-h-12 rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
-                    >
-                      Continuar
-                    </button>
-
-                    {canFinish && (
-                      <FinishGameControl
-                        onConfirm={finish}
-                        levelInProgress={resumeLevelInProgress}
-                      />
-                    )}
-                  </div>
-                )}
-
-                {progressStatus === "error" && (
-                  <div className="flex flex-col items-center gap-2 rounded-2xl bg-zinc-950/90 p-4 text-center">
-                    <p className="text-sm text-rose-400">
-                      {progressError ??
-                        "No se pudo verificar tu avance guardado."}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={retryProgress}
-                      className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-                    >
-                      Reintentar
-                    </button>
-                  </div>
-                )}
-
-                {progressStatus === "loading" && (
-                  <p className="rounded-xl bg-zinc-950/90 px-4 py-2 text-sm text-zinc-500">
-                    Cargando...
-                  </p>
-                )}
-              </div>
-            )}
           </div>
 
-          {phase === "idle" && !hasResumable && (
-            <ul className="flex w-full max-w-md list-disc flex-col gap-1.5 pl-9 pr-4 text-left text-sm text-zinc-400">
-              <li>
-                Mira cómo se iluminan los colores y luego tócalos en el mismo
-                orden. Antes de cada intento hay una cuenta regresiva.
-              </li>
-              <li>
-                Cada nivel agrega un color más a la secuencia. Cuenta cada color
-                que aciertes en su lugar.
-              </li>
-              <li>
-                Para pasar un nivel debes acertar un mínimo de colores; esa
-                exigencia sube a medida que avanzas.
-              </li>
-              <li>
-                Tienes {MAX_TRIES_PER_LEVEL} intentos por nivel, y cada intento
-                trae una secuencia nueva del mismo largo.
-              </li>
-              <li>
-                Si no pasas un nivel en {MAX_TRIES_PER_LEVEL} intentos, la
-                partida termina. Del nivel 1 al {MIN_LEVELS} se vuelve a empezar
-                desde el 1; desde el {MIN_LEVELS + 1} se guarda hasta dónde
-                llegaste y puedes elegir «Terminar juego» cuando quieras.
-              </li>
-            </ul>
-          )}
-
-          {canFinish && phase !== "idle" && (
-            <FinishGameControl onConfirm={finish} levelInProgress />
-          )}
+          {canFinish && <FinishGameControl onConfirm={finish} levelInProgress />}
         </>
       )}
 
@@ -359,7 +377,7 @@ export function ColorSequenceGame() {
 
             <button
               type="button"
-              onClick={() => navigate(ROUTES.STUDENT)}
+              onClick={() => navigate(ROUTES.STUDENT_GAMES)}
               className="rounded-lg border border-zinc-700 bg-transparent px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
             >
               Salir del juego
@@ -422,7 +440,7 @@ export function ColorSequenceGame() {
 
             <button
               type="button"
-              onClick={() => navigate(ROUTES.STUDENT)}
+              onClick={() => navigate(ROUTES.STUDENT_GAMES)}
               className="rounded-lg border border-zinc-700 bg-transparent px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
             >
               Salir del juego
