@@ -1,0 +1,9 @@
+Fotos del equipo para la página de inicio del estudiante.
+
+Deja aquí estos dos archivos, con exactamente estos nombres (.jpg, .jpeg, .png o .webp):
+
+  madelaine-mora-rojas      -> Directora e investigadora responsable
+  arturo-pinto-guevara      -> Coinvestigador
+
+La página las muestra en un círculo, sin modificarlas. Mientras no estén, se ven las iniciales.
+Se recomienda una foto cuadrada (por ejemplo, 600 x 600 px) para que el recorte circular no corte la cara.

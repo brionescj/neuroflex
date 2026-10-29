@@ -27,7 +27,7 @@ export function GameLeaseLostNotice() {
           avance dos veces. Tu progreso está a salvo: puedes seguir desde donde lo abriste.
         </p>
 
-        <Button onClick={() => navigate(ROUTES.STUDENT, { replace: true })} className="mt-1 self-center">
+        <Button onClick={() => navigate(ROUTES.STUDENT_GAMES, { replace: true })} className="mt-1 self-center">
           Volver al inicio
         </Button>
       </div>

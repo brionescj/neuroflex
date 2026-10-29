@@ -7,6 +7,9 @@ export const ROUTES = {
 
   STUDENT: "/estudiante",
 
+  /** Menú con los tres juegos. «Inicio» (STUDENT) es la página de presentación del proyecto. */
+  STUDENT_GAMES: "/estudiante/juegos",
+
   STUDENT_GAME_COLOR_SEQUENCE: "/estudiante/juegos/seriacion-de-colores",
 
   STUDENT_GAME_MINI_CASES: "/estudiante/juegos/mini-casos",

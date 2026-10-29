@@ -1,6 +1,7 @@
 import {
   BarChart3,
   CircleUser,
+  Gamepad2,
   House,
   Trophy,
   UserSearch,
@@ -21,6 +22,8 @@ export type MenuItem = {
 export const ROLE_MENUS: Record<UserRole, MenuItem[]> = {
   student: [
     { label: "Inicio", path: ROUTES.STUDENT, icon: House },
+
+    { label: "Juegos", path: ROUTES.STUDENT_GAMES, icon: Gamepad2 },
 
     { label: "Mis puntuaciones", path: ROUTES.STUDENT_SCORES, icon: Trophy },
 

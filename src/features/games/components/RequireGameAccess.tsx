@@ -47,7 +47,7 @@ export function RequireGameAccess({
   }
 
   if (!knownGranted) {
-    return <Navigate to={ROUTES.STUDENT} replace />;
+    return <Navigate to={ROUTES.STUDENT_GAMES} replace />;
   }
 
   return <>{children}</>;

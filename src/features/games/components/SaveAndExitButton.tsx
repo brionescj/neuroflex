@@ -50,7 +50,7 @@ export function SaveAndExitButton({ onSave, className, unit = "nivel" }: SaveAnd
     const saved = await onSave();
 
     if (saved) {
-      navigate(ROUTES.STUDENT);
+      navigate(ROUTES.STUDENT_GAMES);
       return;
     }
 

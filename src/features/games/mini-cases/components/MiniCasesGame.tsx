@@ -461,7 +461,7 @@ export function MiniCasesGame() {
           <div className="mt-2 flex justify-center gap-3">
             <Button onClick={returnToStart}>Volver a jugar</Button>
 
-            <Button variant="outline" onClick={() => navigate(ROUTES.STUDENT)}>
+            <Button variant="outline" onClick={() => navigate(ROUTES.STUDENT_GAMES)}>
               Salir del juego
             </Button>
           </div>

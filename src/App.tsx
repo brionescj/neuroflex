@@ -20,11 +20,13 @@ import AuthLayout from "@/layouts/AuthLayout";
  */
 const loadRegister = () => import("@/features/auth/pages/RegisterPage");
 const loadDashboardLayout = () => import("@/layouts/DashboardLayout");
+const loadStudentHome = () => import("@/features/student/pages/StudentHomePage");
 const loadStudentDashboard = () => import("@/features/student/pages/StudentDashboard");
 const loadAdminDashboard = () => import("@/features/admin/pages/AdminDashboard");
 
 const RegisterPage = lazy(loadRegister);
 const DashboardLayout = lazy(loadDashboardLayout);
+const StudentHomePage = lazy(loadStudentHome);
 const StudentDashboard = lazy(loadStudentDashboard);
 const AdminDashboard = lazy(loadAdminDashboard);
 const StudentScoresPage = lazy(() => import("@/features/student/pages/StudentScoresPage"));
@@ -57,7 +59,7 @@ const NodeConnectionGame = lazy(loadNodeConnection);
  */
 function prefetchForSession(role: "student" | "admin") {
   void loadDashboardLayout();
-  void (role === "student" ? loadStudentDashboard() : loadAdminDashboard());
+  void (role === "student" ? loadStudentHome() : loadAdminDashboard());
 }
 
 /**
@@ -68,7 +70,7 @@ function prefetchForSession(role: "student" | "admin") {
 function prefetchAfterLogin() {
   const run = () => {
     void loadDashboardLayout();
-    void loadStudentDashboard();
+    void loadStudentHome();
     void loadAdminDashboard();
     void loadRegister();
   };
@@ -171,7 +173,8 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route path={ROUTES.STUDENT} element={<StudentDashboard />} />
+          <Route path={ROUTES.STUDENT} element={<StudentHomePage />} />
+          <Route path={ROUTES.STUDENT_GAMES} element={<StudentDashboard />} />
           <Route
             path={ROUTES.STUDENT_GAME_COLOR_SEQUENCE}
             element={<ColorSequenceGame />}

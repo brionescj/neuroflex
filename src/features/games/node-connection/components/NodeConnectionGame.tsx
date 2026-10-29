@@ -399,7 +399,7 @@ export function NodeConnectionGame() {
 
             <button
               type="button"
-              onClick={() => navigate(ROUTES.STUDENT)}
+              onClick={() => navigate(ROUTES.STUDENT_GAMES)}
               className="rounded-lg border border-zinc-700 bg-transparent px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
             >
               Salir del juego
@@ -468,7 +468,7 @@ export function NodeConnectionGame() {
 
             <button
               type="button"
-              onClick={() => navigate(ROUTES.STUDENT)}
+              onClick={() => navigate(ROUTES.STUDENT_GAMES)}
               className="rounded-lg border border-zinc-700 bg-transparent px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
             >
               Salir del juego

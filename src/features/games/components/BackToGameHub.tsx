@@ -6,7 +6,7 @@ import { ROUTES } from "@/config/routes";
 export function BackToGameHub() {
   return (
     <Link
-      to={ROUTES.STUDENT}
+      to={ROUTES.STUDENT_GAMES}
       className="inline-flex items-center gap-1.5 self-start text-sm font-medium text-zinc-400 transition-colors hover:text-white"
     >
       <ArrowLeft className="size-4" />

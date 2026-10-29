@@ -51,7 +51,7 @@ export default function StudentScoresPage() {
                 Cuando juegues tu primer nivel, aquí aparecerán tus puntos, tus insignias y tus gráficos.
               </p>
               <Link
-                to={ROUTES.STUDENT}
+                to={ROUTES.STUDENT_GAMES}
                 className="inline-flex min-h-11 items-center rounded-xl bg-white px-4 text-sm font-semibold text-black hover:bg-zinc-200"
               >
                 Elegir un juego
