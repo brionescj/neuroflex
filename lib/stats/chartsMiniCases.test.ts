@@ -140,6 +140,40 @@ describe("Mini casos: alternativas que más fallan", () => {
     expect(chart.studentsTotal).toBe(3);
   });
 
+  it("se puede comparar: cada caso lleva un bloque por grupo y la tabla agrega la columna Grupo", () => {
+    // Los RUT del filtro deben parecerse a un RUT: se renombran A y B.
+    const rename = (rut: string) => ({ A: "1-1", B: "2-2" })[rut] ?? rut;
+    const base = data();
+    const stats: StatsData = {
+      ...base,
+      students: base.students.map((s) => ({ ...s, rut: rename(s.rut), firstName: `Ana${rename(s.rut)}` })),
+      attempts: base.attempts.map((a) => ({ ...a, studentRut: rename(a.studentRut) })),
+      results: base.results.map((r) => ({ ...r, studentRut: rename(r.studentRut) })),
+    };
+    const parsed = parseChartRequest({ chart: "mc-options", partida: "", groupBy: "student", students: JSON.stringify(["1-1", "2-2"]) });
+
+    if (!parsed.ok) throw new Error(parsed.message);
+
+    const chart = buildChart(parsed.def, parsed.request, stats, NOW);
+
+    // El de «1-1» ordena todo bien; el de «2-2» pone «Cruzar» antes de «Esperar».
+    expect(chart.cards).toHaveLength(2);
+    expect(chart.cards?.[0]?.group).toMatch(/^Caso 1 · Cruzar la calle · .*1-1/);
+    expect(chart.cards?.[1]?.group).toMatch(/^Caso 1 · Cruzar la calle · .*2-2/);
+    expect(new Set(chart.cards?.map((card) => card.slot)).size).toBe(2);
+    expect(chart.cards?.[0]?.items.every((item) => item.value === "Nadie la ubicó mal")).toBe(true);
+    expect(chart.cards?.[1]?.items[0]?.value).toBe("100 % la ubicó mal");
+
+    expect(chart.table?.columns.slice(0, 3)).toEqual(["Caso", "Grupo", "Paso"]);
+    expect(chart.table?.rows).toHaveLength(8);
+  });
+
+  it("sin comparar, el gráfico sigue siendo uno solo y la tabla no lleva columna Grupo", () => {
+    const chart = run(data());
+
+    expect(chart.table?.columns).not.toContain("Grupo");
+  });
+
   it("sin datos funciona y no inventa tarjetas", () => {
     const chart = run({ students: [], attempts: [], results: [], caseTitles: {} });
 

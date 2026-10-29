@@ -111,9 +111,8 @@ export const mcOptions: ChartDef = {
   game: "mini-cases",
   title: "Alternativas que más fallan",
   blurb:
-    "En cada mini caso hay 4 pasos que ordenar. Para cada caso muestra qué paso se ubica mal con más frecuencia, en qué lugar suelen ponerlo y qué estudiantes lo fallaron. Toca un paso para ver a esos estudiantes; la vista «Tabla» junta todos los casos.",
+    "En cada mini caso hay 4 pasos que ordenar. Para cada caso muestra qué paso se ubica mal con más frecuencia, en qué lugar suelen ponerlo y qué estudiantes lo fallaron. Toca un paso para ver a esos estudiantes; la vista «Tabla» junta todos los casos. Con «Comparar», cada caso muestra un bloque por grupo, uno junto al otro.",
   views: ["cards"],
-  compare: false,
   exploratory: true,
   usesPartida: true,
   supportsDevice: true,
@@ -121,7 +120,8 @@ export const mcOptions: ChartDef = {
   build: (ctx) => {
     const units = gameUnits(ctx, "mini-cases");
     const grouped = groupUnits(ctx, units);
-    const items = grouped.specs.flatMap((spec) => grouped.byGroup.get(spec.key) ?? []);
+    // Sin comparar hay un solo grupo (todos); al comparar, cada caso lleva un bloque por grupo, uno junto al otro.
+    const comparing = grouped.specs.length > 1;
     const { keys, labels } = caseCategories(ctx, units);
 
     const cards: ChartCards = [];
@@ -130,114 +130,119 @@ export const mcOptions: ChartDef = {
     let withoutDetail = 0;
 
     keys.forEach((caseKey, caseIndex) => {
-      const options = new Map<string, OptionStats>();
+      for (const spec of grouped.specs) {
+        const items = grouped.byGroup.get(spec.key) ?? [];
+        const options = new Map<string, OptionStats>();
 
-      for (const unit of items) {
-        for (const result of ownResults(unit, (r) => r.key === caseKey)) {
-          const placements = readPlacements(result);
+        for (const unit of items) {
+          for (const result of ownResults(unit, (r) => r.key === caseKey)) {
+            const placements = readPlacements(result);
 
-          if (!placements) {
-            withoutDetail += 1;
-            continue;
-          }
-
-          const texts = readTexts(result);
-          const rut = unitRut(unit);
-
-          students.add(rut);
-
-          for (const placement of placements) {
-            const stats =
-              options.get(placement.optionKey) ??
-              ({
-                optionKey: placement.optionKey,
-                text: texts.get(placement.optionKey) ?? placement.optionKey,
-                plays: 0,
-                wrong: 0,
-                placedAt: new Map(),
-                expectedAt: new Map(),
-                byStudent: new Map(),
-              } satisfies OptionStats);
-            const own = stats.byStudent.get(rut) ?? { plays: 0, wrong: 0, placedAt: new Map<number, number>() };
-
-            if (texts.has(placement.optionKey)) stats.text = texts.get(placement.optionKey) as string;
-
-            stats.plays += 1;
-            own.plays += 1;
-            bump(stats.expectedAt, placement.expectedStep);
-
-            if (placement.step !== placement.expectedStep) {
-              stats.wrong += 1;
-              own.wrong += 1;
-              bump(stats.placedAt, placement.step);
-              bump(own.placedAt, placement.step);
+            if (!placements) {
+              withoutDetail += 1;
+              continue;
             }
 
-            stats.byStudent.set(rut, own);
-            options.set(placement.optionKey, stats);
+            const texts = readTexts(result);
+            const rut = unitRut(unit);
+
+            students.add(rut);
+
+            for (const placement of placements) {
+              const stats =
+                options.get(placement.optionKey) ??
+                ({
+                  optionKey: placement.optionKey,
+                  text: texts.get(placement.optionKey) ?? placement.optionKey,
+                  plays: 0,
+                  wrong: 0,
+                  placedAt: new Map(),
+                  expectedAt: new Map(),
+                  byStudent: new Map(),
+                } satisfies OptionStats);
+              const own = stats.byStudent.get(rut) ?? { plays: 0, wrong: 0, placedAt: new Map<number, number>() };
+
+              if (texts.has(placement.optionKey)) stats.text = texts.get(placement.optionKey) as string;
+
+              stats.plays += 1;
+              own.plays += 1;
+              bump(stats.expectedAt, placement.expectedStep);
+
+              if (placement.step !== placement.expectedStep) {
+                stats.wrong += 1;
+                own.wrong += 1;
+                bump(stats.placedAt, placement.step);
+                bump(own.placedAt, placement.step);
+              }
+
+              stats.byStudent.set(rut, own);
+              options.set(placement.optionKey, stats);
+            }
           }
         }
+
+        if (options.size === 0) continue;
+
+        const ordered = [...options.values()].sort(
+          (a, b) =>
+            b.wrong / b.plays - a.wrong / a.plays ||
+            (topOf(a.expectedAt)?.value ?? 0) - (topOf(b.expectedAt)?.value ?? 0),
+        );
+        const label = labels[caseIndex] as string;
+
+        cards.push({
+          group: comparing ? `${label} · ${spec.label}` : label,
+          slot: comparing ? spec.slot : caseIndex % 8,
+          items: ordered.map((stats) => {
+            const expected = topOf(stats.expectedAt)?.value ?? null;
+            const percent = Math.round(percentOf(stats.wrong, stats.plays) ?? 0);
+            const failing = [...stats.byStudent.entries()]
+              .filter(([, own]) => own.wrong > 0)
+              .sort((a, b) => b[1].wrong - a[1].wrong || a[0].localeCompare(b[0]));
+
+            tableRows.push([
+              label,
+              ...(comparing ? [spec.label] : []),
+              stats.text,
+              stepText(expected),
+              stats.plays,
+              `${percent} %`,
+              stats.wrong === 0 ? "—" : placeText(stats.placedAt, stats.wrong),
+              failing.length,
+            ]);
+
+            return {
+              label: stats.text,
+              value: stats.wrong === 0 ? "Nadie la ubicó mal" : `${percent} % la ubicó mal`,
+              hint:
+                stats.wrong === 0
+                  ? `Debía ir en el ${stepText(expected).toLowerCase()}. Se jugó ${stats.plays} ${stats.plays === 1 ? "vez" : "veces"}.`
+                  : `Debía ir en el ${stepText(expected).toLowerCase()}; la suelen poner en el ${placeText(stats.placedAt, stats.wrong).toLowerCase()} veces que falló. ${failing.length} ${failing.length === 1 ? "estudiante la falló" : "estudiantes la fallaron"}.`,
+              lists:
+                failing.length === 0
+                  ? []
+                  : [
+                      {
+                        title: "Estudiantes que la ubicaron mal",
+                        note: failNote(expected, stats, percent),
+                        columns: [...BASE_COLUMNS, "Veces que falló", "Veces que la jugó", "Dónde la puso más"],
+                        rows: failing.map(([rut, own]) => {
+                          const student: StudentRow | undefined = ctx.students.get(rut);
+
+                          return [
+                            ...(student ? baseCells(student) : [studentName(undefined, rut), rut, "", ""]),
+                            own.wrong,
+                            own.plays,
+                            placeText(own.placedAt, own.wrong),
+                          ];
+                        }),
+                      },
+                    ],
+            };
+          }),
+        });
+    
       }
-
-      if (options.size === 0) return;
-
-      const ordered = [...options.values()].sort(
-        (a, b) =>
-          b.wrong / b.plays - a.wrong / a.plays ||
-          (topOf(a.expectedAt)?.value ?? 0) - (topOf(b.expectedAt)?.value ?? 0),
-      );
-      const label = labels[caseIndex] as string;
-
-      cards.push({
-        group: label,
-        slot: caseIndex % 8,
-        items: ordered.map((stats) => {
-          const expected = topOf(stats.expectedAt)?.value ?? null;
-          const percent = Math.round(percentOf(stats.wrong, stats.plays) ?? 0);
-          const failing = [...stats.byStudent.entries()]
-            .filter(([, own]) => own.wrong > 0)
-            .sort((a, b) => b[1].wrong - a[1].wrong || a[0].localeCompare(b[0]));
-
-          tableRows.push([
-            label,
-            stats.text,
-            stepText(expected),
-            stats.plays,
-            `${percent} %`,
-            stats.wrong === 0 ? "—" : placeText(stats.placedAt, stats.wrong),
-            failing.length,
-          ]);
-
-          return {
-            label: stats.text,
-            value: stats.wrong === 0 ? "Nadie la ubicó mal" : `${percent} % la ubicó mal`,
-            hint:
-              stats.wrong === 0
-                ? `Debía ir en el ${stepText(expected).toLowerCase()}. Se jugó ${stats.plays} ${stats.plays === 1 ? "vez" : "veces"}.`
-                : `Debía ir en el ${stepText(expected).toLowerCase()}; la suelen poner en el ${placeText(stats.placedAt, stats.wrong).toLowerCase()} veces que falló. ${failing.length} ${failing.length === 1 ? "estudiante la falló" : "estudiantes la fallaron"}.`,
-            lists:
-              failing.length === 0
-                ? []
-                : [
-                    {
-                      title: "Estudiantes que la ubicaron mal",
-                      note: failNote(expected, stats, percent),
-                      columns: [...BASE_COLUMNS, "Veces que falló", "Veces que la jugó", "Dónde la puso más"],
-                      rows: failing.map(([rut, own]) => {
-                        const student: StudentRow | undefined = ctx.students.get(rut);
-
-                        return [
-                          ...(student ? baseCells(student) : [studentName(undefined, rut), rut, "", ""]),
-                          own.wrong,
-                          own.plays,
-                          placeText(own.placedAt, own.wrong),
-                        ];
-                      }),
-                    },
-                  ],
-          };
-        }),
-      });
     });
 
     return {
@@ -252,6 +257,7 @@ export const mcOptions: ChartDef = {
       table: {
         columns: [
           "Caso",
+          ...(comparing ? ["Grupo"] : []),
           "Paso",
           "Lugar correcto",
           "Veces que se jugó",
