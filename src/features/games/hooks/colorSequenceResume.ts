@@ -1,4 +1,5 @@
-import { SEQUENCE_COLORS, type SequenceColorId } from "../components/ColorGrid";
+import { SEQUENCE_COLORS } from "./colorSequenceColors";
+import type { SequenceColorId } from "./colorSequenceConfig";
 import {
   optionalIsoDate,
   optionalTimeMs,

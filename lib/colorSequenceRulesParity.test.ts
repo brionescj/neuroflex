@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
@@ -41,11 +40,8 @@ describe("reglas de seriacion: navegador y servidor coinciden", () => {
 describe("colores de seriacion y de nodos: navegador y servidor coinciden", () => {
   it("seriacion", async () => {
     const { SEQUENCE_COLOR_IDS } = await import("./attemptEvents");
-    // ColorGrid es un .tsx (el tsconfig de lib no compila JSX): se leen los ids
-    // de la lista SEQUENCE_COLORS del propio archivo.
-    const source = readFileSync("src/features/games/components/ColorGrid.tsx", "utf8");
-    const block = /export const SEQUENCE_COLORS[\s\S]*?\n\];/.exec(source)?.[0] ?? "";
-    const ids = [...block.matchAll(/id: "([a-z]+)"/g)].map((m) => m[1] as string);
+    const { SEQUENCE_COLORS } = await import("../src/features/games/hooks/colorSequenceColors");
+    const ids = SEQUENCE_COLORS.map((color) => color.id as string);
 
     expect(ids.length).toBeGreaterThan(0);
     expect([...SEQUENCE_COLOR_IDS].sort()).toEqual(ids.sort());

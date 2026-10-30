@@ -12,7 +12,7 @@
  * el inicio del nivel, o desde que se empezo a responder en seriacion.
  */
 
-/** Copia de SEQUENCE_COLORS (src/features/games/components/ColorGrid.tsx). */
+/** Copia de SEQUENCE_COLORS (src/features/games/hooks/colorSequenceColors.ts). */
 export const SEQUENCE_COLOR_IDS = ["blue", "green", "orange", "red"] as const;
 
 /** Copia de NODE_COLORS (src/features/games/node-connection/colors.ts). */

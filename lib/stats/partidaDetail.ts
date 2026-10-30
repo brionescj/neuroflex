@@ -18,7 +18,7 @@ import {
  * que ya guarda cada resultado (metricas y eventos): nada se calcula de nuevo en el navegador.
  */
 
-/** Copia de SEQUENCE_COLORS (src/features/games/components/ColorGrid.tsx). */
+/** Copia de SEQUENCE_COLORS (src/features/games/hooks/colorSequenceColors.ts). */
 const SEQUENCE_COLOR_INFO: Record<string, { label: string; hex: string }> = {
   blue: { label: "Azul", hex: "#38bdf8" },
   green: { label: "Verde", hex: "#34d399" },

@@ -1,7 +1,5 @@
-import {
-  SEQUENCE_COLORS,
-  type SequenceColorId,
-} from "../components/ColorGrid";
+import { SEQUENCE_COLORS } from "./colorSequenceColors";
+import type { SequenceColorId } from "./colorSequenceConfig";
 
 function pickRandomColorId(exclude: Set<SequenceColorId>): SequenceColorId {
   const pool = SEQUENCE_COLORS.filter((color) => !exclude.has(color.id));
