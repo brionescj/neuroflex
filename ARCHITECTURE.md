@@ -179,7 +179,7 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       distintos, todos al primer intento (`FLAWLESS_RUN_LEVELS`). Las insignias por días usan los días
       distintos de juego en hora de Chile (`daysPlayed`). Los umbrales no están validados con estudiantes reales.
       «Próxima meta» = la no lograda con mayor avance (a igual avance, la de nivel más bajo).
-    - Mini casos: la gráfica lista TODO el banco habilitado (`MiniCase.enabled`); los no jugados
+    - Mini casos: la gráfica lista TODO el banco (los casos no se pueden retirar); los no jugados
       salen como «Sin jugar», para que quien jugó pocos y los acertó no parezca perfecto.
     - Cada tarjeta de la pantalla se expande y colapsa (`ScoreCard`, `aria-expanded`), salvo la
       del rango. Nacen colapsadas, excepto «Tu resumen» y «Puntos por juego» (`defaultOpen`). Las
@@ -225,13 +225,22 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       frente al elegido (Mini casos), más el tiempo por nivel. «Volver» regresa a la lista y la impresora
       baja solo esos datos en PDF.
     - «Alternativas que más fallan» se puede comparar por grupos: cada caso muestra un bloque por grupo
-      (color del grupo) y la tabla agrega la columna «Grupo». Sin comparar, nada cambia.
+      (color del grupo) y la tabla agrega la columna «Grupo». Sin comparar, nada cambia. Son 25+ casos por
+      varios grupos, así que los bloques no van como botones sueltos: un panel plegable (`GroupPanel`,
+      resultado con `groupPanel: "Mini casos"`) agrupa casillas por «Mini Caso N» y trae «Quitar todos: X»,
+      «Poner todos: X», «Solo X» y «Mostrar todos» (X = un grupo, p. ej. UVM). Cada tarjeta lleva `group`
+      («Mini Caso N - grupo») y `subgroup` (el grupo); la tabla (`table.rowGroups`) sigue la selección
+      (`subgroupsOf`, `toggleSubgroup`, `showOnly`, `withoutGroups` en `utils/groups.ts`).
+    - Región y comuna son dimensiones de comparación (`comuna`, ya no «ciudad»).
 
 15. **Mini casos: banco, título, imagen y sonido** (no deshacer sin hablar):
-    - Cada `MiniCase` tiene `title` (solo el área, «Área de Lenguaje y Comunicación»; **nunca** «Mini Caso N»),
-      `imageKey` (dibujo del catálogo) y los textos de siempre. El banco (`GET /api/mini-cases`) entrega
-      `title` e `imageKey` (si falta, `aula`), jamás `correctStep`. El juego muestra el título en la lectura,
-      el ordenamiento y el resultado, y el estudiante sigue viendo «Caso N de M» por posición en su partida.
+    - Cada `MiniCase` tiene `title` (solo el nombre del área, «Área de Detección Temprana»; **nunca** se guarda
+      «Mini Caso N»), `imageKey` (dibujo del catálogo) y los textos de siempre. El banco (`GET /api/mini-cases`)
+      entrega `title` e `imageKey` (si falta, `aula`), jamás `correctStep`. **El juego muestra solo el nombre**
+      (sin «Mini Caso») en la lectura, el ordenamiento y el resultado, y el estudiante sigue viendo «Caso N de M»
+      por posición en su partida. **El administrador ve «Mini Caso N: nombre»**, con N tomado de `caseKey`
+      (`caso-N`); ese rótulo se arma al mostrar, no se guarda. Los casos 1–10 llevan el nombre de las áreas del
+      documento «JUEGOS ABSTRACTOS - FE»; los demás, el que les puso el administrador.
     - El resultado rotula el texto como «Retroalimentación». La alerta de cambio no repite «¡Alerta de
       Cambio!» si el texto ya lo trae (`alertText.ts`).
     - Distractor: 4 s (`DISTRACTOR_MS`) la imagen del caso y un sonido, exactamente los mismos 4 s. Solo hay
@@ -248,14 +257,22 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       edición en `POST /api/admin/mini-cases` (`lib/miniCaseInput.ts` valida). Las 4 alternativas se escriben
       en el orden **correcto** (la 1.ª va en el paso 1) y el juego las baraja. Sin `caseKey` se crea el
       siguiente `caso-N`. Al editar, las alternativas **conservan su `optionKey`** (los resultados y las
-      estadísticas las usan) y las secuencias alternativas se conservan si no se envían. `enabled: false` retira
-      el caso sin borrarlo.
-    - Cambiar el texto de un caso, de su alerta, de su consigna o de sus alternativas, o agregar/retirar casos,
-      cambia la versión del banco (`miniCasesContentVersion`): esas partidas dejan de ser comparables con las
-      anteriores. Título, imagen y retroalimentación no la cambian.
-    - Banco inicial: `server-scripts/seedMiniCases.ts` (25 casos, idempotente por `caseKey`; un test lo valida).
+      estadísticas las usan) y las secuencias alternativas se conservan si no se envían. **Un caso no se puede
+      retirar** (ni temporal ni definitivamente): `MiniCase` no tiene `enabled` y el formulario no tiene casilla.
+    - Los casos no tienen versión de contenido: `MINI_CASES_CONTENT_VERSION` es una constante
+      (`"mini-cases"`). Editar un caso no separa las partidas anteriores de las nuevas.
+    - Banco inicial: `lib/miniCasesSeed.ts` (25 casos; un test valida su estructura). **Se carga solo**:
+      `connectDB()` ejecuta `runStartupTasksOnce()` (`lib/startupTasks.ts`, una vez por proceso, reintenta si
+      falla) y `ensureBaseMiniCases()` inserta con `$setOnInsert` los que falten por `caseKey`, así que
+      **nunca pisa una edición del administrador**. Solo corrige el título cuando falta, está vacío, es
+      provisional o empieza con «Mini Caso», y el `imageKey` cuando falta. Ya no hay que correr ningún script
+      de carga (se eliminó `server-scripts/seedMiniCases.ts`).
       Su clave de respuesta del documento lista NÚMEROS de alternativa en orden cronológico (3-2-1-4 = la
       alternativa 3 va primero); el `correctStep` de cada alternativa es su posición en esa lista.
+    - Tareas de arranque de una sola vez: ayudante `once(name, task)` que deja la marca en la colección
+      `migrations`. La primera es `ciudad-a-comuna` (renombra el campo `ciudad` → `comuna` en la ficha de
+      cada estudiante y en `student.ciudad` de cada partida; la comuna antigua que no está en la lista se
+      conserva tal cual).
 
 16. **Inicio del estudiante** (`ROUTES.STUDENT`): página con el nombre del proyecto, su financiamiento y el
     equipo (`src/config/projectInfo.ts`). Las fotos del equipo no se suben desde la app: se dejan en
@@ -263,7 +280,24 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
 
 17. **Ficha del estudiante:** jornada (`studyShift`: diurna/vespertina) y 5 paralelos. En el alta manual,
     «Universidad» va antes que «Paralelo». El estudiante puede editar correo, fecha de nacimiento y jornada
-    desde su perfil con un solo lápiz (`PATCH /api/profile/:rut/contact`).
+    desde su perfil con un solo lápiz (`PATCH /api/profile/:rut/contact`); también región y comuna.
+    - **Región y comuna** son listas cerradas: 16 regiones y 346 comunas (listado oficial de la SUBDERE,
+      tomado del paquete `@clregions/data` y contrastado con la Wikipedia «Comunas de Chile»). Viven en
+      `lib/communes.ts` (servidor) y `src/config/communes.ts` (navegador), y `lib/communes.test.ts` exige
+      que las dos copias coincidan. La comuna debe pertenecer a la región (`reconcilePlace` en
+      `lib/studentFields.ts`); al cambiar de región se borra la comuna que ya no corresponde. El campo se
+      llama `comuna` en todos lados (`Student.comuna`, `GameAttempt.student.comuna`, dimensión `comuna`).
+      Una comuna antigua escrita a mano que no está en la lista se conserva en la base, pero el formulario
+      la muestra como «Seleccionar».
+    - **Nunca hay valor por defecto en datos que el estudiante completa:** jornada, región y comuna parten en
+      «Seleccionar» (la comuna deshabilitada hasta elegir región) si la ficha no los tiene. Componente
+      compartido: `components/forms/RegionCommuneFields`.
+    - **Tabla de estudiantes del administrador:** columnas Universidad y Edad; se ordena tocando el título de
+      la columna (como las carpetas de Windows: la primera vez ascendente, de nuevo invierte). Por defecto,
+      edad de mayor a menor; los sin dato van siempre al final y el desempate es el apellido. En el celular
+      (tarjetas) hay un selector «Ordenar por». Las personas de **45 años o más** salen en amarillo
+      (`text-yellow-300`) con la marca de texto «45+» (el color solo no es accesible). Lógica en
+      `features/admin/utils/studentTable.ts`.
 
 ---
 
