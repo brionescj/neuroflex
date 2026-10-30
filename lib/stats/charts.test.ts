@@ -549,19 +549,19 @@ describe("Seriacion: nivel maximo superado", () => {
     expect(chart.warnings.join(" ")).toMatch(/No hay datos/);
   });
 
-  it("agrupa regiones escritas distinto bajo su nombre oficial y ciudades sin importar mayusculas", () => {
+  it("agrupa regiones escritas distinto bajo su nombre oficial y comunas sin importar mayusculas", () => {
     const data = colorData();
 
-    data.students[0] = { ...(data.students[0] as StudentRow), region: "region metropolitana", ciudad: "SANTIAGO" };
-    data.students[1] = { ...(data.students[1] as StudentRow), region: "RM", ciudad: "santiago" };
-    data.students[2] = { ...(data.students[2] as StudentRow), region: "Biobio", ciudad: "Los Ángeles" };
+    data.students[0] = { ...(data.students[0] as StudentRow), region: "region metropolitana", comuna: "SANTIAGO" };
+    data.students[1] = { ...(data.students[1] as StudentRow), region: "RM", comuna: "santiago" };
+    data.students[2] = { ...(data.students[2] as StudentRow), region: "Biobio", comuna: "Los Ángeles" };
 
     const regions = run(data, { chart: "cs-max-level", groupBy: "region" });
 
     expect(regions.series.map((s) => s.label)).toEqual(["Metropolitana de Santiago", "Biobío"]);
     expect(seriesOf(regions, "Metropolitana de Santiago").n).toBe(2);
 
-    const cities = run(data, { chart: "cs-max-level", groupBy: "ciudad", filters: '{"region":["Metropolitana de Santiago"]}' });
+    const cities = run(data, { chart: "cs-max-level", groupBy: "comuna", filters: '{"region":["Metropolitana de Santiago"]}' });
 
     expect(cities.series.map((s) => [s.label, s.n])).toEqual([["Santiago", 2]]);
   });

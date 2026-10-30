@@ -460,14 +460,14 @@ const genNoPlay: ChartDef = {
       categories: [],
       series: [],
       table: {
-        columns: ["Estudiante", "RUT", "Paralelo", "Universidad", "Jornada", "Ciudad"],
+        columns: ["Estudiante", "RUT", "Paralelo", "Universidad", "Jornada", "Comuna"],
         rows: missing.map((student) => [
           `${studentName(student, student.rut)}${student.maternalLastName ? ` ${student.maternalLastName}` : ""}`,
           student.rut,
           student.paralelo ?? "",
           university(student.university),
           shift(student.studyShift),
-          student.ciudad ?? "",
+          student.comuna ?? "",
         ]),
       },
       notes: [

@@ -71,8 +71,8 @@ describe("parseChartRequest", () => {
     }
   });
 
-  it("filtra por ciudad y por tramo de edad, y rechaza lo que no es una caracteristica", () => {
-    expect(ok({ chart: "nc-levels", filters: '{"ciudad":["Temuco"]}' }).filters).toEqual({ ciudad: ["Temuco"] });
+  it("filtra por comuna y por tramo de edad, y rechaza lo que no es una caracteristica", () => {
+    expect(ok({ chart: "nc-levels", filters: '{"comuna":["Temuco"]}' }).filters).toEqual({ comuna: ["Temuco"] });
     expect(ok({ chart: "nc-levels", filters: '{"ageBand":["21-25","26-30"]}' }).filters).toEqual({
       ageBand: ["21-25", "26-30"],
     });

@@ -37,7 +37,7 @@ async function seed(adminSessionCookie: string) {
         paternalLastName,
         maternalLastName,
         paralelo: 1,
-        ciudad: titleCase(row.ciudad),
+        comuna: titleCase(row.ciudad),
         region: row.region,
         celular: row.celular,
         email: row.email,

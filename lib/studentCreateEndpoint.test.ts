@@ -91,7 +91,7 @@ describe("POST admin/students (alta manual)", () => {
   it("guarda genero, universidad, fecha de nacimiento y correo junto a los datos basicos", async () => {
     const { status } = await run({
       ...BASE,
-      ciudad: " Temuco ",
+      comuna: " Temuco ",
       region: "La Araucanía",
       celular: "12345678",
       email: "Ana@UVM.cl",
@@ -108,7 +108,7 @@ describe("POST admin/students (alta manual)", () => {
         paternalLastName: "Pérez",
         maternalLastName: "Soto",
         paralelo: 2,
-        ciudad: "Temuco",
+        comuna: "Temuco",
         region: "La Araucanía",
         celular: "12345678",
         email: "ana@uvm.cl",
@@ -161,7 +161,7 @@ describe("POST admin/students (alta manual)", () => {
   });
 
   it("los datos opcionales no son obligatorios, y los vacios no se guardan", async () => {
-    const { status } = await run({ ...BASE, ciudad: "", email: "  ", gender: "" });
+    const { status } = await run({ ...BASE, comuna: "", email: "  ", gender: "" });
 
     expect(status).toBe(201);
     expect(mocks.created).toEqual([

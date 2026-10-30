@@ -18,7 +18,7 @@ import type {
  * las partidas guardan eventos y registros finos que aqui no hacen falta.
  */
 const STUDENT_FIELDS =
-  "rut firstName paternalLastName maternalLastName paralelo entryYear birthDate studyShift gender university region ciudad enabled";
+  "rut firstName paternalLastName maternalLastName paralelo entryYear birthDate studyShift gender university region comuna enabled";
 
 const ATTEMPT_FIELDS =
   "attemptId studentRut gameId attemptNumber status startedAt lastActivityAt finishedAt student sessions.device.pointer sessions.device.viewportWidth sessions.device.viewportHeight";

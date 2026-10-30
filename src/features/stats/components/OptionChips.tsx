@@ -6,7 +6,7 @@ type OptionChipsProps = {
   options: OptionChoice[];
   isOn: (value: string) => boolean;
   onToggle: (value: string) => void;
-  /** Con muchas opciones (ciudades) la lista se acota y se desplaza. */
+  /** Con muchas opciones (comunas) la lista se acota y se desplaza. */
   scroll?: boolean;
 };
 

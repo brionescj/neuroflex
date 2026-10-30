@@ -19,7 +19,7 @@ export const DIMENSION_IDS: readonly DimensionId[] = [
   "gender",
   "ageBand",
   "region",
-  "ciudad",
+  "comuna",
   "studyShift",
   "entryYear",
   "device",
@@ -38,7 +38,7 @@ export const DIMENSION_LABELS: Record<DimensionId, string> = {
   gender: "Género",
   ageBand: "Tramo de edad",
   region: "Región",
-  ciudad: "Ciudad",
+  comuna: "Comuna",
   studyShift: "Jornada",
   entryYear: "Año de ingreso",
   device: "Dispositivo",
@@ -142,7 +142,7 @@ export function ageBandOf(age: number | null | undefined): string | null {
 
 const SMALL_WORDS = new Set(["de", "del", "la", "las", "los", "el", "y", "e"]);
 
-/** "valparaiso" y "VALPARAISO" son la misma ciudad: se agrupan con mayuscula inicial. */
+/** "valparaiso" y "VALPARAISO" son la misma comuna: se agrupan con mayuscula inicial. */
 export function titleCase(text: string): string {
   return text
     .trim()
@@ -192,8 +192,8 @@ export function dimensionValue(
       // Las fichas antiguas traen la region escrita a mano: se lleva a su nombre oficial.
       return raw === null ? null : (normalizeRegion(raw) ?? raw);
     }
-    case "ciudad": {
-      const raw = text(snap.ciudad) ?? text(student?.ciudad);
+    case "comuna": {
+      const raw = text(snap.comuna) ?? text(student?.comuna);
 
       return raw === null ? null : titleCase(raw);
     }
@@ -304,7 +304,7 @@ function presentValues(
 
 /**
  * Opciones de cada filtro. Genero, universidad y jornada ofrecen siempre todos
- * sus valores. Paralelo, region, ciudad y ano de ingreso ofrecen solo los que
+ * sus valores. Paralelo, region, comuna y ano de ingreso ofrecen solo los que
  * hay en las fichas (asi no se filtra por algo que no existe); el ano en curso
  * se agrega siempre, de modo que al llegar enero aparece solo el ano nuevo.
  * No hay opcion "Sin dato": sin marcar nada, el filtro no excluye a nadie.

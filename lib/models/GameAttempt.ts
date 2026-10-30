@@ -30,7 +30,7 @@ export type GameAttemptDocument = {
     entryYear: number | null;
     ageAtStart: number | null;
     studyShift: string | null;
-    ciudad: string | null;
+    comuna: string | null;
     region: string | null;
     gender: string | null;
     university: string | null;

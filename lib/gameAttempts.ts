@@ -411,7 +411,7 @@ export type StudentSnapshot = {
   entryYear: number | null;
   ageAtStart: number | null;
   studyShift: string | null;
-  ciudad: string | null;
+  comuna: string | null;
   region: string | null;
   // Los edita el admin en la ficha del estudiante; vacios hasta que los cargue.
   gender: string | null;
@@ -430,7 +430,7 @@ function numberOrNull(value: unknown): number | null {
 
 /**
  * Copia los datos del estudiante con los que se agrupa despues. Se guarda
- * una foto en cada intento: si el alumno cambia de paralelo o ciudad, sus
+ * una foto en cada intento: si el alumno cambia de paralelo o comuna, sus
  * intentos antiguos conservan lo que valia cuando jugo.
  */
 export function buildStudentSnapshot(
@@ -447,7 +447,7 @@ export function buildStudentSnapshot(
       startedAt,
     ),
     studyShift: textOrNull(s.studyShift),
-    ciudad: textOrNull(s.ciudad),
+    comuna: textOrNull(s.comuna),
     region: textOrNull(s.region),
     gender: textOrNull(s.gender),
     university: textOrNull(s.university),

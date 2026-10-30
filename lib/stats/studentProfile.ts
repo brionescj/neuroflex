@@ -672,7 +672,7 @@ export function buildStudentProfile(
       paralelo: student.paralelo ?? null,
       university: universityText(student.university),
       shift: shiftText(student.studyShift),
-      ciudad: student.ciudad ?? "",
+      comuna: student.comuna ?? "",
       enabled: student.enabled !== false,
     },
     cards,

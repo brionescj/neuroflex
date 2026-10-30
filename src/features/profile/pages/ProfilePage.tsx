@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { EmailInput } from "@/components/forms/EmailInput";
+import { RegionCommuneFields } from "@/components/forms/RegionCommuneFields";
 import { AVATARS, type AvatarId } from "@/config/avatars";
 import { STUDY_SHIFT_OPTIONS, studyShiftLabel, universityLabel } from "@/config/studentOptions";
 import { useAuth } from "@/context";
@@ -16,6 +17,7 @@ import { AdminNameForm, type PersonNames } from "@/features/admin/components/Adm
 import { birthDateRange, formatBirthDate, toInputDate } from "@/features/admin/utils/birthDate";
 import { ChangePasswordForm } from "@/features/auth/components";
 import { cn } from "@/lib/utils";
+import { placeForSelects } from "@/utils/commune";
 import type { ProfileDetails } from "@/services/profile.service";
 import type { StudyShift } from "@/types";
 
@@ -31,15 +33,13 @@ type StudentDetails = Extract<ProfileDetails, { role: "student" }>;
 /**
  * Lo que el estudiante no edita desde el perfil, ordenado como en las tarjetas de
  * estudiantes del panel de administracion en el celular. (Los nombres de un
- * administrador los puede corregir: van aparte. El correo, la fecha de nacimiento
- * y la jornada del estudiante se editan juntos con el lapiz de su tarjeta.)
+ * administrador los puede corregir: van aparte. El correo, la fecha de nacimiento,
+ * la jornada, la region y la comuna del estudiante se editan juntos con el lapiz de su tarjeta.)
  */
 function institutionalFields(details: StudentDetails) {
   return [
     { label: "RUT", value: details.rut },
     { label: "Universidad", value: universityLabel(details.university) },
-    { label: "Ciudad", value: details.ciudad },
-    { label: "Región", value: details.region },
     {
       label: "Celular",
       value: details.celular ? `+569 ${details.celular}` : undefined,
@@ -47,15 +47,20 @@ function institutionalFields(details: StudentDetails) {
   ];
 }
 
-/** Los tres datos que el estudiante edita con el lápiz, tal como están guardados. */
+/**
+ * Los datos que el estudiante edita con el lápiz, tal como están guardados. La región y la comuna se llevan
+ * a su nombre oficial; si la ficha trae una que la lista no reconoce, queda en «Seleccionar» (no se inventa
+ * ni se da una por defecto).
+ */
 function contactValues(details: ProfileDetails) {
   return details.role === "student"
     ? {
         email: details.email ?? "",
         birthDate: toInputDate(details.birthDate),
         studyShift: (details.studyShift ?? "") as StudyShift | "",
+        ...placeForSelects(details.region, details.comuna),
       }
-    : { email: details.email ?? "", birthDate: "", studyShift: "" as const };
+    : { email: details.email ?? "", birthDate: "", studyShift: "" as const, region: "", comuna: "" };
 }
 
 const SELECT_CLASS =
@@ -71,7 +76,7 @@ export default function ProfilePage() {
 
   const form = useForm<ProfileFormInput>({
     resolver: zodResolver(ProfileFormSchema),
-    defaultValues: { email: "", avatarId: "cat", birthDate: "", studyShift: "" },
+    defaultValues: { email: "", avatarId: "cat", birthDate: "", studyShift: "", region: "", comuna: "" },
   });
 
   // Solo depende de QUIEN es, no del objeto de sesion: `login()` lo reemplaza al guardar el nombre o el
@@ -109,8 +114,9 @@ export default function ProfilePage() {
     const isStudent = details.role === "student";
     const saved = contactValues(details);
 
-    // La fecha y la jornada solo viajan si cambiaron: una fecha antigua que el selector no entiende
-    // se ve vacia, y mandarla vacia la borraria sin querer al guardar otro dato.
+    // La fecha, la jornada, la region y la comuna solo viajan si cambiaron: un dato antiguo que el selector no
+    // entiende se ve vacio, y mandarlo vacio lo borraria sin querer al guardar otro dato.
+    const regionChanged = data.region !== saved.region;
     const result = await updateProfileAction({
       rut: user.rut,
       role: user.role,
@@ -118,6 +124,9 @@ export default function ProfilePage() {
       avatarId: data.avatarId,
       ...(isStudent && data.birthDate !== saved.birthDate && { birthDate: data.birthDate }),
       ...(isStudent && data.studyShift !== saved.studyShift && { studyShift: data.studyShift }),
+      ...(isStudent && regionChanged && { region: data.region }),
+      // Al cambiar de region se manda la comuna aunque quede vacia: la anterior ya no es de esa region.
+      ...(isStudent && (regionChanged || data.comuna !== saved.comuna) && { comuna: data.comuna }),
     });
 
     if (!result.success) {
@@ -136,7 +145,12 @@ export default function ProfilePage() {
       ...details,
       email: data.email,
       avatarId: data.avatarId,
-      ...(isStudent && { birthDate: stored.birthDate, studyShift: stored.studyShift }),
+      ...(isStudent && {
+        birthDate: stored.birthDate,
+        studyShift: stored.studyShift,
+        region: stored.region,
+        comuna: stored.comuna,
+      }),
     } as ProfileDetails;
 
     setDetails(next);
@@ -153,6 +167,8 @@ export default function ProfilePage() {
       form.resetField("email", { defaultValue: saved.email });
       form.resetField("birthDate", { defaultValue: saved.birthDate });
       form.resetField("studyShift", { defaultValue: saved.studyShift });
+      form.resetField("region", { defaultValue: saved.region });
+      form.resetField("comuna", { defaultValue: saved.comuna });
     }
 
     setIsEditingContact(false);
@@ -218,7 +234,7 @@ export default function ProfilePage() {
         <p className="text-[16px] text-zinc-400">
           {details.role === "admin"
             ? "Puedes actualizar tu nombre, tu correo, tu avatar y tu contraseña."
-            : "Los datos institucionales no son editables. Puedes actualizar tu correo, tu fecha de nacimiento, tu jornada, tu avatar y tu contraseña."}
+            : "Los datos institucionales no son editables. Puedes actualizar tu correo, tu fecha de nacimiento, tu jornada, tu región, tu comuna, tu avatar y tu contraseña."}
         </p>
       </div>
 
@@ -280,8 +296,8 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setIsEditingContact(true)}
-                  title="Editar correo, fecha de nacimiento y jornada"
-                  aria-label="Editar correo, fecha de nacimiento y jornada"
+                  title="Editar correo, fecha de nacimiento, jornada, región y comuna"
+                  aria-label="Editar correo, fecha de nacimiento, jornada, región y comuna"
                   className="-my-1 shrink-0 rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
                 >
                   <Pencil className="size-4" />
@@ -361,8 +377,8 @@ export default function ProfilePage() {
                           onBlur={field.onBlur}
                           className={SELECT_CLASS}
                         >
-                          <option value="" className="bg-zinc-900">
-                            Sin registrar
+                          <option value="" disabled={field.value !== ""} className="bg-zinc-900">
+                            Seleccionar
                           </option>
                           {STUDY_SHIFT_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value} className="bg-zinc-900">
@@ -372,6 +388,38 @@ export default function ProfilePage() {
                         </select>
                         <FieldError errors={[fieldState.error]} />
                       </Field>
+                    )}
+                  />
+
+                  <Controller
+                    control={form.control}
+                    name="region"
+                    render={({ field: regionField }) => (
+                      <Controller
+                        control={form.control}
+                        name="comuna"
+                        render={({ field: communeField, fieldState }) => (
+                          <>
+                            <RegionCommuneFields
+                              idPrefix="profile"
+                              region={regionField.value}
+                              comuna={communeField.value}
+                              onChange={(place) => {
+                                regionField.onChange(place.region);
+                                communeField.onChange(place.comuna);
+                              }}
+                              selectClassName={`${SELECT_CLASS} disabled:opacity-50`}
+                              optionClassName="bg-zinc-900"
+                            />
+
+                            {fieldState.error && (
+                              <div className="min-[420px]:col-span-2">
+                                <FieldError errors={[fieldState.error]} />
+                              </div>
+                            )}
+                          </>
+                        )}
+                      />
                     )}
                   />
 
@@ -404,6 +452,16 @@ export default function ProfilePage() {
                     <p className="break-words text-sm text-white">
                       {studyShiftLabel(details.studyShift) || "Sin registrar"}
                     </p>
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-xs text-zinc-500">Región</p>
+                    <p className="break-words text-sm text-white">{details.region || "Sin registrar"}</p>
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-xs text-zinc-500">Comuna</p>
+                    <p className="break-words text-sm text-white">{details.comuna || "Sin registrar"}</p>
                   </div>
                 </>
               )}

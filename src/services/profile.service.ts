@@ -57,6 +57,12 @@ export type UpdateContactPayload = {
 
   /** Solo estudiantes. Vacio la borra, ausente no la toca. */
   studyShift?: StudyShift | "";
+
+  /** Solo estudiantes. Region con su nombre oficial; vacio la borra, ausente no la toca. */
+  region?: string;
+
+  /** Solo estudiantes. Comuna de esa region; vacio la borra, ausente no la toca. */
+  comuna?: string;
 };
 
 type ContactData = {
@@ -68,6 +74,10 @@ type ContactData = {
   birthDate?: string;
 
   studyShift?: StudyShift;
+
+  region?: string;
+
+  comuna?: string;
 };
 
 export async function updateProfileContact(
@@ -81,6 +91,8 @@ export async function updateProfileContact(
         avatarId: payload.avatarId,
         ...(payload.birthDate !== undefined && { birthDate: payload.birthDate }),
         ...(payload.studyShift !== undefined && { studyShift: payload.studyShift }),
+        ...(payload.region !== undefined && { region: payload.region }),
+        ...(payload.comuna !== undefined && { comuna: payload.comuna }),
       },
     );
 

@@ -32,7 +32,7 @@ export type Student = {
 
   celular?: string;
 
-  ciudad?: string;
+  comuna?: string;
 
   region?: string;
 

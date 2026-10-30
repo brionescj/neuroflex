@@ -14,7 +14,7 @@ export type DimensionId =
   | "gender"
   | "ageBand"
   | "region"
-  | "ciudad"
+  | "comuna"
   | "studyShift"
   | "entryYear"
   | "device";
@@ -256,7 +256,7 @@ export type StudentProfile = {
     paralelo: number | null;
     university: string;
     shift: string;
-    ciudad: string;
+    comuna: string;
     enabled: boolean;
   };
   /** Resumen en tarjetas (un solo bloque). */

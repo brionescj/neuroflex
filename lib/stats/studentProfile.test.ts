@@ -113,7 +113,7 @@ describe("buildStudentProfile", () => {
       paralelo: 1,
       university: "",
       shift: "",
-      ciudad: "",
+      comuna: "",
       enabled: true,
     });
   });

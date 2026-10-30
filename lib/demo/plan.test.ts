@@ -48,7 +48,7 @@ function plan(index: number) {
       entryYear: 2026,
       birthDate: profile.birthDate,
       studyShift: profile.studyShift,
-      ciudad: "Temuco",
+      comuna: "Temuco",
       region: "La Araucanía",
       university: profile.university,
     },

@@ -2,6 +2,7 @@ import { Eye, KeyRound, Pencil, Plus, Save } from "lucide-react";
 import { Fragment, useEffect, useState, type FormEvent } from "react";
 
 import { EmailInput } from "@/components/forms/EmailInput";
+import { RegionCommuneFields } from "@/components/forms/RegionCommuneFields";
 import { RutInput } from "@/components/forms/RutInput";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +11,6 @@ import { Input } from "@/components/ui/Input";
 import {
   GENDER_OPTIONS,
   PARALELO_OPTIONS,
-  REGION_OPTIONS,
   STUDY_SHIFT_OPTIONS,
   UNIVERSITY_OPTIONS,
   genderLabel,
@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Gender, Paralelo, Student, StudyShift, University } from "@/types";
 import { optionalEmailProblem } from "@/utils/email";
-import { normalizeRegion } from "@/utils/region";
+import { placeForSelects } from "@/utils/commune";
 import { isValidRut } from "@/utils/rut";
 
 import {
@@ -32,7 +32,7 @@ import {
 } from "../actions/students.action";
 import { birthDateRange, formatBirthDate, toInputDate } from "../utils/birthDate";
 import { matchesQuery } from "../utils/matchesQuery";
-import { formatNameInput, sanitizeNameInput } from "../utils/sanitizeInput";
+import { formatNameInput } from "../utils/sanitizeInput";
 import { HighlightMatch } from "./HighlightMatch";
 import { Pagination } from "./Pagination";
 import { GeneratePasswordDialog } from "./GeneratePasswordDialog";
@@ -43,7 +43,7 @@ const EMPTY_FORM = {
   paternalLastName: "",
   maternalLastName: "",
   paralelo: "",
-  ciudad: "",
+  comuna: "",
   region: "",
   celular: "",
   email: "",
@@ -58,7 +58,7 @@ type EditFormState = {
   paternalLastName: string;
   maternalLastName: string;
   email: string;
-  ciudad: string;
+  comuna: string;
   region: string;
   celular: string;
   gender: Gender | "";
@@ -73,7 +73,7 @@ const EMPTY_EDIT_FORM: EditFormState = {
   paternalLastName: "",
   maternalLastName: "",
   email: "",
-  ciudad: "",
+  comuna: "",
   region: "",
   celular: "",
   gender: "",
@@ -83,7 +83,7 @@ const EMPTY_EDIT_FORM: EditFormState = {
 };
 
 const SELECT_CLASS =
-  "h-10 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white outline-none transition focus:border-white";
+  "h-10 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white outline-none transition focus:border-white disabled:opacity-50";
 
 type StudentEditFormProps = {
   editForm: EditFormState;
@@ -158,34 +158,14 @@ function StudentEditForm({
         />
       </Field>
 
-      <Field>
-        <FieldLabel htmlFor={`edit-ciudad-${studentRut}`}>Ciudad</FieldLabel>
-        <Input
-          id={`edit-ciudad-${studentRut}`}
-          className="h-10"
-          value={editForm.ciudad}
-          onChange={(e) =>
-            setEditForm({ ...editForm, ciudad: sanitizeNameInput(e.target.value) })
-          }
-        />
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor={`edit-region-${studentRut}`}>Región</FieldLabel>
-        <select
-          id={`edit-region-${studentRut}`}
-          className={SELECT_CLASS}
-          value={editForm.region}
-          onChange={(e) => setEditForm({ ...editForm, region: e.target.value })}
-        >
-          <option value="">Sin registrar</option>
-          {REGION_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <RegionCommuneFields
+        idPrefix={`edit-${studentRut}`}
+        region={editForm.region}
+        comuna={editForm.comuna}
+        onChange={(place) => setEditForm({ ...editForm, ...place })}
+        selectClassName={SELECT_CLASS}
+        allowClear
+      />
 
       <Field>
         <FieldLabel htmlFor={`edit-celular-${studentRut}`}>Celular</FieldLabel>
@@ -312,8 +292,8 @@ function StudentDetailsView({
 }) {
   const fields = [
     { label: "Correo", value: student.email },
-    { label: "Ciudad", value: student.ciudad },
-    { label: "Region", value: student.region },
+    { label: "Región", value: student.region },
+    { label: "Comuna", value: student.comuna },
     {
       label: "Celular",
       value: student.celular ? `+569 ${student.celular}` : undefined,
@@ -490,7 +470,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
       paternalLastName: form.paternalLastName,
       maternalLastName: form.maternalLastName,
       paralelo: Number(form.paralelo) as Paralelo,
-      ciudad: form.ciudad || undefined,
+      comuna: form.comuna || undefined,
       region: form.region || undefined,
       celular: form.celular || undefined,
       email: form.email || undefined,
@@ -542,9 +522,9 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
       paternalLastName: student.paternalLastName,
       maternalLastName: student.maternalLastName,
       email: student.email ?? "",
-      ciudad: student.ciudad ?? "",
-      // Las fichas antiguas pueden traerla escrita a mano: se muestra con su nombre oficial.
-      region: normalizeRegion(student.region ?? "") ?? "",
+      // Las fichas antiguas pueden traerlas escritas a mano: se muestran con su nombre oficial, o «Seleccionar»
+      // si no coinciden con la lista.
+      ...placeForSelects(student.region, student.comuna),
       celular: student.celular ?? "",
       gender: student.gender ?? "",
       university: student.university ?? "",
@@ -589,23 +569,24 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
     const birthDateChanged =
       editForm.birthDate !== toInputDate(current?.birthDate);
 
-    const regionChanged =
-      editForm.region !== (normalizeRegion(current?.region ?? "") ?? "");
+    const savedPlace = placeForSelects(current?.region, current?.comuna);
+    const regionChanged = editForm.region !== savedPlace.region;
+    // Una comuna antigua que la lista no reconoce se veria vacia y se borraria sin querer al guardar otro dato:
+    // solo se manda si se cambio (o si cambio la region, que puede dejarla sin comuna).
+    const comunaChanged = regionChanged || editForm.comuna !== savedPlace.comuna;
 
     const result = await updateStudentDetailsAction(editingRut, {
       firstName: editForm.firstName,
       paternalLastName: editForm.paternalLastName,
       maternalLastName: editForm.maternalLastName,
       email: editForm.email,
-      ciudad: editForm.ciudad,
       celular: editForm.celular,
       gender: editForm.gender,
       university: editForm.university,
       studyShift: editForm.studyShift,
       ...(birthDateChanged && { birthDate: editForm.birthDate }),
-      // Igual que la fecha: una region antigua que la lista no reconoce se veria
-      // vacia y se borraria sin querer al guardar otro dato.
       ...(regionChanged && { region: editForm.region }),
+      ...(comunaChanged && { comuna: editForm.comuna }),
     });
 
     if (!result.success) {
@@ -761,35 +742,15 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
             />
           </Field>
 
-          <Field>
-            <FieldLabel htmlFor="ciudad">Ciudad</FieldLabel>
-            <Input
-              id="ciudad"
-              value={form.ciudad}
-              onChange={(e) =>
-                setForm({ ...form, ciudad: sanitizeNameInput(e.target.value) })
-              }
-            />
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="region">Región</FieldLabel>
-            <select
-              id="region"
-              value={form.region}
-              onChange={(e) => setForm({ ...form, region: e.target.value })}
-              className="h-12 w-full rounded-xl border border-zinc-700 bg-transparent px-4 text-white outline-none transition focus:border-white"
-            >
-              <option value="" className="bg-zinc-900">
-                Sin registrar
-              </option>
-              {REGION_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} className="bg-zinc-900">
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <RegionCommuneFields
+            idPrefix="create"
+            region={form.region}
+            comuna={form.comuna}
+            onChange={(place) => setForm({ ...form, ...place })}
+            selectClassName="h-12 w-full rounded-xl border border-zinc-700 bg-transparent px-4 text-white outline-none transition focus:border-white disabled:opacity-50"
+            optionClassName="bg-zinc-900"
+            allowClear
+          />
 
           <Field>
             <FieldLabel htmlFor="celular">Celular</FieldLabel>

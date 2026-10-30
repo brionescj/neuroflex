@@ -1,5 +1,11 @@
+import mongoose from "mongoose";
+
+import { normalizeCommune } from "./communes";
 import { MINI_CASES_SEED } from "./miniCasesSeed";
+import { GameAttempt } from "./models/GameAttempt";
 import { MiniCase } from "./models/MiniCase";
+import { Student } from "./models/Student";
+import { normalizeRegion } from "./region";
 
 /**
  * Titulos que tuvieron los casos 1 a 10 antes de usar los nombres del documento «JUEGOS ABSTRACTOS - FE»
@@ -76,7 +82,60 @@ export async function ensureBaseMiniCases(): Promise<void> {
   );
 }
 
+/**
+ * Corre `task` una sola vez en toda la base (no una vez por proceso): deja una marca en la coleccion
+ * «migrations» cuando termina bien. Si falla, no deja marca y se reintenta en el proximo arranque.
+ */
+async function once(name: string, task: () => Promise<void>): Promise<void> {
+  const marks = mongoose.connection.collection<{ _id: string; at: Date }>("migrations");
+
+  if (await marks.findOne({ _id: name })) return;
+
+  await task();
+  await marks.updateOne({ _id: name }, { $setOnInsert: { at: new Date() } }, { upsert: true });
+}
+
+/**
+ * «Ciudad» pasa a llamarse «comuna» en toda la base: en la ficha de cada estudiante y en la copia de sus datos
+ * que guarda cada partida. La region se deja con su nombre oficial y la comuna, cuando coincide con una de esa
+ * region, tambien. Una comuna que no coincide con ninguna se conserva tal cual (no se inventa un dato); el
+ * estudiante o el administrador la elige de la lista cuando la corrija.
+ */
+export async function renameCityToCommune(): Promise<void> {
+  const legacy = await Student.collection
+    .find({ ciudad: { $exists: true } }, { projection: { ciudad: 1, region: 1, comuna: 1 } })
+    .toArray();
+
+  const operations = legacy.map((doc) => {
+    const set: Record<string, string> = {};
+    const region = typeof doc.region === "string" ? normalizeRegion(doc.region) : null;
+    const city = typeof doc.ciudad === "string" ? doc.ciudad.trim() : "";
+
+    if (region && region !== doc.region) set.region = region;
+
+    // Una comuna que ya estaba cargada no se pisa con la ciudad antigua.
+    if (typeof doc.comuna !== "string" && city !== "") {
+      set.comuna = (region ? normalizeCommune(region, city) : null) ?? city;
+    }
+
+    return {
+      updateOne: {
+        filter: { _id: doc._id },
+        update: { ...(Object.keys(set).length > 0 ? { $set: set } : {}), $unset: { ciudad: "" } },
+      },
+    };
+  });
+
+  if (operations.length > 0) await Student.collection.bulkWrite(operations);
+
+  await GameAttempt.collection.updateMany(
+    { "student.ciudad": { $exists: true } },
+    { $rename: { "student.ciudad": "student.comuna" } },
+  );
+}
+
 /** Tareas que corren una vez por proceso, al abrir la conexion (ver connectDB). */
 export async function runStartupTasks(): Promise<void> {
   await ensureBaseMiniCases();
+  await once("ciudad-a-comuna", renameCityToCommune);
 }

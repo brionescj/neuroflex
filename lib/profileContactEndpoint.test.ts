@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   session: { rut: "12345678-5", role: "student" } as { rut: string; role: string } | null,
   found: true as boolean,
   writes: [] as { model: string; filter: unknown; update: unknown }[],
+  stored: null as { region?: string; comuna?: string } | null,
 }));
 
 vi.mock("./cookies", () => ({ readSessionCookie: () => (mocks.session ? "token" : undefined) }));
@@ -14,6 +15,7 @@ vi.mock("./db", () => ({ connectDB: async () => undefined }));
 
 function model(name: string) {
   return {
+    findOne: () => ({ select: () => ({ lean: async () => mocks.stored }) }),
     findOneAndUpdate: async (
       filter: unknown,
       update: { email: string; avatarId: string; birthDate?: string; studyShift?: string },
@@ -58,6 +60,7 @@ beforeEach(() => {
   mocks.session = { rut: "12345678-5", role: "student" };
   mocks.found = true;
   mocks.writes = [];
+  mocks.stored = null;
 });
 
 describe("PATCH profile/:rut/contact (perfil propio)", () => {
@@ -181,6 +184,41 @@ describe("PATCH profile/:rut/contact: fecha de nacimiento y jornada del estudian
     mocks.session = { rut: "12345678-5", role: "admin" };
 
     expect((await run({ email: "adm@uvm.cl", avatarId: "cat", studyShift: "day" })).status).toBe(400);
+    expect(mocks.writes).toHaveLength(0);
+  });
+});
+
+describe("PATCH profile/:rut/contact: región y comuna del estudiante", () => {
+  const body = { email: "ana@uvm.cl", avatarId: "cat" };
+
+  it("guarda la región y la comuna con su nombre oficial", async () => {
+    const { status } = await run({ ...body, region: "la araucania", comuna: "PADRE LAS CASAS" });
+
+    expect(status).toBe(200);
+    expect(mocks.writes[0]?.update).toEqual({ ...body, region: "La Araucanía", comuna: "Padre Las Casas" });
+  });
+
+  it("la comuna tiene que ser de la región, y sin región no se puede elegir", async () => {
+    const wrong = await run({ ...body, region: "La Araucanía", comuna: "Concepción" });
+    const without = await run({ ...body, comuna: "Temuco" });
+
+    expect(wrong.status).toBe(400);
+    expect(wrong.json.message).toBe("La comuna indicada no pertenece a la región elegida.");
+    expect(without.status).toBe(400);
+    expect(mocks.writes).toHaveLength(0);
+  });
+
+  it("una comuna sola se compara con la región que la ficha ya tiene", async () => {
+    mocks.stored = { region: "Biobío" };
+
+    expect((await run({ ...body, comuna: "Lota" })).status).toBe(200);
+    expect((await run({ ...body, comuna: "Temuco" })).status).toBe(400);
+  });
+
+  it("un administrador no tiene región ni comuna: 400 sin escribir", async () => {
+    mocks.session = { rut: "12345678-5", role: "admin" };
+
+    expect((await run({ ...body, region: "Biobío" })).status).toBe(400);
     expect(mocks.writes).toHaveLength(0);
   });
 });

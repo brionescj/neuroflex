@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import { ProfileFormSchema } from "./profileForm.schema";
 
-const BASE = { email: "ana@uvm.cl", avatarId: "cat" as const, birthDate: "", studyShift: "" as const };
+const BASE = {
+  email: "ana@uvm.cl",
+  avatarId: "cat" as const,
+  birthDate: "",
+  studyShift: "" as const,
+  region: "",
+  comuna: "",
+};
 
 describe("ProfileFormSchema: fecha de nacimiento y jornada", () => {
   it("acepta sin fecha ni jornada (se pueden dejar vacías)", () => {
@@ -29,5 +36,23 @@ describe("ProfileFormSchema: fecha de nacimiento y jornada", () => {
 
   it("rechaza una jornada que no existe", () => {
     expect(ProfileFormSchema.safeParse({ ...BASE, studyShift: "night" }).success).toBe(false);
+  });
+});
+
+describe("ProfileFormSchema: región y comuna", () => {
+  it("acepta sin región ni comuna, solo la región, o ambas si la comuna es de esa región", () => {
+    expect(ProfileFormSchema.safeParse({ ...BASE, region: "Biobío" }).success).toBe(true);
+    expect(ProfileFormSchema.safeParse({ ...BASE, region: "Biobío", comuna: "Los Ángeles" }).success).toBe(true);
+  });
+
+  it("rechaza una comuna sin región, de otra región o escrita a mano", () => {
+    for (const place of [
+      { region: "", comuna: "Temuco" },
+      { region: "Biobío", comuna: "Temuco" },
+      { region: "Biobío", comuna: "los angeles" },
+      { region: "Narnia", comuna: "Lota" },
+    ]) {
+      expect(ProfileFormSchema.safeParse({ ...BASE, ...place }).success, JSON.stringify(place)).toBe(false);
+    }
   });
 });

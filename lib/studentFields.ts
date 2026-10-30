@@ -1,3 +1,4 @@
+import { normalizeCommune } from "./communes";
 import { emailProblem, normalizeEmail } from "./email";
 import { parseNameChanges, type NameField } from "./personName";
 import { normalizeRegion } from "./region";
@@ -25,7 +26,7 @@ export function isParalelo(value: unknown): value is (typeof PARALELOS)[number] 
 }
 
 const FIELDS = [
-  "ciudad",
+  "comuna",
   "region",
   "celular",
   "email",
@@ -38,7 +39,7 @@ const FIELDS = [
 type Field = (typeof FIELDS)[number];
 
 const LABELS: Record<Field, string> = {
-  ciudad: "La ciudad",
+  comuna: "La comuna",
   region: "La región",
   celular: "El celular",
   email: "El correo",
@@ -49,7 +50,7 @@ const LABELS: Record<Field, string> = {
 };
 
 const MAX_LENGTH: Partial<Record<Field, number>> = {
-  ciudad: 80,
+  comuna: 80,
   region: 80,
   celular: 20,
   email: 120,
@@ -152,7 +153,46 @@ export type ParseOptions = {
    * dar de alta un estudiante estos datos son opcionales y puede no venir ninguno.
    */
   requireChanges?: boolean;
+  /**
+   * La region y la comuna que la ficha ya tiene. La comuna debe pertenecer a la region: sin esto, una comuna
+   * enviada sola (o una region nueva) no se puede comprobar contra lo que ya esta guardado.
+   */
+  current?: { region?: string | null; comuna?: string | null };
 };
+
+/**
+ * La comuna siempre es de la region de la ficha: se escribe con su nombre oficial y exige que la region este
+ * elegida. Si la region cambia y la comuna guardada ya no pertenece a la nueva, esa comuna se borra (no puede
+ * quedar una comuna de otra region). Modifica `set` y `unset`; devuelve el problema, si lo hay.
+ */
+function reconcilePlace(
+  set: StudentDetailsChanges["set"],
+  unset: StudentDetailsChanges["unset"],
+  current: ParseOptions["current"],
+): string | null {
+  const region = set.region ?? (unset.region ? undefined : (normalizeRegion(current?.region ?? "") ?? undefined));
+
+  if (set.comuna !== undefined) {
+    if (!region) return "Elige primero la región para poder elegir la comuna.";
+
+    const official = normalizeCommune(region, set.comuna);
+
+    if (!official) return "La comuna indicada no pertenece a la región elegida.";
+
+    set.comuna = official;
+
+    return null;
+  }
+
+  const regionChanged =
+    (set.region !== undefined && set.region !== normalizeRegion(current?.region ?? "")) || unset.region !== undefined;
+
+  if (regionChanged && !unset.comuna && current?.comuna && !(region && normalizeCommune(region, current.comuna))) {
+    unset.comuna = 1;
+  }
+
+  return null;
+}
 
 /**
  * Interpreta los datos opcionales de una ficha, al crearla o editarla. Un campo
@@ -160,7 +200,7 @@ export type ParseOptions = {
  */
 export function parseStudentDetails(
   body: unknown,
-  { now = new Date(), requireChanges = true }: ParseOptions = {},
+  { now = new Date(), requireChanges = true, current }: ParseOptions = {},
 ): ParsedStudentDetails {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return { ok: false, message: "Datos inválidos." };
@@ -200,6 +240,10 @@ export function parseStudentDetails(
     // La region se guarda con su nombre oficial aunque se haya escrito distinto.
     set[field] = field === "region" ? (normalizeRegion(value) as string) : value;
   }
+
+  const placeProblem = reconcilePlace(set, unset, current);
+
+  if (placeProblem) return { ok: false, message: placeProblem };
 
   if (
     requireChanges &&

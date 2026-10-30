@@ -55,7 +55,7 @@ export default async function handler(
     }
 
     // Nombres y apellidos (con la inicial de cada palabra en mayuscula) y datos
-    // opcionales de la ficha: ciudad, region, celular, correo, genero,
+    // opcionales de la ficha: comuna, region, celular, correo, genero,
     // universidad, jornada y fecha de nacimiento. Se validan igual que al editarlos.
     const details = parseStudentDetails(req.body, { requireChanges: false });
 

@@ -248,7 +248,7 @@ export default function StudentStatsPage() {
               <Detail label="Paralelo" value={profile.student.paralelo === null ? "" : String(profile.student.paralelo)} />
               <Detail label="Universidad" value={profile.student.university} />
               <Detail label="Jornada" value={profile.student.shift} />
-              <Detail label="Ciudad" value={profile.student.ciudad} />
+              <Detail label="Comuna" value={profile.student.comuna} />
             </dl>
           </section>
 

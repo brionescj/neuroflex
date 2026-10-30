@@ -27,7 +27,7 @@ export const REGIONS = [
 export type Region = (typeof REGIONS)[number];
 
 /** Sin tildes (la ñ se conserva como n), en minusculas y solo letras, numeros y espacios. */
-function plain(text: string): string {
+export function plainText(text: string): string {
   return text
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -57,8 +57,8 @@ const ALIASES: Record<string, Region> = {
 };
 
 const BY_KEY = new Map<string, Region>([
-  ...REGIONS.map((region) => [plain(region), region] as const),
-  ...Object.entries(ALIASES).map(([key, region]) => [plain(key), region] as const),
+  ...REGIONS.map((region) => [plainText(region), region] as const),
+  ...Object.entries(ALIASES).map(([key, region]) => [plainText(key), region] as const),
 ]);
 
 /**
@@ -66,7 +66,7 @@ const BY_KEY = new Map<string, Region>([
  * metropolitana", "BIOBIO", "La Araucania"), o null si no es ninguna.
  */
 export function normalizeRegion(text: string): Region | null {
-  const key = plain(text).replace(/^(region )?(de(l)? )?/, "");
+  const key = plainText(text).replace(/^(region )?(de(l)? )?/, "");
 
-  return BY_KEY.get(plain(text)) ?? BY_KEY.get(key) ?? null;
+  return BY_KEY.get(plainText(text)) ?? BY_KEY.get(key) ?? null;
 }

@@ -37,7 +37,7 @@ export default async function handler(
     return res.status(403).json({ success: false, message: "No autorizado." });
   }
 
-  const { email: rawEmail, avatarId, birthDate, studyShift } = req.body ?? {};
+  const { email: rawEmail, avatarId, birthDate, studyShift, region, comuna } = req.body ?? {};
 
   const email = typeof rawEmail === "string" ? normalizeEmail(rawEmail) : "";
   const problem = emailProblem(email);
@@ -46,17 +46,31 @@ export default async function handler(
     return res.status(400).json({ success: false, message: problem });
   }
 
-  // La fecha de nacimiento y la jornada son del estudiante: se validan con las
-  // mismas reglas que usa el panel de administracion (edad de 17 a 80 anos).
+  // La fecha de nacimiento, la jornada, la region y la comuna son del estudiante: se validan con las
+  // mismas reglas que usa el panel de administracion (edad de 17 a 80 anos; la comuna de la region).
   // Vacio las borra; ausente no las toca. Un administrador no las tiene.
   const extras: { set: Record<string, string>; unset: Record<string, 1> } = { set: {}, unset: {} };
+  const wantsExtras = [birthDate, studyShift, region, comuna].some((value) => value !== undefined);
 
-  if (birthDate !== undefined || studyShift !== undefined) {
-    if (payload.role !== "student") {
-      return res.status(400).json({ success: false, message: "Ese dato no corresponde a este perfil." });
-    }
+  if (wantsExtras && payload.role !== "student") {
+    return res.status(400).json({ success: false, message: "Ese dato no corresponde a este perfil." });
+  }
 
-    const parsed = parseStudentDetails({ birthDate, studyShift }, { requireChanges: false });
+  await connectDB();
+
+  if (!(await ensureCurrentSession(payload, res))) return;
+
+  if (wantsExtras) {
+    // La comuna debe ser de la region: si el cambio toca a una de las dos, se compara con lo ya guardado.
+    const stored =
+      region !== undefined || comuna !== undefined
+        ? await Student.findOne({ rut }).select("region comuna").lean()
+        : null;
+
+    const parsed = parseStudentDetails(
+      { birthDate, studyShift, region, comuna },
+      { requireChanges: false, current: stored ?? undefined },
+    );
 
     if (!parsed.ok) {
       return res.status(400).json({ success: false, message: parsed.message });
@@ -65,10 +79,6 @@ export default async function handler(
     extras.set = parsed.set;
     extras.unset = parsed.unset as Record<string, 1>;
   }
-
-  await connectDB();
-
-  if (!(await ensureCurrentSession(payload, res))) return;
 
   const Model = modelFor(payload.role);
 
@@ -99,6 +109,8 @@ export default async function handler(
       ...(payload.role === "student" && {
         birthDate: updated.birthDate,
         studyShift: updated.studyShift,
+        region: updated.region,
+        comuna: updated.comuna,
       }),
     },
   });

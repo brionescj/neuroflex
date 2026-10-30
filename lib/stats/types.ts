@@ -39,7 +39,7 @@ export type DimensionId =
   | "gender"
   | "ageBand"
   | "region"
-  | "ciudad"
+  | "comuna"
   | "studyShift"
   | "entryYear"
   | "device";
@@ -268,7 +268,7 @@ export type AttemptRow = {
     entryYear?: number | null;
     ageAtStart?: number | null;
     studyShift?: string | null;
-    ciudad?: string | null;
+    comuna?: string | null;
     region?: string | null;
     gender?: string | null;
     university?: string | null;
@@ -299,7 +299,7 @@ export type StudentRow = {
   gender?: string | null;
   university?: string | null;
   region?: string | null;
-  ciudad?: string | null;
+  comuna?: string | null;
   enabled?: boolean;
 };
 
@@ -337,7 +337,7 @@ export type StudentProfile = {
     paralelo: number | null;
     university: string;
     shift: string;
-    ciudad: string;
+    comuna: string;
     enabled: boolean;
   };
   /** Resumen en tarjetas (un solo bloque). */

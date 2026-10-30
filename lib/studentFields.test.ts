@@ -8,7 +8,7 @@ describe("parseStudentDetails", () => {
   it("guarda los campos con valor, recortados", () => {
     const result = parseStudentDetails(
       {
-        ciudad: "  Temuco ",
+        comuna: "  Temuco ",
         region: "La Araucanía",
         celular: "12345678",
         email: " Ana@Correo.cl ",
@@ -22,7 +22,7 @@ describe("parseStudentDetails", () => {
     expect(result).toEqual({
       ok: true,
       set: {
-        ciudad: "Temuco",
+        comuna: "Temuco",
         region: "La Araucanía",
         celular: "12345678",
         email: "ana@correo.cl",
@@ -50,23 +50,26 @@ describe("parseStudentDetails", () => {
   });
 
   it("un campo vacio se borra y uno ausente no se toca", () => {
-    const result = parseStudentDetails({ ciudad: "", region: "   ", gender: "male" }, { now: NOW });
+    const result = parseStudentDetails({ comuna: "", region: "   ", gender: "male" }, { now: NOW });
 
     expect(result).toEqual({
       ok: true,
       set: { gender: "male" },
-      unset: { ciudad: 1, region: 1 },
+      unset: { comuna: 1, region: 1 },
     });
   });
 
   it("ignora campos que no son editables (no se cuela el rut ni 'enabled')", () => {
-    const result = parseStudentDetails({ rut: "1-9", enabled: false, ciudad: "Osorno" }, { now: NOW });
+    const result = parseStudentDetails(
+      { rut: "1-9", enabled: false, region: "Los Lagos", comuna: "Osorno" },
+      { now: NOW },
+    );
 
-    expect(result).toEqual({ ok: true, set: { ciudad: "Osorno" }, unset: {} });
+    expect(result).toEqual({ ok: true, set: { region: "Los Lagos", comuna: "Osorno" }, unset: {} });
   });
 
   it("null y undefined cuentan como ausentes", () => {
-    expect(parseStudentDetails({ ciudad: null, region: undefined, gender: "other" }, { now: NOW })).toEqual({
+    expect(parseStudentDetails({ comuna: null, region: undefined, gender: "other" }, { now: NOW })).toEqual({
       ok: true,
       set: { gender: "other" },
       unset: {},
@@ -92,9 +95,9 @@ describe("parseStudentDetails", () => {
       ok: false,
       message: "La universidad indicada no es válida.",
     });
-    expect(parseStudentDetails({ ciudad: 5 }, { now: NOW })).toEqual({
+    expect(parseStudentDetails({ comuna: 5 }, { now: NOW })).toEqual({
       ok: false,
-      message: "La ciudad no es válido.",
+      message: "La comuna no es válido.",
     });
     expect(parseStudentDetails({ gender: ["female"] }, { now: NOW }).ok).toBe(false);
   });
@@ -153,13 +156,15 @@ describe("parseStudentDetails", () => {
   });
 
   it("limita el largo de los textos", () => {
-    expect(parseStudentDetails({ ciudad: "a".repeat(81) }, { now: NOW }).ok).toBe(false);
-    expect(parseStudentDetails({ ciudad: "a".repeat(80) }, { now: NOW }).ok).toBe(true);
+    expect(parseStudentDetails({ comuna: "a".repeat(81), region: "Los Lagos" }, { now: NOW })).toEqual({
+      ok: false,
+      message: "La comuna es demasiado largo.",
+    });
     expect(parseStudentDetails({ celular: "1".repeat(21) }, { now: NOW }).ok).toBe(false);
   });
 
   it("rechaza cuerpos que no son un objeto o que no cambian nada", () => {
-    for (const body of [undefined, null, "texto", 5, [], ["ciudad"]]) {
+    for (const body of [undefined, null, "texto", 5, [], ["comuna"]]) {
       expect(parseStudentDetails(body, { now: NOW })).toEqual({ ok: false, message: "Datos inválidos." });
     }
 
@@ -243,3 +248,72 @@ describe("parseStudentDetails: nombres y apellidos", () => {
   });
 });
 
+
+describe("comuna y región", () => {
+  const araucania = { region: "La Araucanía", comuna: "Temuco" };
+
+  it("la comuna se guarda con su nombre oficial y tiene que ser de la región", () => {
+    expect(parseStudentDetails({ region: "araucania", comuna: "PADRE LAS CASAS" }, { now: NOW })).toEqual({
+      ok: true,
+      set: { region: "La Araucanía", comuna: "Padre Las Casas" },
+      unset: {},
+    });
+    expect(parseStudentDetails({ region: "La Araucanía", comuna: "Concepción" }, { now: NOW })).toEqual({
+      ok: false,
+      message: "La comuna indicada no pertenece a la región elegida.",
+    });
+    expect(parseStudentDetails({ region: "La Araucanía", comuna: "Narnia" }, { now: NOW }).ok).toBe(false);
+  });
+
+  it("sin región elegida no hay comuna que elegir", () => {
+    expect(parseStudentDetails({ comuna: "Temuco" }, { now: NOW })).toEqual({
+      ok: false,
+      message: "Elige primero la región para poder elegir la comuna.",
+    });
+    expect(parseStudentDetails({ region: "", comuna: "Temuco" }, { now: NOW, current: araucania }).ok).toBe(false);
+  });
+
+  it("una comuna sola se compara con la región que la ficha ya tiene", () => {
+    expect(parseStudentDetails({ comuna: "Villarrica" }, { now: NOW, current: araucania })).toEqual({
+      ok: true,
+      set: { comuna: "Villarrica" },
+      unset: {},
+    });
+    expect(parseStudentDetails({ comuna: "Valdivia" }, { now: NOW, current: araucania }).ok).toBe(false);
+  });
+
+  it("cambiar de región borra la comuna que ya no le pertenece; si sigue siendo de ella, se conserva", () => {
+    expect(parseStudentDetails({ region: "Biobío" }, { now: NOW, current: araucania })).toEqual({
+      ok: true,
+      set: { region: "Biobío" },
+      unset: { comuna: 1 },
+    });
+    expect(parseStudentDetails({ region: "Biobío", comuna: "Lota" }, { now: NOW, current: araucania })).toEqual({
+      ok: true,
+      set: { region: "Biobío", comuna: "Lota" },
+      unset: {},
+    });
+    // Quitar la región también quita la comuna.
+    expect(parseStudentDetails({ region: "" }, { now: NOW, current: araucania })).toEqual({
+      ok: true,
+      set: {},
+      unset: { region: 1, comuna: 1 },
+    });
+  });
+
+  it("reenviar la misma región no borra la comuna, aunque la región se haya escrito distinto", () => {
+    expect(parseStudentDetails({ region: "la araucania" }, { now: NOW, current: araucania })).toEqual({
+      ok: true,
+      set: { region: "La Araucanía" },
+      unset: {},
+    });
+  });
+
+  it("una comuna antigua que no es de ninguna lista se conserva si no se toca", () => {
+    expect(parseStudentDetails({ gender: "male" }, { now: NOW, current: { region: "Biobío", comuna: "Concepcion Centro" } })).toEqual({
+      ok: true,
+      set: { gender: "male" },
+      unset: {},
+    });
+  });
+});

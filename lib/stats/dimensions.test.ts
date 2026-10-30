@@ -19,8 +19,8 @@ function student(rut: string, extra: Partial<StudentRow> = {}): StudentRow {
 
 describe("filterOptions", () => {
   const students = [
-    student("1", { paralelo: 1, entryYear: 2026, region: "RM", ciudad: "santiago", gender: "female" }),
-    student("2", { paralelo: 1, entryYear: 2026, region: "Biobio", ciudad: "Santiago", university: "uvm" }),
+    student("1", { paralelo: 1, entryYear: 2026, region: "RM", comuna: "santiago", gender: "female" }),
+    student("2", { paralelo: 1, entryYear: 2026, region: "Biobio", comuna: "Santiago", university: "uvm" }),
     student("3", { paralelo: 1, entryYear: 2025 }),
   ];
 
@@ -43,9 +43,9 @@ describe("filterOptions", () => {
     }
   });
 
-  it("region con su nombre oficial y en orden geografico; ciudad sin duplicados por mayusculas", () => {
+  it("region con su nombre oficial y en orden geografico; comuna sin duplicados por mayusculas", () => {
     expect(values("region")).toEqual(["Metropolitana de Santiago", "Biobío"]);
-    expect(values("ciudad")).toEqual(["Santiago"]);
+    expect(values("comuna")).toEqual(["Santiago"]);
   });
 
   it("los tramos de edad son 17 a 20 y despues de 5 en 5", () => {

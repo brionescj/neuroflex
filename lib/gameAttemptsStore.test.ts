@@ -157,7 +157,7 @@ beforeEach(() => {
     paralelo: 2,
     entryYear: 2024,
     birthDate: "2000-01-01",
-    ciudad: "Temuco",
+    comuna: "Temuco",
     region: "La Araucania",
   });
 });
@@ -284,7 +284,7 @@ describe("ensureAttempt", () => {
       attemptNumber: 1,
       status: "in_progress",
       contentVersion: "color-sequence-1",
-      student: { paralelo: 2, entryYear: 2024, ageAtStart: 26, ciudad: "Temuco" },
+      student: { paralelo: 2, entryYear: 2024, ageAtStart: 26, comuna: "Temuco" },
     });
     expect(attempt?.sessions).toHaveLength(1);
   });

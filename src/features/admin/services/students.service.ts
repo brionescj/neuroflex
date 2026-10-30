@@ -19,7 +19,7 @@ export type CreateStudentPayload = {
   paternalLastName: string;
   maternalLastName: string;
   paralelo: Paralelo;
-  ciudad?: string;
+  comuna?: string;
   region?: string;
   celular?: string;
   email?: string;
@@ -38,7 +38,7 @@ export type UpdateStudentDetailsPayload = {
   firstName?: string;
   paternalLastName?: string;
   maternalLastName?: string;
-  ciudad?: string;
+  comuna?: string;
   region?: string;
   celular?: string;
   email?: string;

@@ -16,15 +16,30 @@ export default async function handler(
   const payload = requireAuth(req, res, ["admin"]);
   if (!payload) return;
 
-  const parsed = parseStudentDetails(req.body);
+  const rut = req.query.rut as string;
 
-  if (!parsed.ok) {
+  // La comuna debe ser de la region: si el cambio toca a una de las dos, se compara con lo ya guardado.
+  // Cualquier otro dato se valida antes de abrir la conexion.
+  const body = (typeof req.body === "object" && req.body !== null ? req.body : {}) as Record<string, unknown>;
+  const touchesPlace = body.region !== undefined || body.comuna !== undefined;
+
+  let parsed = touchesPlace ? null : parseStudentDetails(req.body);
+
+  if (parsed && !parsed.ok) {
     return res.status(400).json({ success: false, message: parsed.message });
   }
 
   await connectDB();
 
-  const rut = req.query.rut as string;
+  if (!parsed) {
+    const stored = await Student.findOne({ rut, isDeleted: { $ne: true } }).select("region comuna").lean();
+
+    parsed = parseStudentDetails(req.body, { current: stored ?? undefined });
+  }
+
+  if (!parsed.ok) {
+    return res.status(400).json({ success: false, message: parsed.message });
+  }
 
   // Mongo rechaza un $set o $unset vacio, asi que solo se manda el que tiene datos.
   const update = {

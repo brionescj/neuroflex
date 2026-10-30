@@ -19,7 +19,7 @@ export type StudentDocument = {
   registered: boolean;
   email?: string;
   celular?: string;
-  ciudad?: string;
+  comuna?: string;
   region?: string;
   avatarId: string;
   isDeleted: boolean;
@@ -48,7 +48,7 @@ const studentSchema = new Schema<StudentDocument>({
   registered: { type: Boolean, required: true, default: false },
   email: { type: String, lowercase: true, trim: true },
   celular: String,
-  ciudad: String,
+  comuna: String,
   region: String,
   avatarId: { type: String, required: true, default: "cat" },
   isDeleted: { type: Boolean, required: true, default: false },

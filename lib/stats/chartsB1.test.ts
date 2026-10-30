@@ -294,7 +294,7 @@ describe("G8: estudiantes sin partidas", () => {
     const base = data();
 
     base.students.push(
-      student("5", { paternalLastName: "Zúñiga", university: "uvm", studyShift: "evening", ciudad: "Temuco" }),
+      student("5", { paternalLastName: "Zúñiga", university: "uvm", studyShift: "evening", comuna: "Temuco" }),
     );
 
     const chart = run(base, { chart: "gen-no-play" });
