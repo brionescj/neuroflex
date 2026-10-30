@@ -290,8 +290,12 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       cada estudiante y en `student.ciudad` de cada partida; la comuna antigua que no está en la lista se
       conserva tal cual).
 
-16. **Inicio del estudiante** (`ROUTES.STUDENT`): página con el nombre del proyecto, su financiamiento y el
-    equipo (`src/config/projectInfo.ts`). Las fotos del equipo no se suben desde la app: se dejan en
+16. **Inicio de estudiante y de administrador** (`ROUTES.STUDENT` / `ROUTES.ADMIN`): la **misma** página
+    (`ProjectHome` en `src/components/project/`, junto con `TeamPhoto`; es compartida porque una feature no importa de
+    otra): nombre del proyecto, su financiamiento, el equipo y quien desarrolló la plataforma
+    (`src/config/projectInfo.ts`). Solo cambia el botón: «Ir a los juegos» (estudiante) o «Ir a la carga de datos»
+    (administrador). Lo que antes era el «Inicio» del administrador (estudiantes, datos incompletos, administradores y
+    carga masiva) es ahora **«Carga de datos»** (`ROUTES.ADMIN_DATA`, `AdminDataPage`). Las fotos del equipo no se suben desde la app: se dejan en
     `public/equipo/` (ver `LEEME.txt`). El encuadre de cada foto dentro del círculo es `photoPosition` (CSS `object-position`) en
     `projectInfo.ts`; solo mueve la imagen si no es cuadrada. Los juegos están en `ROUTES.STUDENT_GAMES`.
 

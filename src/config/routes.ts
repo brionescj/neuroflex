@@ -20,7 +20,11 @@ export const ROUTES = {
 
   STUDENT_PROFILE: "/estudiante/perfil",
 
+  /** Inicio del administrador: la misma presentación del proyecto que ve el estudiante. */
   ADMIN: "/administracion",
+
+  /** Estudiantes, datos incompletos, administradores y carga masiva (lo que antes era el «Inicio» del admin). */
+  ADMIN_DATA: "/administracion/carga-de-datos",
 
   ADMIN_STATS: "/administracion/estadisticas",
 

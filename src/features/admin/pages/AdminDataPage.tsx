@@ -6,12 +6,14 @@ import { AdminsSection } from "../components/AdminsSection";
 import { IncompleteStudentsSection } from "../components/IncompleteStudentsSection";
 import { StudentsSection } from "../components/StudentsSection";
 
-export default function AdminDashboard() {
+export default function AdminDataPage() {
   const [tab, setTab] = useState<AdminTab>("students");
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 text-white">
+      <h1 className="text-2xl font-bold">Carga de datos</h1>
+
       <form onSubmit={(event) => event.preventDefault()} className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
 

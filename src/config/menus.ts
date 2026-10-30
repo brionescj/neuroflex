@@ -1,6 +1,7 @@
 import {
   BarChart3,
   CircleUser,
+  FileUp,
   Gamepad2,
   House,
   NotebookPen,
@@ -33,6 +34,8 @@ export const ROLE_MENUS: Record<UserRole, MenuItem[]> = {
 
   admin: [
     { label: "Inicio", path: ROUTES.ADMIN, icon: House },
+
+    { label: "Carga de datos", path: ROUTES.ADMIN_DATA, icon: FileUp },
 
     { label: "Estadísticas", path: ROUTES.ADMIN_STATS, icon: BarChart3 },
 

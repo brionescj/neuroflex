@@ -22,13 +22,15 @@ const loadRegister = () => import("@/features/auth/pages/RegisterPage");
 const loadDashboardLayout = () => import("@/layouts/DashboardLayout");
 const loadStudentHome = () => import("@/features/student/pages/StudentHomePage");
 const loadStudentDashboard = () => import("@/features/student/pages/StudentDashboard");
-const loadAdminDashboard = () => import("@/features/admin/pages/AdminDashboard");
+const loadAdminHome = () => import("@/features/admin/pages/AdminHomePage");
+const loadAdminData = () => import("@/features/admin/pages/AdminDataPage");
 
 const RegisterPage = lazy(loadRegister);
 const DashboardLayout = lazy(loadDashboardLayout);
 const StudentHomePage = lazy(loadStudentHome);
 const StudentDashboard = lazy(loadStudentDashboard);
-const AdminDashboard = lazy(loadAdminDashboard);
+const AdminHomePage = lazy(loadAdminHome);
+const AdminDataPage = lazy(loadAdminData);
 const StudentScoresPage = lazy(() => import("@/features/student/pages/StudentScoresPage"));
 const loadProfile = () => import("@/features/profile/pages/ProfilePage");
 const loadStats = () => import("@/features/stats/pages/StatsPage");
@@ -60,7 +62,7 @@ const NodeConnectionGame = lazy(loadNodeConnection);
  */
 function prefetchForSession(role: "student" | "admin") {
   void loadDashboardLayout();
-  void (role === "student" ? loadStudentHome() : loadAdminDashboard());
+  void (role === "student" ? loadStudentHome() : loadAdminHome());
 }
 
 /**
@@ -72,7 +74,7 @@ function prefetchAfterLogin() {
   const run = () => {
     void loadDashboardLayout();
     void loadStudentHome();
-    void loadAdminDashboard();
+    void loadAdminHome();
     void loadRegister();
   };
 
@@ -97,6 +99,7 @@ function prefetchRoleScreens(role: "student" | "admin") {
       void loadMiniCases();
       void loadNodeConnection();
     } else {
+      void loadAdminData();
       void loadStats();
       void loadStudentStats();
     }
@@ -134,12 +137,14 @@ export default function App() {
   useEffect(() => {
     if (!userRut || !role) return;
 
-    if (role === "admin") prefetchAdminHomeAction();
-
     const timer = window.setTimeout(() => {
       void getProfileAction(userRut, role);
 
-      if (role === "admin") void getStatsCatalogAction();
+      // El inicio del admin es estatico: la lista de estudiantes se pide para cuando abra «Carga de datos».
+      if (role === "admin") {
+        prefetchAdminHomeAction();
+        void getStatsCatalogAction();
+      }
     }, 1200);
 
     return () => window.clearTimeout(timer);
@@ -203,7 +208,8 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route path={ROUTES.ADMIN} element={<AdminDashboard />} />
+          <Route path={ROUTES.ADMIN} element={<AdminHomePage />} />
+          <Route path={ROUTES.ADMIN_DATA} element={<AdminDataPage />} />
           <Route path={ROUTES.ADMIN_STATS} element={<StatsPage />} />
           <Route path={ROUTES.ADMIN_STUDENT_STATS} element={<StudentStatsPage />} />
           <Route path={ROUTES.ADMIN_MINI_CASES} element={<MiniCasesAdminPage />} />
