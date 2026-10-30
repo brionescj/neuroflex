@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
+import { Logo } from "@/components/ui/Logo";
 import { ROLE_MENUS } from "@/config/menus";
 import { DASHBOARD_BY_ROLE } from "@/config/routes";
 import { useAuth, useGameLock } from "@/context";
@@ -39,7 +40,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         )}
       >
         <div className="mb-4 flex items-center justify-between px-2">
-          <span className="text-lg font-bold text-white">NeuroFlex</span>
+          <Logo className="w-44" />
 
           <button
             type="button"

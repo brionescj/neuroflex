@@ -324,6 +324,13 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       (correo, fecha, comuna, jornada, género…) se deja sin rellenar y se avisa; la comuna sin región deduce la región
       si el nombre es único. Acepta fechas AAAA-MM-DD, DD/MM/AAAA, DD-MM-AAAA, DD.MM.AAAA y números de serie de Excel.
 
+18. **Logo:** el nombre «NeuroFlex» en texto se reemplazó por el logo (`public/logo-neuroflex.svg`, vectorial:
+    «Neuro» azul marino `#05326b` con la red neuronal en blanco, «flex» con degradado turquesa → azul → violeta,
+    sin fondo). Se usa con `<Logo />` (`src/components/ui/Logo`), que lo sirve como archivo estático (no entra al
+    JS inicial). Aparece en el menú lateral (escritorio y cajón móvil, admin y estudiante) y en `AuthLayout`
+    (inicio de sesión y registro). El azul marino contrasta poco sobre el fondo oscuro; si se quiere más legible,
+    hay que aclarar solo el color de «Neuro» en el SVG, sin tocar el resto.
+
 ---
 
 ## 4. Arquitectura por responsabilidades
