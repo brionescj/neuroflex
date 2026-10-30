@@ -132,6 +132,10 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       retoma desde su inicio. Pide confirmación antes de salir (cuadro `<dialog>`; Esc o
       «Seguir jugando» siguen en el juego; el reloj del nivel no se detiene mientras se decide).
       En Mini casos se llama «caso» (`unit="caso"`).
+    - **Reglas al retomar:** la pantalla de inicio de cada juego (Seriación, Nodos y Mini casos) muestra SIEMPRE las
+      reglas, también cuando hay una partida guardada; ahí el botón es «Retomar nivel» («Retomar caso» en Mini
+      casos) y la partida solo sigue al presionarlo. Antes las reglas se ocultaban al detectar el avance guardado y
+      se veían un instante mientras este cargaba.
     - Seriación: cuenta regresiva 3-2-1 (fase `countdown`) antes de cada intento, también al
       reanudar; el reloj del intento corre desde que se enciende el primer color.
     - Sonidos (`src/lib/gameSound.ts`, Web Audio sin archivos, silenciable; el silencio vive en

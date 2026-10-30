@@ -168,56 +168,55 @@ export function NodeConnectionGame() {
               : "Une cada par de nodos del mismo color sin que las líneas se crucen."}
           </p>
 
-          {!hasResumable && (
-            <div className="flex w-full flex-col gap-3 text-left text-sm text-zinc-400">
-              <section aria-labelledby="nodes-how">
-                <h2 id="nodes-how" className="mb-1 text-sm font-semibold text-zinc-200">
-                  Cómo se juega
-                </h2>
-                <ul className="flex list-disc flex-col gap-1 pl-5">
-                  <li>Toca un nodo y arrastra hasta su pareja del mismo color.</li>
-                  <li>Una línea no puede pasar por otro trazo ni por otro nodo.</li>
-                  <li>Para pasar el nivel hay que conectar todos los pares.</li>
-                </ul>
-              </section>
+          <div className="flex w-full flex-col gap-3 text-left text-sm text-zinc-400">
+            <section aria-labelledby="nodes-how">
+              <h2 id="nodes-how" className="mb-1 text-sm font-semibold text-zinc-200">
+                Cómo se juega
+              </h2>
+              <ul className="flex list-disc flex-col gap-1 pl-5">
+                <li>Toca un nodo y arrastra hasta su pareja del mismo color.</li>
+                <li>Una línea no puede pasar por otro trazo ni por otro nodo.</li>
+                <li>Para pasar el nivel hay que conectar todos los pares.</li>
+              </ul>
+            </section>
 
-              <section aria-labelledby="nodes-errors">
-                <h2 id="nodes-errors" className="mb-1 text-sm font-semibold text-zinc-200">
-                  Qué cuenta como un error
-                </h2>
-                <ul className="flex list-disc flex-col gap-1 pl-5">
-                  <li>Chocar con otra línea o con otro nodo.</li>
-                  <li>Usar «Deshacer».</li>
-                  <li>Acortar o rehacer una ruta tocándola de nuevo.</li>
-                  <li>Retroceder sobre tu propia línea (cuenta una vez por cada trazo que sueltas habiendo retrocedido).</li>
-                  <li>Usar «Rehacer tablero» cuenta como dos errores.</li>
-                </ul>
-                <p className="mt-1">
-                  Planifica la ruta antes de trazarla: corregir sobre la marcha también cuesta.
-                </p>
-              </section>
+            <section aria-labelledby="nodes-errors">
+              <h2 id="nodes-errors" className="mb-1 text-sm font-semibold text-zinc-200">
+                Qué cuenta como un error
+              </h2>
+              <ul className="flex list-disc flex-col gap-1 pl-5">
+                <li>Chocar con otra línea o con otro nodo.</li>
+                <li>Usar «Deshacer».</li>
+                <li>Acortar o rehacer una ruta tocándola de nuevo.</li>
+                <li>Retroceder sobre tu propia línea (cuenta una vez por cada trazo que sueltas habiendo retrocedido).</li>
+                <li>Usar «Rehacer tablero» cuenta como dos errores.</li>
+              </ul>
+              <p className="mt-1">
+                Planifica la ruta antes de trazarla: corregir sobre la marcha también cuesta.
+              </p>
+            </section>
 
-              <section aria-labelledby="nodes-margin">
-                <h2 id="nodes-margin" className="mb-1 text-sm font-semibold text-zinc-200">
-                  Margen, intentos y fin de la partida
-                </h2>
-                <ul className="flex list-disc flex-col gap-1 pl-5">
-                  <li>
-                    Cada nivel permite entre {MIN_ERRORS_SHOWN} y {MAX_ERRORS_SHOWN} errores, y el margen se achica a medida
-                    que avanzas. Lo ves en la barra «Margen de errores».
-                  </li>
-                  <li>
-                    Si lo agotas, el nivel se pierde al instante y repites el mismo tablero: tienes{" "}
-                    {maxTries} intentos por nivel.
-                  </li>
-                  <li>
-                    Si no pasas un nivel en {maxTries} intentos, la partida termina. Del nivel 1 al 10 se vuelve a
-                    empezar desde el 1; desde el 11 se guarda hasta dónde llegaste.
-                  </li>
-                </ul>
-              </section>
-            </div>
-          )}
+            <section aria-labelledby="nodes-margin">
+              <h2 id="nodes-margin" className="mb-1 text-sm font-semibold text-zinc-200">
+                Margen, intentos y fin de la partida
+              </h2>
+              <ul className="flex list-disc flex-col gap-1 pl-5">
+                <li>
+                  Cada nivel permite entre {MIN_ERRORS_SHOWN} y {MAX_ERRORS_SHOWN} errores, y el margen se achica a medida
+                  que avanzas. Lo ves en la barra «Margen de errores».
+                </li>
+                <li>
+                  Si lo agotas, el nivel se pierde al instante y repites el mismo tablero: tienes{" "}
+                  {maxTries} intentos por nivel.
+                </li>
+                <li>
+                  Si no pasas un nivel en {maxTries} intentos, la partida termina. Del nivel 1 al 10 se vuelve a
+                  empezar desde el 1; desde el 11 se guarda hasta dónde llegaste.
+                </li>
+              </ul>
+            </section>
+          </div>
+
 
           {canStart && (
             <button
@@ -235,7 +234,7 @@ export function NodeConnectionGame() {
               onClick={handleResume}
               className="min-h-12 rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
             >
-              Continuar
+              Retomar nivel
             </button>
           )}
 

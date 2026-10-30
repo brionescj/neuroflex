@@ -169,32 +169,31 @@ export function MiniCasesGame() {
             contexto cambie, ordena tu plan de acción.
           </p>
 
-          {!hasResumable && (
-            <ul className="flex max-w-md list-disc flex-col gap-1.5 pl-5 text-left text-sm text-zinc-400">
-              <li>
-                Tienes {READING_MS / 1000} segundos para leer el caso. Luego
-                desaparece.
-              </li>
-              <li>
-                Verás una imagen y escucharás un sonido suave durante 4 segundos para
-                despejar la mente, y después un aviso de cambio con información
-                nueva. Con el botón de arriba puedes silenciar el sonido.
-              </li>
-              <li>
-                Ordena las 4 acciones: toca primero la que harías
-                en primer lugar, luego la segunda, y así. Si tocas una de nuevo,
-                la quitas del orden.
-              </li>
-              <li>
-                Para ordenar no hay tiempo límite. Puedes cambiar el orden hasta
-                que toques «Enviar respuesta».
-              </li>
-              <li>
-                Al enviar verás cuántos pasos quedaron en su lugar y una
-                explicación. Cada caso se responde una vez.
-              </li>
-            </ul>
-          )}
+          <ul className="flex max-w-md list-disc flex-col gap-1.5 pl-5 text-left text-sm text-zinc-400">
+            <li>
+              Tienes {READING_MS / 1000} segundos para leer el caso. Luego
+              desaparece.
+            </li>
+            <li>
+              Verás una imagen y escucharás un sonido suave durante 4 segundos para
+              despejar la mente, y después un aviso de cambio con información
+              nueva. Con el botón de arriba puedes silenciar el sonido.
+            </li>
+            <li>
+              Ordena las 4 acciones: toca primero la que harías
+              en primer lugar, luego la segunda, y así. Si tocas una de nuevo,
+              la quitas del orden.
+            </li>
+            <li>
+              Para ordenar no hay tiempo límite. Puedes cambiar el orden hasta
+              que toques «Enviar respuesta».
+            </li>
+            <li>
+              Al enviar verás cuántos pasos quedaron en su lugar y una
+              explicación. Cada caso se responde una vez.
+            </li>
+          </ul>
+
 
           {(casesStatus === "error" || progressStatus === "error") && (
             <div className="flex flex-col items-center gap-2">
@@ -223,7 +222,7 @@ export function MiniCasesGame() {
                 Tienes una partida en curso: vas en el caso {resumeExercise} de{" "}
                 {totalCases}.
               </p>
-              <Button onClick={handleResume}>Continuar</Button>
+              <Button onClick={handleResume}>Retomar caso</Button>
             </div>
           )}
 

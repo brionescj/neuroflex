@@ -176,54 +176,52 @@ export function ColorSequenceGame() {
               : "Memoriza el orden en que se iluminan los colores y repítelo."}
           </p>
 
-          {!hasResumable && (
-            <div className="flex w-full flex-col gap-3 text-left text-sm text-zinc-400">
-              <section aria-labelledby="colors-how">
-                <h2 id="colors-how" className="mb-1 text-sm font-semibold text-zinc-200">
-                  Cómo se juega
-                </h2>
-                <ul className="flex list-disc flex-col gap-1 pl-5">
-                  <li>
-                    Mira cómo se iluminan los colores y luego tócalos en el mismo orden. Antes de cada intento hay
-                    una cuenta regresiva.
-                  </li>
-                  <li>
-                    Cada nivel agrega un color más a la secuencia. Cuenta cada color que aciertes en su lugar.
-                  </li>
-                </ul>
-              </section>
+          <div className="flex w-full flex-col gap-3 text-left text-sm text-zinc-400">
+            <section aria-labelledby="colors-how">
+              <h2 id="colors-how" className="mb-1 text-sm font-semibold text-zinc-200">
+                Cómo se juega
+              </h2>
+              <ul className="flex list-disc flex-col gap-1 pl-5">
+                <li>
+                  Mira cómo se iluminan los colores y luego tócalos en el mismo orden. Antes de cada intento hay
+                  una cuenta regresiva.
+                </li>
+                <li>
+                  Cada nivel agrega un color más a la secuencia. Cuenta cada color que aciertes en su lugar.
+                </li>
+              </ul>
+            </section>
 
-              <section aria-labelledby="colors-pass">
-                <h2 id="colors-pass" className="mb-1 text-sm font-semibold text-zinc-200">
-                  Qué se necesita para pasar un nivel
-                </h2>
-                <ul className="flex list-disc flex-col gap-1 pl-5">
-                  <li>
-                    Hay que acertar un mínimo de colores: {passThresholdPercent(1)} % en los niveles 1 al 5,{" "}
-                    {passThresholdPercent(6)} % del 6 al 8, {passThresholdPercent(9)} % en el 9 y el 10, y{" "}
-                    {passThresholdPercent(MIN_LEVELS + 1)} % desde el {MIN_LEVELS + 1}.
-                  </li>
-                </ul>
-              </section>
+            <section aria-labelledby="colors-pass">
+              <h2 id="colors-pass" className="mb-1 text-sm font-semibold text-zinc-200">
+                Qué se necesita para pasar un nivel
+              </h2>
+              <ul className="flex list-disc flex-col gap-1 pl-5">
+                <li>
+                  Hay que acertar un mínimo de colores: {passThresholdPercent(1)} % en los niveles 1 al 5,{" "}
+                  {passThresholdPercent(6)} % del 6 al 8, {passThresholdPercent(9)} % en el 9 y el 10, y{" "}
+                  {passThresholdPercent(MIN_LEVELS + 1)} % desde el {MIN_LEVELS + 1}.
+                </li>
+              </ul>
+            </section>
 
-              <section aria-labelledby="colors-tries">
-                <h2 id="colors-tries" className="mb-1 text-sm font-semibold text-zinc-200">
-                  Intentos y fin de la partida
-                </h2>
-                <ul className="flex list-disc flex-col gap-1 pl-5">
-                  <li>
-                    Tienes {MAX_TRIES_PER_LEVEL} intentos por nivel, y cada intento trae una secuencia nueva del mismo
-                    largo.
-                  </li>
-                  <li>
-                    Si no pasas un nivel en {MAX_TRIES_PER_LEVEL} intentos, la partida termina. Del nivel 1 al{" "}
-                    {MIN_LEVELS} se vuelve a empezar desde el 1; desde el {MIN_LEVELS + 1} se guarda hasta dónde
-                    llegaste y puedes elegir «Terminar juego» cuando quieras.
-                  </li>
-                </ul>
-              </section>
-            </div>
-          )}
+            <section aria-labelledby="colors-tries">
+              <h2 id="colors-tries" className="mb-1 text-sm font-semibold text-zinc-200">
+                Intentos y fin de la partida
+              </h2>
+              <ul className="flex list-disc flex-col gap-1 pl-5">
+                <li>
+                  Tienes {MAX_TRIES_PER_LEVEL} intentos por nivel, y cada intento trae una secuencia nueva del mismo
+                  largo.
+                </li>
+                <li>
+                  Si no pasas un nivel en {MAX_TRIES_PER_LEVEL} intentos, la partida termina. Del nivel 1 al{" "}
+                  {MIN_LEVELS} se vuelve a empezar desde el 1; desde el {MIN_LEVELS + 1} se guarda hasta dónde
+                  llegaste y puedes elegir «Terminar juego» cuando quieras.
+                </li>
+              </ul>
+            </section>
+          </div>
 
           {canStart && (
             <button
@@ -242,7 +240,7 @@ export function ColorSequenceGame() {
                 onClick={handleResume}
                 className="min-h-12 rounded-full bg-white px-8 py-3 text-lg font-semibold text-black shadow-lg hover:bg-zinc-200"
               >
-                Continuar
+                Retomar nivel
               </button>
 
               {canFinish && (
