@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { AdminMiniCase } from "@/types";
 
 import {
+  EMPTY_ALTERNATE_ORDER,
+  alternateStepsToSend,
   DEFAULT_PROMPT_TEXT,
   initialMiniCaseState,
   miniCaseFormProblem,
@@ -67,5 +69,48 @@ describe("formulario de mini casos", () => {
       miniCaseFormProblem({ ...base, options: base.options.map((o) => ({ ...o, text: "Igual" })) }),
     ).toMatch(/iguales/);
     expect(miniCaseFormProblem({ ...base, feedback: " " })).toMatch(/retroalimentación/);
+  });
+
+  describe("otros órdenes correctos", () => {
+    const withAlternate: AdminMiniCase = {
+      ...saved,
+      // En el orden principal: B(1) D(2) A(3) C(4). Otro orden válido: A, B, D, C = pasos 3, 1, 2, 4.
+      alternateOrders: [["caso-13-a", "caso-13-b", "caso-13-d", "caso-13-c"]],
+    };
+
+    it("un caso con otro orden lo muestra marcado y como lugares del orden principal", () => {
+      const state = initialMiniCaseState(withAlternate);
+
+      expect(state.acceptsOtherOrders).toBe(true);
+      expect(state.alternateOrders).toEqual([[3, 1, 2, 4]]);
+      expect(alternateStepsToSend(state)).toEqual([[3, 1, 2, 4]]);
+      expect(miniCaseFormProblem(state)).toBeNull();
+    });
+
+    it("un caso sin otros órdenes parte con la casilla desmarcada y no envía ninguno", () => {
+      const state = initialMiniCaseState(saved);
+
+      expect(state.acceptsOtherOrders).toBe(false);
+      expect(alternateStepsToSend(state)).toEqual([]);
+    });
+
+    it("desmarcar la casilla envía una lista vacía: quita los órdenes que tenía", () => {
+      const state = { ...initialMiniCaseState(withAlternate), acceptsOtherOrders: false };
+
+      expect(alternateStepsToSend(state)).toEqual([]);
+      expect(miniCaseFormProblem(state)).toBeNull();
+    });
+
+    it("rechaza un orden incompleto, con alternativas repetidas, igual al principal o repetido", () => {
+      const base = { ...initialMiniCaseState(saved), acceptsOtherOrders: true };
+      const problem = (alternateOrders: (number | null)[][]) => miniCaseFormProblem({ ...base, alternateOrders });
+
+      expect(problem([])).toMatch(/Agrega el otro orden/);
+      expect(problem([[...EMPTY_ALTERNATE_ORDER]])).toMatch(/incompleto/);
+      expect(problem([[1, 1, 2, 3]])).toMatch(/repite una alternativa/);
+      expect(problem([[1, 2, 3, 4]])).toMatch(/igual al orden principal/);
+      expect(problem([[2, 1, 3, 4], [2, 1, 3, 4]])).toMatch(/orden correcto adicional 2 repite/);
+      expect(problem([[2, 1, 3, 4]])).toBeNull();
+    });
   });
 });

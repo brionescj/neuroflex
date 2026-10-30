@@ -7,7 +7,13 @@ import { Textarea } from "@/components/ui/Textarea";
 import type { AdminMiniCase, SaveMiniCasePayload } from "@/types";
 
 import { saveMiniCaseAction } from "../actions/miniCases.action";
-import { initialMiniCaseState, miniCaseFormProblem, type MiniCaseFormState } from "../utils/miniCaseForm";
+import {
+  alternateStepsToSend,
+  initialMiniCaseState,
+  miniCaseFormProblem,
+  type MiniCaseFormState,
+} from "../utils/miniCaseForm";
+import { AlternateOrdersFields } from "./AlternateOrdersFields";
 import { MiniCaseImagePicker } from "./MiniCaseImagePicker";
 
 const MAX_TITLE = 120;
@@ -40,7 +46,6 @@ export function MiniCaseForm({ initial, label, onSaved, onCancel }: MiniCaseForm
   const [isSaving, setIsSaving] = useState(false);
 
   const editing = initial !== undefined;
-  const alternates = initial?.alternateOrders?.length ?? 0;
 
   function patch(next: Partial<MiniCaseFormState>) {
     setState((current) => ({ ...current, ...next }));
@@ -74,6 +79,7 @@ export function MiniCaseForm({ initial, label, onSaved, onCancel }: MiniCaseForm
         text: option.text.trim(),
         correctStep: (index + 1) as 1 | 2 | 3 | 4,
       })),
+      alternateSteps: alternateStepsToSend(state),
     };
 
     setIsSaving(true);
@@ -174,12 +180,12 @@ export function MiniCaseForm({ initial, label, onSaved, onCancel }: MiniCaseForm
           </Field>
         ))}
 
-        {alternates > 0 && (
-          <p className="text-xs text-zinc-500">
-            Este caso acepta además {alternates === 1 ? "otro orden" : `${alternates} órdenes más`} como correcto; se
-            conserva{alternates === 1 ? "" : "n"} al guardar.
-          </p>
-        )}
+        <AlternateOrdersFields
+          optionTexts={state.options.map((option) => option.text)}
+          accepts={state.acceptsOtherOrders}
+          orders={state.alternateOrders}
+          onChange={({ accepts, orders }) => patch({ acceptsOtherOrders: accepts, alternateOrders: orders })}
+        />
       </fieldset>
 
       <Field>

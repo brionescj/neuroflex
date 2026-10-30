@@ -126,6 +126,12 @@ export default function MiniCasesAdminPage() {
 
               <div className="min-w-0 flex-1">
                 <p className="font-medium leading-snug">{miniCaseFullTitle(miniCase.caseKey, miniCase.title)}</p>
+
+                {(miniCase.alternateOrders?.length ?? 0) > 0 && (
+                  <p className="mt-0.5 text-xs text-zinc-400">
+                    Acepta {(miniCase.alternateOrders?.length ?? 0) + 1} órdenes correctos
+                  </p>
+                )}
               </div>
 
               <Button

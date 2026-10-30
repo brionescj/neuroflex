@@ -27,7 +27,14 @@ export type MiniCaseInput = {
   promptText: string;
   feedback: string;
   options: MiniCaseOptionInput[];
+  /** Otras secuencias correctas, por clave (para quien ya las conoce). */
   alternateOrders?: unknown;
+  /**
+   * Otras secuencias correctas, por lugar: cada una lista, en orden, el lugar correcto (1 a 4) de la alternativa que va
+   * en cada posicion. [3, 1, 2, 4] = primero la alternativa que en el orden principal va tercera. Es lo que envia el
+   * formulario, que no conoce las claves de un caso nuevo. Una lista vacia quita todas las secuencias alternativas.
+   */
+  alternateSteps?: (1 | 2 | 3 | 4)[][];
 };
 
 export type ParsedMiniCase = { ok: true; value: MiniCaseInput } | { ok: false; message: string };
@@ -42,6 +49,42 @@ function text(raw: unknown, label: string, max: number): string | { error: strin
   if (value.length > max) return { error: `${label[0]?.toUpperCase()}${label.slice(1)} supera los ${max} caracteres.` };
 
   return value;
+}
+
+/** Hasta cuantos ordenes correctos adicionales acepta un caso (4 alternativas dan 24 ordenes; mas de 5 ya no es un caso cerrado). */
+export const MAX_ALTERNATE_ORDERS = 5;
+
+const SAME_PLACE = "1234";
+
+/**
+ * Las secuencias alternativas que envia el formulario: cada una debe ordenar los 4 lugares una sola vez, ser distinta
+ * del orden principal (1-2-3-4) y de las demas. Devuelve el mensaje del problema si algo esta mal.
+ */
+function parseAlternateSteps(raw: unknown): (1 | 2 | 3 | 4)[][] | string {
+  if (!Array.isArray(raw)) return "Los órdenes correctos adicionales deben ser una lista.";
+  if (raw.length > MAX_ALTERNATE_ORDERS) return `Un caso acepta hasta ${MAX_ALTERNATE_ORDERS} órdenes correctos adicionales.`;
+
+  const seen = new Set<string>([SAME_PLACE]);
+  const orders: (1 | 2 | 3 | 4)[][] = [];
+
+  for (const order of raw) {
+    const valid =
+      Array.isArray(order) &&
+      order.length === 4 &&
+      order.every((step) => step === 1 || step === 2 || step === 3 || step === 4) &&
+      new Set(order).size === 4;
+
+    if (!valid) return "Cada orden correcto adicional debe ubicar las 4 alternativas, una vez cada una.";
+
+    const signature = (order as number[]).join("");
+
+    if (seen.has(signature)) return "Un orden correcto adicional repite otro orden correcto.";
+
+    seen.add(signature);
+    orders.push(order as (1 | 2 | 3 | 4)[]);
+  }
+
+  return orders;
 }
 
 export function parseMiniCaseInput(body: unknown): ParsedMiniCase {
@@ -108,6 +151,16 @@ export function parseMiniCaseInput(body: unknown): ParsedMiniCase {
     return fail("Las 4 alternativas deben tener un lugar correcto distinto, del 1 al 4.");
   }
 
+  let alternateSteps: (1 | 2 | 3 | 4)[][] | undefined;
+
+  if (raw.alternateSteps !== undefined) {
+    const parsedSteps = parseAlternateSteps(raw.alternateSteps);
+
+    if (typeof parsedSteps === "string") return fail(parsedSteps);
+
+    alternateSteps = parsedSteps;
+  }
+
   const keys = options.flatMap((o) => (o.optionKey ? [o.optionKey] : []));
 
   if (new Set(keys).size !== keys.length) return fail("Dos alternativas tienen la misma clave.");
@@ -124,6 +177,7 @@ export function parseMiniCaseInput(body: unknown): ParsedMiniCase {
       feedback: feedback as string,
       options,
       ...(raw.alternateOrders !== undefined ? { alternateOrders: raw.alternateOrders } : {}),
+      ...(alternateSteps ? { alternateSteps } : {}),
     },
   };
 }

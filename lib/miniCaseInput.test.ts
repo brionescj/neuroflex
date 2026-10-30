@@ -87,6 +87,34 @@ describe("parseMiniCaseInput", () => {
   });
 });
 
+describe("parseMiniCaseInput: otros órdenes correctos", () => {
+  const steps = (alternateSteps: unknown) => parseMiniCaseInput({ ...valid, alternateSteps });
+
+  it("acepta órdenes por lugar y una lista vacía (quita los que había)", () => {
+    const one = steps([[3, 1, 2, 4]]);
+    const none = steps([]);
+
+    expect(one.ok && one.value.alternateSteps).toEqual([[3, 1, 2, 4]]);
+    expect(none.ok && none.value.alternateSteps).toEqual([]);
+    expect(parseMiniCaseInput(valid).ok && "alternateSteps" in (parseMiniCaseInput(valid) as { value: object }).value).toBe(false);
+  });
+
+  it.each([
+    ["no es lista", "3124", /lista/],
+    ["incompleto", [[3, 1, 2]], /4 alternativas/],
+    ["repite una alternativa", [[3, 3, 2, 4]], /una vez cada una/],
+    ["fuera de rango", [[5, 1, 2, 4]], /una vez cada una/],
+    ["igual al principal", [[1, 2, 3, 4]], /repite otro orden/],
+    ["dos iguales", [[3, 1, 2, 4], [3, 1, 2, 4]], /repite otro orden/],
+    ["demasiados", Array.from({ length: 6 }, (_, i) => [[2, 1, 3, 4], [3, 1, 2, 4], [4, 1, 2, 3], [1, 3, 2, 4], [1, 2, 4, 3], [2, 3, 1, 4]][i]), /hasta 5/],
+  ])("rechaza un orden %s", (_label, value, message) => {
+    const parsed = steps(value);
+
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.message).toMatch(message);
+  });
+});
+
 describe("nextCaseKey", () => {
   it("toma uno más que el mayor número", () => {
     expect(nextCaseKey(["caso-1", "caso-10", "caso-9"])).toBe("caso-11");

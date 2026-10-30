@@ -123,6 +123,31 @@ describe("POST /api/admin/mini-cases", () => {
     expect(out.json.data.title).toBe("Área de Lenguaje y Comunicación");
   });
 
+  it("los órdenes correctos adicionales llegan por lugar y se guardan por clave, en un caso nuevo y en uno existente", async () => {
+    const created = await call(adminHandler, "POST", { ...body, alternateSteps: [[3, 1, 2, 4]] });
+
+    expect(created.status).toBe(200);
+    expect(created.json.data.alternateOrders).toEqual([["caso-1-c", "caso-1-a", "caso-1-b", "caso-1-d"]]);
+
+    mocks.cases = [
+      {
+        caseKey: "caso-9",
+        alternateOrders: [["caso-9-c", "caso-9-a", "caso-9-b", "caso-9-d"]],
+        options: ["a", "b", "c", "d"].map((k, i) => ({ optionKey: `caso-9-${k}`, text: k, correctStep: i + 1 })),
+      },
+    ];
+
+    const edit = { ...body, caseKey: "caso-9", options: body.options.map((o, i) => ({ ...o, optionKey: `caso-9-${"abcd"[i]}` })) };
+
+    const replaced = await call(adminHandler, "POST", { ...edit, alternateSteps: [[2, 1, 3, 4]] });
+
+    expect(replaced.json.data.alternateOrders).toEqual([["caso-9-b", "caso-9-a", "caso-9-c", "caso-9-d"]]);
+
+    const cleared = await call(adminHandler, "POST", { ...edit, alternateSteps: [] });
+
+    expect(cleared.json.data.alternateOrders).toEqual([]);
+  });
+
   it("no deja reemplazar las claves de un caso existente", async () => {
     mocks.cases = [
       {

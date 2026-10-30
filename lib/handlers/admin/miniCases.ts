@@ -71,8 +71,12 @@ export default async function handler(
       }
     }
 
+    // Los lugares que envia el formulario se traducen a claves: la alternativa que va en el lugar N tiene correctStep N.
+    const keyAtStep = new Map(options.map((o) => [o.correctStep, o.optionKey]));
+    const fromSteps = input.alternateSteps?.map((order) => order.map((step) => keyAtStep.get(step) as string));
+
     // Sin secuencias alternativas en el envio, se conservan las que el caso ya tenia.
-    const alternateOrders = input.alternateOrders ?? existing?.alternateOrders ?? [];
+    const alternateOrders = fromSteps ?? input.alternateOrders ?? existing?.alternateOrders ?? [];
     const alternateError = validateAlternateOrders(options, alternateOrders);
 
     if (alternateError) {

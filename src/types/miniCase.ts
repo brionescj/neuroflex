@@ -48,4 +48,10 @@ export type SaveMiniCasePayload = {
   feedback: string;
 
   options: { optionKey?: string; text: string; correctStep: 1 | 2 | 3 | 4 }[];
+
+  /**
+   * Otros ordenes que tambien son correctos, por lugar: [3, 1, 2, 4] = primero la alternativa que en el orden
+   * principal va tercera. Vacia = el caso solo acepta el orden principal (quita los que tuviera).
+   */
+  alternateSteps?: (1 | 2 | 3 | 4)[][];
 };
