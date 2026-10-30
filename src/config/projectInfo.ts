@@ -19,6 +19,12 @@ export type TeamMember = {
   role: string;
   /** Nombre del archivo en public/equipo/, sin extensión. */
   photoName: string;
+  /**
+   * Cuál parte de la foto se ve dentro del círculo (CSS `object-position`: «x% y%», 50% 50% = centro).
+   * Subir el primer valor corre la imagen hacia la izquierda; bajar el segundo la corre hacia abajo.
+   * Solo tiene efecto si la foto no es cuadrada.
+   */
+  photoPosition: string;
 };
 
 export const TEAM: readonly TeamMember[] = [
@@ -26,11 +32,13 @@ export const TEAM: readonly TeamMember[] = [
     name: "Madelaine Mora Rojas",
     role: "Directora e investigadora responsable del proyecto",
     photoName: "madelaine-mora-rojas",
+    photoPosition: "80% 50%",
   },
   {
     name: "Arturo Pinto Guevara",
     role: "Coinvestigador",
     photoName: "arturo-pinto-guevara",
+    photoPosition: "50% 20%",
   },
 ];
 

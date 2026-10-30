@@ -31,7 +31,7 @@ export default function StudentHomePage() {
       <section aria-label="Equipo del proyecto" className="grid w-full grid-cols-1 gap-8 min-[480px]:grid-cols-2">
         {TEAM.map((member) => (
           <figure key={member.photoName} className="flex flex-col items-center gap-3">
-            <TeamPhoto name={member.name} photoName={member.photoName} />
+            <TeamPhoto name={member.name} photoName={member.photoName} position={member.photoPosition} />
 
             <figcaption className="flex flex-col gap-0.5">
               <span className="text-base font-semibold">{member.name}</span>
