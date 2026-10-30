@@ -3,7 +3,7 @@ import { saveBlob } from "@/features/stats/utils/download";
 import type { Student } from "@/types";
 
 import { formatBirthDate } from "./birthDate";
-import { contactLabel, type MissingField } from "./incompleteProfile";
+import { CONTACT_OPTIONS, contactLabel, type MissingField } from "./incompleteProfile";
 
 export type IncompleteEntry = { student: Student; missing: MissingField[] };
 
@@ -55,7 +55,7 @@ export function incompleteSheetRows(entries: IncompleteEntry[]): Cell[][] {
       value("gender", genderLabel(student.gender)),
       { value: missing.map((field) => field.label).join(", "), ...MISSING_STYLE },
       { value: contactLabel(student.contacted === true) },
-      { value: student.registered ? "Sí" : "No" },
+      lacks.has("registered") ? { value: "No", ...MISSING_STYLE } : { value: "Sí" },
     ];
   });
 }
@@ -67,15 +67,63 @@ export function incompleteFileName(now: Date = new Date()): string {
   return `neuroflex-datos-incompletos-${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}.xlsx`;
 }
 
+/** Columna (desde 1, como pide Excel) donde va el estado de contacto. */
+export const CONTACT_COLUMN = INCOMPLETE_COLUMNS.indexOf("Contacto") + 1;
+
+/**
+ * La celda de «Contacto» de cada fila es una lista con las dos alternativas, para cambiarla en el propio Excel, y se
+ * pinta sola segun lo elegido (ambar = falta contactar, verde = contactado).
+ */
+export function contactColumnOptions(rowCount: number) {
+  const cellRange = { from: { row: 2, column: CONTACT_COLUMN }, to: { row: rowCount + 1, column: CONTACT_COLUMN } };
+
+  return {
+    dataValidation: [
+      {
+        cellRange,
+        validation: {
+          type: "list" as const,
+          values: CONTACT_OPTIONS.map((option) => option.label),
+          error: "Elige «Falta contactar» o «Contactado».",
+        },
+      },
+    ],
+    conditionalFormatting: [
+      {
+        cellRange,
+        condition: { operator: "=" as const, value: contactLabel(true) },
+        style: { textColor: "#006100", backgroundColor: "#C6EFCE" },
+      },
+      {
+        cellRange,
+        condition: { operator: "=" as const, value: contactLabel(false) },
+        style: { textColor: "#7F6000", backgroundColor: "#FFEB9C" },
+      },
+    ],
+  };
+}
+
+/** El archivo .xlsx de la lista, sin descargarlo. */
+export async function incompleteExcelBlob(entries: IncompleteEntry[]): Promise<Blob> {
+  const [{ default: writeXlsxFile }, { default: dataValidation }] = await Promise.all([
+    import("write-excel-file/universal"),
+    import("@onparallel/write-excel-file-data-validation"),
+  ]);
+  const header = INCOMPLETE_COLUMNS.map((value) => ({ value, fontWeight: "bold" as const }));
+
+  return writeXlsxFile(
+    [header, ...incompleteSheetRows(entries)],
+    {
+      sheet: "Datos incompletos",
+      columns: WIDTHS.map((width) => ({ width })),
+      stickyRowsCount: 1,
+      ...(entries.length > 0 && contactColumnOptions(entries.length)),
+    },
+    { features: [dataValidation] },
+  ).toBlob();
+}
+
 /** Descarga la hoja con los estudiantes que se estan viendo (con la busqueda y el filtro de contacto aplicados). */
 export async function downloadIncompleteExcel(entries: IncompleteEntry[]): Promise<void> {
-  const { default: writeXlsxFile } = await import("write-excel-file/universal");
-  const header = INCOMPLETE_COLUMNS.map((value) => ({ value, fontWeight: "bold" as const }));
-  const blob = await writeXlsxFile([header, ...incompleteSheetRows(entries)], {
-    sheet: "Datos incompletos",
-    columns: WIDTHS.map((width) => ({ width })),
-    stickyRowsCount: 1,
-  }).toBlob();
-
-  saveBlob(blob, incompleteFileName());
+  saveBlob(await incompleteExcelBlob(entries), incompleteFileName());
 }

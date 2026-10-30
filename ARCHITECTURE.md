@@ -292,7 +292,8 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
 
 17. **Ficha del estudiante:** jornada (`studyShift`: diurna/vespertina) y 5 paralelos. En el alta manual,
     «Universidad» va antes que «Paralelo». El estudiante puede editar correo, fecha de nacimiento y jornada
-    desde su perfil con un solo lápiz (`PATCH /api/profile/:rut/contact`); también región y comuna.
+    desde su perfil con un solo lápiz (`PATCH /api/profile/:rut/contact`); también región, comuna y género
+    (4 opciones; sin informar se ve «Seleccionar»). Celular y universidad siguen siendo solo del administrador.
     - **Región y comuna** son listas cerradas: 16 regiones y 346 comunas (listado oficial de la SUBDERE,
       tomado del paquete `@clregions/data` y contrastado con la Wikipedia «Comunas de Chile»). Viven en
       `lib/communes.ts` (servidor) y `src/config/communes.ts` (navegador), y `lib/communes.test.ts` exige
@@ -334,19 +335,22 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
     hay que aclarar solo el color de «Neuro» en el SVG, sin tocar el resto.
 
 19. **Datos incompletos (inicio del admin):** tercera pestaña «Datos incompletos» (`IncompleteStudentsSection`). Lista a los
-    estudiantes **habilitados** a los que les falta algún dato de la ficha (regla en `utils/incompleteProfile.ts`:
-    correo, fecha de nacimiento, jornada, región y comuna —los completa el estudiante en «Mi perfil»— y celular, género y
-    universidad —solo los registra un administrador—). Columnas: nombre, RUT, universidad, paralelo, celular (enlace
-    `tel:`), cuántos faltan y contacto; el ojo abre la lista de lo que falta. Usa la búsqueda del panel y se vuelve a
-    pedir al abrir la pestaña.
+    estudiantes **habilitados** a los que les falta algo (regla en `utils/incompleteProfile.ts`): registrarse en la
+    plataforma, correo, fecha de nacimiento, jornada, género, región y comuna —los completa el estudiante— y celular y
+    universidad —solo los registra un administrador—. Un estudiante con la ficha completa pero sin registrarse también
+    aparece. Columnas: nombre, RUT, universidad, paralelo, celular (enlace `tel:`), cuántos faltan y contacto; el ojo abre
+    la lista de lo que falta. Usa la búsqueda del panel y se vuelve a pedir al abrir la pestaña.
     - **Contacto:** cada estudiante tiene «Falta contactar» (por defecto) o «Contactado»
       (`PATCH /api/admin/students/:rut/contact`, `{ contacted: boolean }`; guarda `contacted`, `contactedAt` y
       `contactedBy` en `Student`, y al volver a «Falta contactar» borra fecha y administrador). El filtro «Mostrar»
       (Todos / Falta contactar / Contactado) lleva contadores. El cambio se ve al instante y se revierte si el
       servidor falla.
     - **Excel** («Descargar Excel (N)»): baja lo que se está viendo (búsqueda y filtro aplicados). Todas las columnas de
-      la ficha; cada dato faltante dice «Falta» en rojo (`textColor #9C0006` sobre `#FFC7CE`) y una columna junta lo que
-      falta. Se genera en el navegador con `write-excel-file`.
+      la ficha; cada dato faltante dice «Falta» en rojo (`textColor #9C0006` sobre `#FFC7CE`), «Registrado» dice «No»
+      en rojo si aún no se registra, y una columna junta lo que falta. La columna «Contacto» es una lista desplegable
+      («Falta contactar» / «Contactado», en ámbar/verde según lo elegido) que usa el complemento
+      `@onparallel/write-excel-file-data-validation` (mismo autor que `write-excel-file`, que no trae listas
+      desplegables). Se genera en el navegador.
 
 ---
 

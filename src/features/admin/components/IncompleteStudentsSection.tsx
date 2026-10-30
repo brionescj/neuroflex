@@ -51,7 +51,7 @@ function MissingList({ missing }: { missing: MissingField[] }) {
     <div className="flex flex-col gap-3">
       {byStudent.length > 0 && (
         <div>
-          <p className="text-xs text-zinc-500">Los completa el estudiante en «Mi perfil»</p>
+          <p className="text-xs text-zinc-500">Los completa el estudiante</p>
           <ul className="mt-1 flex flex-wrap gap-2">
             {byStudent.map((field) => (
               <li key={field.key} className="rounded-full bg-amber-500/15 px-3 py-1 text-sm text-amber-300">
@@ -64,8 +64,7 @@ function MissingList({ missing }: { missing: MissingField[] }) {
 
       {byAdmin.length > 0 && (
         <div>
-          <p className="text-xs text-zinc-500">Los registra un administrador (el estudiante no puede editarlos)</p>
-          <ul className="mt-1 flex flex-wrap gap-2">
+          <ul className="flex flex-wrap gap-2">
             {byAdmin.map((field) => (
               <li key={field.key} className="rounded-full bg-zinc-800 px-3 py-1 text-sm text-zinc-300">
                 {field.label}

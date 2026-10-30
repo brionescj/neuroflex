@@ -1,7 +1,7 @@
 import type { Student } from "@/types";
 
 export type MissingField = {
-  key: "email" | "birthDate" | "studyShift" | "region" | "comuna" | "celular" | "gender" | "university";
+  key: "registered" | "email" | "birthDate" | "studyShift" | "region" | "comuna" | "celular" | "gender" | "university";
   label: string;
   /** true = el estudiante lo completa desde su perfil; false = solo lo registra un administrador. */
   byStudent: boolean;
@@ -10,20 +10,21 @@ export type MissingField = {
 const blank = (value: string | undefined): boolean => value === undefined || value.trim() === "";
 
 /**
- * Los datos de la ficha que aun estan sin registrar. El estudiante puede completar desde su perfil el correo, la
- * fecha de nacimiento, la jornada, la region y la comuna; el celular, el genero y la universidad los registra un
- * administrador (el estudiante no tiene donde editarlos), por eso van marcados aparte.
+ * Lo que aun falta en la ficha. El estudiante completa por su cuenta registrarse en la plataforma y, desde su
+ * perfil, el correo, la fecha de nacimiento, la jornada, el genero, la region y la comuna; el celular y la
+ * universidad los registra un administrador (el estudiante no tiene donde editarlos), por eso van aparte.
  */
 export function missingProfileFields(student: Student): MissingField[] {
   const missing: MissingField[] = [];
 
+  if (!student.registered) missing.push({ key: "registered", label: "Registrarse en la plataforma", byStudent: true });
   if (blank(student.email)) missing.push({ key: "email", label: "Correo", byStudent: true });
   if (blank(student.birthDate)) missing.push({ key: "birthDate", label: "Fecha de nacimiento", byStudent: true });
   if (student.studyShift === undefined) missing.push({ key: "studyShift", label: "Jornada", byStudent: true });
   if (blank(student.region)) missing.push({ key: "region", label: "Región", byStudent: true });
   if (blank(student.comuna)) missing.push({ key: "comuna", label: "Comuna", byStudent: true });
+  if (student.gender === undefined) missing.push({ key: "gender", label: "Género", byStudent: true });
   if (blank(student.celular)) missing.push({ key: "celular", label: "Celular", byStudent: false });
-  if (student.gender === undefined) missing.push({ key: "gender", label: "Género", byStudent: false });
   if (student.university === undefined) missing.push({ key: "university", label: "Universidad", byStudent: false });
 
   return missing;

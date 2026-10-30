@@ -43,7 +43,7 @@ describe("missingProfileFields", () => {
     expect(missingProfileFields({ ...complete, gender: "undisclosed" })).toEqual([]);
   });
 
-  it("un estudiante recién cargado solo con nombre y RUT tiene los 8 datos pendientes", () => {
+  it("un estudiante recién cargado solo con nombre y RUT tiene 9 pendientes (el registro y los 8 datos)", () => {
     const bare: Student = {
       rut: complete.rut,
       firstName: "Ana",
@@ -57,7 +57,7 @@ describe("missingProfileFields", () => {
       isDeleted: false,
     };
 
-    expect(missingProfileFields(bare)).toHaveLength(8);
+    expect(missingProfileFields(bare)).toHaveLength(9);
   });
 });
 
