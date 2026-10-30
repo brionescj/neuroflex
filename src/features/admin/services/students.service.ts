@@ -9,6 +9,8 @@ import {
   type Gender,
   type Paralelo,
   type Student,
+  type StudentImportReport,
+  type StudentImportRow,
   type StudyShift,
   type University,
 } from "@/types";
@@ -107,6 +109,31 @@ export async function createStudent(
   } catch (error) {
     if (isAxiosError(error) && error.response) {
       return responseFromError<Student>(error.response);
+    }
+    return fail("No se pudo conectar con el servidor.");
+  }
+}
+
+export type ImportStudentsPayload = {
+  paralelo: Paralelo;
+  /** Sin universidad elegida no se manda: la ficha queda en «Seleccionar». */
+  university?: University;
+  /** true solo revisa el archivo; false carga las fichas validas. */
+  dryRun: boolean;
+  rows: StudentImportRow[];
+};
+
+/** Revisa (dryRun) o carga el Excel de estudiantes. Una fila mala no frena a las demas: el informe dice cada caso. */
+export async function importStudents(payload: ImportStudentsPayload): Promise<ApiResponse<StudentImportReport>> {
+  try {
+    const response = await api.post<ApiResponse<StudentImportReport>>("/admin/students/import", payload);
+
+    if (!payload.dryRun) forgetRequests("stats:");
+
+    return response.data;
+  } catch (error) {
+    if (isAxiosError(error) && error.response) {
+      return responseFromError<StudentImportReport>(error.response);
     }
     return fail("No se pudo conectar con el servidor.");
   }

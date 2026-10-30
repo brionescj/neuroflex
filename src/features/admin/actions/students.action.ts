@@ -1,11 +1,13 @@
 import {
   createStudent,
   generateStudentPassword,
+  importStudents,
   listStudents,
   prefetchStudents,
   setStudentEnabled,
   updateStudentDetails,
   type CreateStudentPayload,
+  type ImportStudentsPayload,
   type UpdateStudentDetailsPayload,
 } from "../services/students.service";
 import { prefetchAdmins } from "../services/admins.service";
@@ -16,6 +18,10 @@ export async function listStudentsAction() {
 
 export async function createStudentAction(payload: CreateStudentPayload) {
   return createStudent(payload);
+}
+
+export async function importStudentsAction(payload: ImportStudentsPayload) {
+  return importStudents(payload);
 }
 
 export async function setStudentEnabledAction(rut: string, enabled: boolean) {

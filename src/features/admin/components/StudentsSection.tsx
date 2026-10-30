@@ -1,4 +1,4 @@
-import { Eye, KeyRound, Pencil, Plus, Save } from "lucide-react";
+import { Eye, FileSpreadsheet, KeyRound, Pencil, Plus, Save } from "lucide-react";
 import { Fragment, useEffect, useState, type FormEvent } from "react";
 
 import { EmailInput } from "@/components/forms/EmailInput";
@@ -36,6 +36,7 @@ import { DEFAULT_SORT, ageOf, isOlder, nextSort, sortStudents, type SortKey, typ
 import { HighlightMatch } from "./HighlightMatch";
 import { Pagination } from "./Pagination";
 import { GeneratePasswordDialog } from "./GeneratePasswordDialog";
+import { StudentImportDialog } from "./StudentImportDialog";
 import { SortableHeader } from "./SortableHeader";
 import { StudentSortBar } from "./StudentSortBar";
 
@@ -433,6 +434,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
   const [isLoading, setIsLoading] = useState(lastStudents === null);
   const [isCreating, setIsCreating] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [page, setPage] = useState(1);
@@ -533,6 +535,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
 
   useEffect(() => {
     if (!isActive) {
+      setShowImport(false);
       setShowForm(false);
       setForm(EMPTY_FORM);
       setFormError(null);
@@ -644,14 +647,29 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
 
   return (
     <div className="flex flex-col gap-6">
-      <button
-        type="button"
-        onClick={handleToggleForm}
-        className="flex w-fit items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-zinc-200"
-      >
-        <Plus className="size-4" />
-        {showForm ? "Cancelar" : "Agregar estudiante"}
-      </button>
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={handleToggleForm}
+          className="flex w-fit items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-zinc-200"
+        >
+          <Plus className="size-4" />
+          {showForm ? "Cancelar" : "Agregar estudiante"}
+        </button>
+
+        {!showForm && (
+          <button
+            type="button"
+            onClick={() => setShowImport(true)}
+            className="flex w-fit items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-900"
+          >
+            <FileSpreadsheet className="size-4" aria-hidden="true" />
+            Cargar desde Excel
+          </button>
+        )}
+      </div>
+
+      {showImport && <StudentImportDialog onClose={() => setShowImport(false)} onImported={loadStudents} />}
 
       {showForm && (
         <form
