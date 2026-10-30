@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { EmailInput } from "@/components/forms/EmailInput";
 import { RegionCommuneFields } from "@/components/forms/RegionCommuneFields";
 import { AVATARS, type AvatarId } from "@/config/avatars";
-import { STUDY_SHIFT_OPTIONS, studyShiftLabel, universityLabel } from "@/config/studentOptions";
+import { GENDER_OPTIONS, STUDY_SHIFT_OPTIONS, genderLabel, studyShiftLabel, universityLabel } from "@/config/studentOptions";
 import { useAuth } from "@/context";
 import { updateAdminNamesAction } from "@/features/admin/actions/admins.action";
 import { AdminNameForm, type PersonNames } from "@/features/admin/components/AdminNameForm";
@@ -19,7 +19,7 @@ import { ChangePasswordForm } from "@/features/auth/components";
 import { cn } from "@/lib/utils";
 import { placeForSelects } from "@/utils/commune";
 import type { ProfileDetails } from "@/services/profile.service";
-import type { StudyShift } from "@/types";
+import type { Gender, StudyShift } from "@/types";
 
 import { getProfileAction } from "../actions/getProfile.action";
 import { updateProfileAction } from "../actions/updateProfile.action";
@@ -58,9 +58,10 @@ function contactValues(details: ProfileDetails) {
         email: details.email ?? "",
         birthDate: toInputDate(details.birthDate),
         studyShift: (details.studyShift ?? "") as StudyShift | "",
+        gender: (details.gender ?? "") as Gender | "",
         ...placeForSelects(details.region, details.comuna),
       }
-    : { email: details.email ?? "", birthDate: "", studyShift: "" as const, region: "", comuna: "" };
+    : { email: details.email ?? "", birthDate: "", studyShift: "" as const, gender: "" as const, region: "", comuna: "" };
 }
 
 const SELECT_CLASS =
@@ -76,7 +77,7 @@ export default function ProfilePage() {
 
   const form = useForm<ProfileFormInput>({
     resolver: zodResolver(ProfileFormSchema),
-    defaultValues: { email: "", avatarId: "cat", birthDate: "", studyShift: "", region: "", comuna: "" },
+    defaultValues: { email: "", avatarId: "cat", birthDate: "", studyShift: "", gender: "", region: "", comuna: "" },
   });
 
   // Solo depende de QUIEN es, no del objeto de sesion: `login()` lo reemplaza al guardar el nombre o el
@@ -124,6 +125,7 @@ export default function ProfilePage() {
       avatarId: data.avatarId,
       ...(isStudent && data.birthDate !== saved.birthDate && { birthDate: data.birthDate }),
       ...(isStudent && data.studyShift !== saved.studyShift && { studyShift: data.studyShift }),
+      ...(isStudent && data.gender !== saved.gender && { gender: data.gender }),
       ...(isStudent && regionChanged && { region: data.region }),
       // Al cambiar de region se manda la comuna aunque quede vacia: la anterior ya no es de esa region.
       ...(isStudent && (regionChanged || data.comuna !== saved.comuna) && { comuna: data.comuna }),
@@ -148,6 +150,7 @@ export default function ProfilePage() {
       ...(isStudent && {
         birthDate: stored.birthDate,
         studyShift: stored.studyShift,
+        gender: stored.gender,
         region: stored.region,
         comuna: stored.comuna,
       }),
@@ -159,7 +162,7 @@ export default function ProfilePage() {
     toast.success(result.message);
   }
 
-  /** Descarta lo escrito en correo, fecha de nacimiento y jornada y vuelve a lo ultimo guardado. */
+  /** Descarta lo escrito en el lapiz (correo, fecha, jornada, genero, region y comuna) y vuelve a lo ultimo guardado. */
   function cancelContactEdit() {
     if (details) {
       const saved = contactValues(details);
@@ -167,6 +170,7 @@ export default function ProfilePage() {
       form.resetField("email", { defaultValue: saved.email });
       form.resetField("birthDate", { defaultValue: saved.birthDate });
       form.resetField("studyShift", { defaultValue: saved.studyShift });
+      form.resetField("gender", { defaultValue: saved.gender });
       form.resetField("region", { defaultValue: saved.region });
       form.resetField("comuna", { defaultValue: saved.comuna });
     }
@@ -296,8 +300,8 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setIsEditingContact(true)}
-                  title="Editar correo, fecha de nacimiento, jornada, región y comuna"
-                  aria-label="Editar correo, fecha de nacimiento, jornada, región y comuna"
+                  title="Editar correo, fecha de nacimiento, jornada, género, región y comuna"
+                  aria-label="Editar correo, fecha de nacimiento, jornada, género, región y comuna"
                   className="-my-1 shrink-0 rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
                 >
                   <Pencil className="size-4" />
@@ -393,6 +397,33 @@ export default function ProfilePage() {
 
                   <Controller
                     control={form.control}
+                    name="gender"
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor="gender">Género</FieldLabel>
+                        <select
+                          id="gender"
+                          value={field.value}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          onBlur={field.onBlur}
+                          className={SELECT_CLASS}
+                        >
+                          <option value="" disabled={field.value !== ""} className="bg-zinc-900">
+                            Seleccionar
+                          </option>
+                          {GENDER_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value} className="bg-zinc-900">
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <FieldError errors={[fieldState.error]} />
+                      </Field>
+                    )}
+                  />
+
+                  <Controller
+                    control={form.control}
                     name="region"
                     render={({ field: regionField }) => (
                       <Controller
@@ -452,6 +483,11 @@ export default function ProfilePage() {
                     <p className="break-words text-sm text-white">
                       {studyShiftLabel(details.studyShift) || "Sin registrar"}
                     </p>
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-xs text-zinc-500">Género</p>
+                    <p className="break-words text-sm text-white">{genderLabel(details.gender) || "Sin registrar"}</p>
                   </div>
 
                   <div className="min-w-0">

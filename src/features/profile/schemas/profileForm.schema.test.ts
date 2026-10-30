@@ -7,6 +7,7 @@ const BASE = {
   avatarId: "cat" as const,
   birthDate: "",
   studyShift: "" as const,
+  gender: "" as const,
   region: "",
   comuna: "",
 };

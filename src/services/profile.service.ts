@@ -8,6 +8,7 @@ import {
   fail,
   type ApiResponse,
   type Admin,
+  type Gender,
   type Student,
   type StudyShift,
   type UserRole,
@@ -63,6 +64,9 @@ export type UpdateContactPayload = {
 
   /** Solo estudiantes. Comuna de esa region; vacio la borra, ausente no la toca. */
   comuna?: string;
+
+  /** Solo estudiantes. Vacio la borra, ausente no la toca. */
+  gender?: Gender | "";
 };
 
 type ContactData = {
@@ -78,6 +82,8 @@ type ContactData = {
   region?: string;
 
   comuna?: string;
+
+  gender?: Gender;
 };
 
 export async function updateProfileContact(
@@ -93,6 +99,7 @@ export async function updateProfileContact(
         ...(payload.studyShift !== undefined && { studyShift: payload.studyShift }),
         ...(payload.region !== undefined && { region: payload.region }),
         ...(payload.comuna !== undefined && { comuna: payload.comuna }),
+        ...(payload.gender !== undefined && { gender: payload.gender }),
       },
     );
 

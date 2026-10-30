@@ -18,12 +18,18 @@ function model(name: string) {
     findOne: () => ({ select: () => ({ lean: async () => mocks.stored }) }),
     findOneAndUpdate: async (
       filter: unknown,
-      update: { email: string; avatarId: string; birthDate?: string; studyShift?: string },
+      update: { email: string; avatarId: string; birthDate?: string; studyShift?: string; gender?: string },
     ) => {
       mocks.writes.push({ model: name, filter, update });
 
       return mocks.found
-        ? { email: update.email, avatarId: update.avatarId, birthDate: update.birthDate, studyShift: update.studyShift }
+        ? {
+            email: update.email,
+            avatarId: update.avatarId,
+            birthDate: update.birthDate,
+            studyShift: update.studyShift,
+            gender: update.gender,
+          }
         : null;
     },
   };
@@ -184,6 +190,38 @@ describe("PATCH profile/:rut/contact: fecha de nacimiento y jornada del estudian
     mocks.session = { rut: "12345678-5", role: "admin" };
 
     expect((await run({ email: "adm@uvm.cl", avatarId: "cat", studyShift: "day" })).status).toBe(400);
+    expect(mocks.writes).toHaveLength(0);
+  });
+});
+
+describe("PATCH profile/:rut/contact: género del estudiante", () => {
+  const body = { email: "ana@uvm.cl", avatarId: "cat" };
+
+  it.each(["female", "male", "other", "undisclosed"])("guarda «%s» y lo devuelve", async (gender) => {
+    const { status, json } = await run({ ...body, gender });
+
+    expect(status).toBe(200);
+    expect(mocks.writes[0]?.update).toEqual({ ...body, gender });
+    expect(json.data).toMatchObject({ gender });
+  });
+
+  it("vacío lo borra y ausente no lo toca", async () => {
+    await run({ ...body, gender: "" });
+    await run(body);
+
+    expect(mocks.writes[0]?.update).toEqual({ ...body, $unset: { gender: 1 } });
+    expect(mocks.writes[1]?.update).toEqual(body);
+  });
+
+  it("rechaza un género que no existe y a un administrador", async () => {
+    const invalid = await run({ ...body, gender: "x" });
+
+    expect(invalid.status).toBe(400);
+    expect(invalid.json.message).toBe("El género indicado no es válido.");
+
+    mocks.session = { rut: "12345678-5", role: "admin" };
+
+    expect((await run({ ...body, gender: "female" })).status).toBe(400);
     expect(mocks.writes).toHaveLength(0);
   });
 });

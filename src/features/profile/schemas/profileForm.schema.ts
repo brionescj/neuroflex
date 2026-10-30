@@ -28,6 +28,8 @@ export const ProfileFormSchema = z
   }),
   /** Vacio = sin jornada. Los valores son los de STUDY_SHIFT_OPTIONS. */
   studyShift: z.enum(["", "day", "evening"]),
+  /** Vacio = sin informar («Seleccionar»). Los valores son los de GENDER_OPTIONS. */
+  gender: z.enum(["", "female", "male", "other", "undisclosed"]),
   /** Region con su nombre oficial; vacio = sin region. */
   region: z.string(),
   /** Comuna de esa region (lista oficial); vacio = sin comuna. */
