@@ -20,6 +20,8 @@ const NONE: BadgeFacts = {
   perfectCases: 0,
   playedCases: 0,
   totalCases: 12,
+  caseSteps: 0,
+  caseRuns: 0,
 };
 
 const EVERYTHING: BadgeFacts = {
@@ -40,17 +42,19 @@ const EVERYTHING: BadgeFacts = {
   perfectCases: 12,
   playedCases: 12,
   totalCases: 12,
+  caseSteps: 99,
+  caseRuns: 99,
 };
 
 const ids = (facts: BadgeFacts) => buildBadges(facts).map((b) => b.id);
 const earned = (facts: BadgeFacts) => buildBadges(facts).filter((b) => b.earned).map((b) => b.id);
 
 describe("insignias", () => {
-  it("hay 34, con id unico y sin ninguna ganada al empezar", () => {
+  it("hay 47, con id unico y sin ninguna ganada al empezar", () => {
     const badges = buildBadges(NONE);
 
     expect(badges).toHaveLength(BADGE_COUNT);
-    expect(BADGE_COUNT).toBe(34);
+    expect(BADGE_COUNT).toBe(47);
     expect(new Set(ids(NONE)).size).toBe(BADGE_COUNT);
     expect(earned(NONE)).toEqual([]);
   });
@@ -75,7 +79,11 @@ describe("insignias", () => {
       ["steady", "steady-5"],
       ["comeback", "comeback-10"],
       ["flawless-run", "flawless-runs-3"],
-      ["collector-14", "collector-20"],
+      ["collector-14", "collector-20", "collector-30"],
+      ["case-steps-40", "case-steps-80"],
+      ["case-run-1", "case-runs-3"],
+      ["days-2", "days-5", "days-10", "days-20"],
+      ["points-100", "points-400", "points-700", "points-900", "points-1100"],
     ]) {
       const goals = chain.map(goalOf);
 
@@ -87,7 +95,33 @@ describe("insignias", () => {
     expect(goalOf("points-900")).toBeGreaterThan(goalOf("points-100"));
   });
 
-  it("con todo logrado se ganan las 34, incluidas las de coleccionista", () => {
+  it("con el banco de 25, las metas de mini casos crecen y las de banco siguen su tamaño", () => {
+    const goalOf = (id: string) => buildBadges({ ...NONE, totalCases: 25 }).find((b) => b.id === id)!.goal;
+
+    expect(["first-case", "cases-10", "half-bank", "cases-explorer"].map(goalOf)).toEqual([1, 10, 13, 25]);
+    expect(["ordered-mind", "perfect-cases-10", "perfect-half-bank", "perfect-80-bank", "full-bank-perfect"].map(goalOf)).toEqual([
+      5, 10, 13, 20, 25,
+    ]);
+
+    // Si el banco crece, las de fraccion del banco suben solas; las fijas no.
+    const bigger = buildBadges({ ...NONE, totalCases: 30 });
+
+    expect(bigger.find((b) => b.id === "perfect-80-bank")!.goal).toBe(24);
+    expect(bigger.find((b) => b.id === "cases-10")!.goal).toBe(10);
+  });
+
+  it("las insignias de pasos y partidas de mini casos solo las da haber jugado mini casos", () => {
+    const base = { ...NONE, totalCases: 25 };
+
+    expect(earned({ ...base, levelsPassed: 40, seriationBest: 20, nodesBest: 15 })).not.toContain("case-run-1");
+
+    const played = earned({ ...base, playedCases: 1, caseSteps: 40, caseRuns: 1 });
+
+    expect(played).toEqual(expect.arrayContaining(["first-case", "case-steps-40", "case-run-1"]));
+    expect(played).not.toContain("case-steps-80");
+  });
+
+  it("con todo logrado se ganan las 47, incluidas las de coleccionista", () => {
     expect(earned(EVERYTHING)).toHaveLength(BADGE_COUNT);
   });
 

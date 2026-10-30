@@ -175,7 +175,7 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
     - 34 insignias en 5 niveles de dificultad (Primeros pasos, Constancia, Dominio, Experto,
       Maestría), definidas en `lib/studentBadges.ts`; se calculan al vuelo, nunca se guardan. Con umbrales
       altos a propósito: un estudiante que pasa 10 niveles de Seriación y los 15 de Nodos sin fallar
-      debe quedar con ≤ 13 de 34 (`studentBadges.test.ts` lo exige). «Racha impecable» = ≥ 10 niveles
+      debe quedar con ≤ 13 de 47 (`studentBadges.test.ts` lo exige). «Racha impecable» = ≥ 10 niveles
       distintos, todos al primer intento (`FLAWLESS_RUN_LEVELS`). Las insignias por días usan los días
       distintos de juego en hora de Chile (`daysPlayed`). Los umbrales no están validados con estudiantes reales.
       «Próxima meta» = la no lograda con mayor avance (a igual avance, la de nivel más bajo).

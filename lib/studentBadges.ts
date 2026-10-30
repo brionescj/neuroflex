@@ -52,6 +52,10 @@ export type BadgeFacts = {
   playedCases: number;
   /** Casos que tiene el banco (0 si no se conoce). */
   totalCases: number;
+  /** Pasos de mini casos dejados en su lugar, contando para cada caso su mejor intento (4 por caso como maximo). */
+  caseSteps: number;
+  /** Partidas de Mini casos terminadas. */
+  caseRuns: number;
 };
 
 type BadgeDef = {
@@ -68,8 +72,11 @@ const fixed = (n: number) => () => n;
 /** Mismo largo que el banco; con el banco vacio o desconocido la meta es 1 para no dar la insignia gratis. */
 const bankSize = (facts: BadgeFacts) => Math.max(1, facts.totalCases);
 
+/** Una fraccion del banco, redondeada hacia arriba; crece solo cuando el banco crece. */
+const bankShare = (share: number) => (facts: BadgeFacts) => Math.max(1, Math.ceil(facts.totalCases * share));
+
 /** Insignias que se ganan por las demas (no cuentan a si mismas ni a las otras de su tipo). */
-export const COLLECTOR_IDS = ["collector-14", "collector-20"] as const;
+export const COLLECTOR_IDS = ["collector-14", "collector-20", "collector-30"] as const;
 
 const DEFS: BadgeDef[] = [
   // ---------------------------------------------------------------- Nivel 1: primeros pasos
@@ -79,6 +86,7 @@ const DEFS: BadgeDef[] = [
   { id: "route-5", name: "Ruta 5", description: "Pasa el nivel 5 de Conexión de nodos.", tier: 1, goal: fixed(5), value: (f) => f.nodesBest },
   { id: "steady", name: "Constancia", description: "Completa 3 partidas.", tier: 1, goal: fixed(3), value: (f) => f.finishedAttempts },
   { id: "points-100", name: "Cien puntos", description: "Suma 100 puntos.", tier: 1, goal: fixed(100), value: (f) => f.totalPoints },
+  { id: "first-case", name: "Primer caso", description: "Responde tu primer mini caso.", tier: 1, goal: fixed(1), value: (f) => f.playedCases },
 
   // ---------------------------------------------------------------- Nivel 2: constancia
   { id: "memory-10", name: "Memoria 10", description: "Pasa el nivel 10 de Seriación de colores.", tier: 2, goal: fixed(10), value: (f) => f.seriationBest },
@@ -90,7 +98,8 @@ const DEFS: BadgeDef[] = [
   { id: "ordered-mind", name: "Mente ordenada", description: "Ordena bien 5 mini casos por completo.", tier: 2, goal: fixed(5), value: (f) => f.perfectCases },
   { id: "new-record", name: "Superaste tu marca", description: "Llega más lejos que en tus partidas anteriores.", tier: 2, goal: fixed(1), value: (f) => f.records },
   { id: "cases-explorer", name: "Explorador de casos", description: "Responde todos los mini casos del banco al menos una vez.", tier: 2, goal: bankSize, value: (f) => f.playedCases },
-  
+  { id: "cases-10", name: "Diez casos", description: "Responde 10 mini casos distintos.", tier: 2, goal: fixed(10), value: (f) => f.playedCases },
+
   // ---------------------------------------------------------------- Nivel 3: dominio
   { id: "memory-15", name: "Memoria 15", description: "Pasa el nivel 15 de Seriación de colores.", tier: 3, goal: fixed(15), value: (f) => f.seriationBest },
   { id: "days-5", name: "Una semana de práctica", description: "Juega en 5 días distintos.", tier: 3, goal: fixed(5), value: (f) => f.daysPlayed },
@@ -98,6 +107,8 @@ const DEFS: BadgeDef[] = [
   { id: "steady-5", name: "Constancia firme", description: "Completa 5 partidas.", tier: 3, goal: fixed(5), value: (f) => f.finishedAttempts },
   { id: "points-400", name: "400 puntos", description: "Suma 400 puntos.", tier: 3, goal: fixed(400), value: (f) => f.totalPoints },
   { id: "flawless-run", name: "Partida impecable", description: "Termina una partida de 10 o más niveles superando todos a la primera.", tier: 3, goal: fixed(1), value: (f) => f.flawlessRuns },
+  { id: "half-bank", name: "Medio banco", description: "Responde la mitad de los mini casos del banco.", tier: 3, goal: bankShare(0.5), value: (f) => f.playedCases },
+  { id: "case-steps-40", name: "Buen criterio", description: "Deja 40 pasos de mini casos en su lugar.", tier: 3, goal: fixed(40), value: (f) => f.caseSteps },
   { id: "margin-gold", name: "Margen de oro", description: "Supera 12 niveles de nodos conservando más de la mitad de tu margen de errores.", tier: 3, goal: fixed(12), value: (f) => f.wideMarginNodes },
 
   { id: "collector-14", name: "Coleccionista", description: "Consigue 14 insignias.", tier: 3, goal: fixed(14), value: () => 0 },
@@ -109,6 +120,10 @@ const DEFS: BadgeDef[] = [
   { id: "comeback-10", name: "Imparable", description: "Pasa 10 niveles que antes no te habían salido.", tier: 4, goal: fixed(10), value: (f) => f.comebacks },
   { id: "records-3", name: "Rompe marcas", description: "Supera tu marca anterior 3 veces.", tier: 4, goal: fixed(3), value: (f) => f.records },
   { id: "points-700", name: "700 puntos", description: "Suma 700 puntos.", tier: 4, goal: fixed(700), value: (f) => f.totalPoints },
+  { id: "case-steps-80", name: "Criterio afinado", description: "Deja 80 pasos de mini casos en su lugar.", tier: 4, goal: fixed(80), value: (f) => f.caseSteps },
+  { id: "perfect-half-bank", name: "Mitad perfecta", description: "Ordena perfecto la mitad de los mini casos del banco.", tier: 4, goal: bankShare(0.5), value: (f) => f.perfectCases },
+  { id: "case-run-1", name: "Banco completo", description: "Termina una partida de Mini casos.", tier: 4, goal: fixed(1), value: (f) => f.caseRuns },
+  { id: "days-10", name: "Diez días de práctica", description: "Juega en 10 días distintos.", tier: 4, goal: fixed(10), value: (f) => f.daysPlayed },
   { id: "collector-20", name: "Gran coleccionista", description: "Consigue 20 insignias.", tier: 4, goal: fixed(20), value: () => 0 },
 
   // ---------------------------------------------------------------- Nivel 5: maestría
@@ -116,6 +131,11 @@ const DEFS: BadgeDef[] = [
   { id: "flawless-runs-3", name: "Tres partidas impecables", description: "Termina 3 partidas de 10 o más niveles superando todos a la primera.", tier: 5, goal: fixed(3), value: (f) => f.flawlessRuns },
   { id: "full-bank-perfect", name: "Banco perfecto", description: "Ordena perfecto todos los mini casos del banco.", tier: 5, goal: bankSize, value: (f) => f.perfectCases },
   { id: "points-900", name: "Leyenda: 900 puntos", description: "Suma 900 puntos.", tier: 5, goal: fixed(900), value: (f) => f.totalPoints },
+  { id: "perfect-80-bank", name: "Casi sin errores", description: "Ordena perfecto el 80 % de los mini casos del banco.", tier: 5, goal: bankShare(0.8), value: (f) => f.perfectCases },
+  { id: "case-runs-3", name: "Trayectoria de casos", description: "Termina 3 partidas de Mini casos.", tier: 5, goal: fixed(3), value: (f) => f.caseRuns },
+  { id: "points-1100", name: "Leyenda viva: 1.100 puntos", description: "Suma 1.100 puntos.", tier: 5, goal: fixed(1100), value: (f) => f.totalPoints },
+  { id: "days-20", name: "Hábito de hierro", description: "Juega en 20 días distintos.", tier: 5, goal: fixed(20), value: (f) => f.daysPlayed },
+  { id: "collector-30", name: "Coleccionista total", description: "Consigue 30 insignias.", tier: 5, goal: fixed(30), value: () => 0 },
 ];
 
 export const BADGE_COUNT = DEFS.length;

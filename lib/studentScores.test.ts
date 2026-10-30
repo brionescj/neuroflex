@@ -365,7 +365,7 @@ describe("buildStudentScores", () => {
     });
     const earned = scores.badges.filter((b) => b.earned).length;
 
-    // Antes eran 18 de 34 en una sola sesion. Una sesion perfecta sigue premiandose, pero no tanto.
+    // Antes eran 18 de 34 en una sola sesion (hoy hay 47 insignias). Una sesion perfecta sigue premiandose, pero no tanto.
     expect(earned).toBeLessThanOrEqual(13);
     expect(earned).toBeGreaterThanOrEqual(8);
     expect(scores.rank.name).not.toBe("Constelación");

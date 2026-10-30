@@ -488,6 +488,8 @@ export function buildStudentScores(input: {
     perfectCases: stats.perfectCases,
     playedCases: caseData.played,
     totalCases: input.caseKeys?.length ?? 0,
+    caseSteps: caseData.cases.reduce((sum, c) => sum + c.steps, 0),
+    caseRuns: cases.attempts.filter((a) => a.status === "finished").length,
   });
 
   // La proxima meta es la mas cercana de lograrse; a igual avance, la mas facil (menor nivel).
