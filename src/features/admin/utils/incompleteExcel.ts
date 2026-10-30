@@ -10,6 +10,14 @@ export type IncompleteEntry = { student: Student; missing: MissingField[] };
 /** Un dato que falta: letras rojas sobre fondo rosado, para verlo de un vistazo al recorrer la hoja. */
 const MISSING_STYLE = { textColor: "#9C0006", backgroundColor: "#FFC7CE", fontWeight: "bold" as const };
 
+/**
+ * Todas las celdas de «Contacto» parten con el aspecto de «Falta contactar» (ambar); una sola regla condicional las pone
+ * en verde cuando dicen «Contactado». Son UNA regla y no dos a proposito: con dos, el complemento de listas deja
+ * `dataValidations` entre las dos `conditionalFormatting` y Excel declara el archivo danado (el orden del esquema
+ * exige todas las condicionales antes de las listas).
+ */
+const PENDING_STYLE = { textColor: "#7F6000", backgroundColor: "#FFEB9C" };
+
 type Cell = { value: string | number; textColor?: string; backgroundColor?: string; fontWeight?: "bold" } | null;
 
 export const INCOMPLETE_COLUMNS = [
@@ -54,7 +62,7 @@ export function incompleteSheetRows(entries: IncompleteEntry[]): Cell[][] {
       value("comuna", student.comuna),
       value("gender", genderLabel(student.gender)),
       { value: missing.map((field) => field.label).join(", "), ...MISSING_STYLE },
-      { value: contactLabel(student.contacted === true) },
+      { value: contactLabel(student.contacted === true), ...PENDING_STYLE },
       lacks.has("registered") ? { value: "No", ...MISSING_STYLE } : { value: "Sí" },
     ];
   });
@@ -71,8 +79,8 @@ export function incompleteFileName(now: Date = new Date()): string {
 export const CONTACT_COLUMN = INCOMPLETE_COLUMNS.indexOf("Contacto") + 1;
 
 /**
- * La celda de «Contacto» de cada fila es una lista con las dos alternativas, para cambiarla en el propio Excel, y se
- * pinta sola segun lo elegido (ambar = falta contactar, verde = contactado).
+ * La celda de «Contacto» de cada fila es una lista con las dos alternativas, para cambiarla en el propio Excel; al elegir
+ * «Contactado» se pinta de verde y al volver a «Falta contactar» recupera el ambar de su estilo propio.
  */
 export function contactColumnOptions(rowCount: number) {
   const cellRange = { from: { row: 2, column: CONTACT_COLUMN }, to: { row: rowCount + 1, column: CONTACT_COLUMN } };
@@ -93,11 +101,6 @@ export function contactColumnOptions(rowCount: number) {
         cellRange,
         condition: { operator: "=" as const, value: contactLabel(true) },
         style: { textColor: "#006100", backgroundColor: "#C6EFCE" },
-      },
-      {
-        cellRange,
-        condition: { operator: "=" as const, value: contactLabel(false) },
-        style: { textColor: "#7F6000", backgroundColor: "#FFEB9C" },
       },
     ],
   };
