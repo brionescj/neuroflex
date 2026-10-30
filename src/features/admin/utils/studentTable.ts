@@ -24,7 +24,7 @@ export function isOlder(age: number | null): boolean {
   return age !== null && age >= OLDER_FROM_AGE;
 }
 
-export type SortKey = "rut" | "name" | "university" | "paralelo" | "age" | "entry" | "status";
+export type SortKey = "name" | "university" | "paralelo" | "age" | "entry" | "status";
 export type SortDirection = "asc" | "desc";
 export type SortState = { key: SortKey; direction: SortDirection };
 
@@ -32,7 +32,6 @@ export type SortState = { key: SortKey; direction: SortDirection };
 export const DEFAULT_SORT: SortState = { key: "age", direction: "desc" };
 
 export const SORT_LABELS: Record<SortKey, string> = {
-  rut: "RUT",
   name: "Nombre",
   university: "Universidad",
   paralelo: "Paralelo",
@@ -65,8 +64,6 @@ function byName(a: Student, b: Student): number {
 /** El valor por el que se ordena cada columna; null = sin dato (siempre va al final, en cualquier sentido). */
 function valueOf(student: Student, key: SortKey, now: Date): string | number | null {
   switch (key) {
-    case "rut":
-      return Number.parseInt(student.rut.replace(/\D/g, "").slice(0, -1), 10) || null;
     case "name":
       return `${student.paternalLastName} ${student.maternalLastName} ${student.firstName}`;
     case "university":

@@ -4,7 +4,6 @@ import { Fragment, useEffect, useState, type FormEvent } from "react";
 import { EmailInput } from "@/components/forms/EmailInput";
 import { RegionCommuneFields } from "@/components/forms/RegionCommuneFields";
 import { RutInput } from "@/components/forms/RutInput";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Button } from "@/components/ui/Button";
 import { Field, FieldLabel } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
@@ -426,6 +425,9 @@ type StudentsSectionProps = {
 // pantalla vacia con "Cargando...". Solo vive en memoria: al recargar la pagina se pierde.
 let lastStudents: Student[] | null = null;
 
+/** Estudiantes por pagina, en la tabla y en las tarjetas del celular. */
+const STUDENTS_PER_PAGE = 7;
+
 export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps) {
   const [students, setStudents] = useState<Student[]>(() => lastStudents ?? []);
   const [isLoading, setIsLoading] = useState(lastStudents === null);
@@ -442,19 +444,16 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
   const [viewingRut, setViewingRut] = useState<string | null>(null);
   const [passwordFor, setPasswordFor] = useState<Student | null>(null);
 
-  const isCardView = !useMediaQuery("(min-width: 1024px)");
-  const pageSize = isCardView ? 5 : 12;
-
   // Ordenada la lista completa (no solo la pagina), por la columna elegida; por defecto, de mayor a menor edad.
   const filteredStudents = sortStudents(
     students.filter((s) => matchesQuery(s, searchQuery)),
     sort,
   );
 
-  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE));
   const paginatedStudents = filteredStudents.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
+    (page - 1) * STUDENTS_PER_PAGE,
+    page * STUDENTS_PER_PAGE,
   );
 
   function changeSort(next: SortState) {
@@ -874,7 +873,9 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800 text-zinc-500">
-                    {(["rut", "name", "university", "paralelo", "age", "entry", "status"] as const).map((key: SortKey) => (
+                    {/* El RUT no se ordena: no sigue ninguna regla que ayude a quien lee la lista. */}
+                    <th className="min-h-11 px-3 text-left font-normal">RUT</th>
+                    {(["name", "university", "paralelo", "age", "entry", "status"] as const).map((key: SortKey) => (
                       <SortableHeader key={key} sortKey={key} sort={sort} onSort={(k) => changeSort(nextSort(sort, k))} />
                     ))}
                     <th className="p-3 font-normal" />
