@@ -147,7 +147,7 @@ describe("POST /api/admin/mini-cases", () => {
     expect(mocks.cases).toHaveLength(0);
   });
 
-  it("permite retirar un caso del banco", async () => {
+  it("no hay forma de retirar un caso del juego: «enabled» se ignora", async () => {
     const created = await call(adminHandler, "POST", body);
     const out = await call(adminHandler, "POST", {
       ...body,
@@ -156,7 +156,8 @@ describe("POST /api/admin/mini-cases", () => {
       enabled: false,
     });
 
-    expect(out.json.data.enabled).toBe(false);
+    expect(out.status).toBe(200);
+    expect(out.json.data).not.toHaveProperty("enabled");
   });
 });
 

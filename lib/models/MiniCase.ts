@@ -25,7 +25,6 @@ export type MiniCaseDocument = {
    */
   alternateOrders: string[][];
   feedback: string;
-  enabled: boolean;
 };
 
 const miniCaseOptionSchema = new Schema<MiniCaseOptionDocument>(
@@ -55,10 +54,6 @@ const miniCaseSchema = new Schema<MiniCaseDocument>(
     },
     alternateOrders: { type: [[String]], default: [] },
     feedback: { type: String, required: true },
-    // Permite retirar un caso del banco sin borrarlo (igual que isDeleted
-    // en Student, pero mas simple: esto no es informacion de una persona,
-    // no necesita motivo/quien/cuando).
-    enabled: { type: Boolean, required: true, default: true },
   },
   { timestamps: true },
 );

@@ -92,7 +92,6 @@ export default async function handler(
         options,
         feedback: input.feedback,
         alternateOrders,
-        ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
       },
       { new: true, upsert: true, setDefaultsOnInsert: true },
     );

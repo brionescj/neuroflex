@@ -46,7 +46,7 @@ export default async function handler(
       .json({ success: false, message: "Este juego aun no esta disponible." });
   }
 
-  const miniCase = await MiniCase.findOne({ caseKey, enabled: true });
+  const miniCase = await MiniCase.findOne({ caseKey });
 
   if (!miniCase) {
     return res

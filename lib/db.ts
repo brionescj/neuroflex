@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 import { getRequiredEnv } from "./env";
+import { runStartupTasks } from "./startupTasks";
 import { addDbTime } from "./timing";
 
 const uri = getRequiredEnv("MONGODB_URI");
@@ -42,6 +43,23 @@ function open() {
     });
 }
 
+/**
+ * Datos que el servidor deja listos al arrancar (el banco de mini casos, por ejemplo). Corre una vez por
+ * proceso: las peticiones siguientes reutilizan el resultado. Si falla, se reintenta en la proxima
+ * peticion en vez de dejar el error guardado, y esta no se interrumpe.
+ */
+async function runStartupTasksOnce() {
+  const store = global as unknown as { _startupTasks?: Promise<void> | null };
+
+  if (!store._startupTasks) {
+    store._startupTasks = runStartupTasks().catch(() => {
+      store._startupTasks = null;
+    });
+  }
+
+  await store._startupTasks;
+}
+
 export async function connectDB() {
   const startedAt = performance.now();
 
@@ -58,6 +76,8 @@ export async function connectDB() {
     if (!cached.promise) cached.promise = open();
 
     cached.conn = await cached.promise;
+
+    await runStartupTasksOnce();
 
     return cached.conn;
   } finally {

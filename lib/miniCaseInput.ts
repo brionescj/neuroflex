@@ -28,7 +28,6 @@ export type MiniCaseInput = {
   feedback: string;
   options: MiniCaseOptionInput[];
   alternateOrders?: unknown;
-  enabled?: boolean;
 };
 
 export type ParsedMiniCase = { ok: true; value: MiniCaseInput } | { ok: false; message: string };
@@ -74,10 +73,6 @@ export function parseMiniCaseInput(body: unknown): ParsedMiniCase {
     if (!isMiniCaseImageKey(raw.imageKey)) return fail("La imagen elegida no existe en la galería.");
 
     imageKey = raw.imageKey;
-  }
-
-  if (raw.enabled !== undefined && typeof raw.enabled !== "boolean") {
-    return fail("«enabled» debe ser verdadero o falso.");
   }
 
   if (!Array.isArray(raw.options) || raw.options.length !== 4) {
@@ -129,7 +124,6 @@ export function parseMiniCaseInput(body: unknown): ParsedMiniCase {
       feedback: feedback as string,
       options,
       ...(raw.alternateOrders !== undefined ? { alternateOrders: raw.alternateOrders } : {}),
-      ...(typeof raw.enabled === "boolean" ? { enabled: raw.enabled } : {}),
     },
   };
 }

@@ -1,7 +1,7 @@
 type SeedOption = { optionKey: string; text: string; correctStep: 1 | 2 | 3 | 4 };
-type SeedCase = {
+export type SeedCase = {
   caseKey: string;
-  /** Solo el area, sin «Mini Caso N»: es lo que ve el estudiante y lo que rotula los graficos. */
+  /** Solo el nombre del area, sin «Mini Caso N»: es lo que ve el estudiante. El admin lo ve con el prefijo «Mini Caso N: ». */
   title: string;
   /** Dibujo del catalogo (lib/miniCaseImages.ts) que se muestra como distractor. */
   imageKey: string;
@@ -18,14 +18,15 @@ type SeedCase = {
 };
 
 /**
- * Los 25 casos del banco. Es idempotente: volver a correr el script actualiza cada caso por su
- * clave (caseKey) y no duplica nada ni toca los resultados ya guardados. Los casos 1 a 10 vienen del
- * banco original; el 11 al 25 se agregaron despues (con su titulo de area y su imagen).
+ * Los 25 casos base del banco. Al arrancar el servidor (lib/startupTasks.ts) se agregan a la base los
+ * que falten, por su clave (caseKey): no duplica nada, no pisa los textos ya corregidos desde el panel
+ * de administracion ni toca los resultados guardados. Los casos 1 a 10 vienen del banco original; el 11
+ * al 25 se agregaron despues. Los nombres de area salen del documento «JUEGOS ABSTRACTOS - FE».
  */
 export const MINI_CASES_SEED: SeedCase[] = [
   {
     caseKey: "caso-1",
-    title: "Área de Lectoescritura Inicial y Detección Pedagógica",
+    title: "Área de Detección Temprana",
     imageKey: "aula",
     baseText: "Durante las observaciones en el aula de 1.° básico, detectas que un estudiante presenta un desfase significativo en la adquisición del código lectoescrito en comparación con sus pares, mostrando frustración extrema.",
     twistText: "¡Alerta de Cambio! La familia te informa en una entrevista rápida que el estudiante no asistió a la educación parvularia previa y el profesor de aula exige su derivación inmediata a escuela especial hoy mismo.",
@@ -56,7 +57,7 @@ export const MINI_CASES_SEED: SeedCase[] = [
   },
   {
     caseKey: "caso-2",
-    title: "Área de Colaboración con el Docente de Aula",
+    title: "Área de Co-enseñanza",
     imageKey: "mesa-equipo",
     baseText: "Te integras a un aula de 2.° básico bajo la modalidad de co-enseñanza. El profesor de aula regular manifiesta que prefiere que tú te encargues exclusivamente de los tres estudiantes con Necesidades Educativas Especiales (NEE) al fondo de la sala.",
     twistText: "¡Alerta de Cambio! El equipo directivo te informa que el aula regular tiene un 40% de estudiantes con bajo desempeño general y el profesor básico se encuentra agobiado, rechazando cualquier reunión de planificación fuera del horario de clases.",
@@ -87,7 +88,7 @@ export const MINI_CASES_SEED: SeedCase[] = [
   },
   {
     caseKey: "caso-3",
-    title: "Área de Planificación del Aprendizaje en Primer Ciclo",
+    title: "Área de Estrategias Inclusivas (DUA)",
     imageKey: "patio",
     baseText: "Al planificar una experiencia de aprendizaje para un grupo de 1.° básico, constatas que las actividades propuestas exigen que los niños permanezcan sentados escuchando una explicación teórica por 40 minutos seguidos.",
     twistText: "¡Alerta de Cambio! El día de la actividad llueve intensamente en la zona, suspendiendo los recreos en el patio, lo que duplica la inquietud motora natural y los niveles de distracción de todo el grupo de estudiantes.",
@@ -118,7 +119,7 @@ export const MINI_CASES_SEED: SeedCase[] = [
   },
   {
     caseKey: "caso-4",
-    title: "Área de Regulación Emocional y Transiciones",
+    title: "Área de Apoyos Específicos (TEA)",
     imageKey: "rutina-visual",
     baseText: "Un estudiante de 2.° básico diagnosticado con Trastorno del Espectro Autista (TEA) presenta desregulación emocional severa cada vez que se realizan transiciones abruptas entre las asignaturas de la jornada.",
     twistText: "¡Alerta de Cambio! Hoy se suspenden las clases regulares a mitad de la mañana por un simulacro de emergencia institucional no programado, rompiendo toda la rutina habitual de la escuela.",
@@ -149,7 +150,7 @@ export const MINI_CASES_SEED: SeedCase[] = [
   },
   {
     caseKey: "caso-5",
-    title: "Área de Evaluación de la Comprensión Lectora",
+    title: "Área de Evaluación Inclusiva",
     imageKey: "cuaderno",
     baseText: "Aplicas un instrumento de evaluación de comprensión lectora en 2.° básico. Notas que un estudiante responde correctamente las preguntas iniciales, pero se equivoca sistemáticamente en las finales debido a que olvida las instrucciones complejas entregadas al inicio.",
     twistText: "¡Alerta de Cambio! El estudiante te manifiesta de manera espontánea que le genera mucha vergüenza levantar la mano para pedir ayuda frente a sus compañeros de curso.",
@@ -180,7 +181,7 @@ export const MINI_CASES_SEED: SeedCase[] = [
   },
   {
     caseKey: "caso-6",
-    title: "Área de Interculturalidad y Diversidad Lingüística",
+    title: "Área de Interculturalidad e Igualdad",
     imageKey: "globo",
     baseText: "Un estudiante extranjero se incorpora a 1.° básico. El equipo docente regular asume erróneamente que requiere ser derivado a una escuela especial porque confunde ciertos modismos locales y posee un ritmo de vocabulario diferente.",
     twistText: "¡Alerta de Cambio! La escuela recibe la instrucción de aplicar una prueba estandarizada comunal de lenguaje esta misma semana, y la dirección exige que todos los estudiantes nuevos rindan el test bajo las mismas condiciones.",
@@ -211,7 +212,7 @@ export const MINI_CASES_SEED: SeedCase[] = [
   },
   {
     caseKey: "caso-7",
-    title: "Área de Juego y Tolerancia a la Frustración",
+    title: "Área de Co-regulación Emocional",
     imageKey: "bloques",
     baseText: "En un trabajo de rincones lúdicos en 1.° básico, un estudiante se frustra porque la torre de bloques de madera que planificó construir se cae repetidamente. Reacciona lanzando las piezas al suelo y negándose a continuar.",
     twistText: "¡Alerta de Cambio! Dos compañeros de su mesa se contagian de la frustración, comienzan a discutir entre ellos por el espacio del juego y la dinámica general del rincón colapsa.",
@@ -242,7 +243,7 @@ export const MINI_CASES_SEED: SeedCase[] = [
   },
   {
     caseKey: "caso-8",
-    title: "Área de Resolución de Problemas Matemáticos",
+    title: "Área de Co-enseñanza Matemática",
     imageKey: "matematicas",
     baseText: "Al revisar la evaluación diagnóstica de un 2.° básico, observas que el 40% del curso tiene serias dificultades para organizar los pasos requeridos al resolver problemas matemáticos simples, perdiéndose a la mitad del proceso.",
     twistText: "¡Alerta de Cambio! El profesor de aula te indica que los textos escolares oficiales de matemáticas llegaron incompletos y que no cuenta con material impreso de apoyo para la sesión de mañana.",
@@ -273,7 +274,7 @@ export const MINI_CASES_SEED: SeedCase[] = [
   },
   {
     caseKey: "caso-9",
-    title: "Área de Sospecha Diagnóstica y Discapacidad Intelectual",
+    title: "Área de Ruta de Derivación Interna",
     imageKey: "reunion-familia",
     baseText: "Un docente de aula regular te comenta preocupado que sospecha que un estudiante de 1.° básico presenta una Discapacidad Intelectual, fundamentando que el niño \"no sigue el ritmo del resto y se distrae con extrema facilidad\".",
     twistText: "¡Alerta de Cambio! El apoderado asiste a la escuela de forma defensiva, manifestando abiertamente su rechazo absoluto a que el psicólogo o el equipo PIE evalúen o toquen a su hijo debido a malas experiencias institucionales previas.",
@@ -307,7 +308,7 @@ export const MINI_CASES_SEED: SeedCase[] = [
   },
   {
     caseKey: "caso-10",
-    title: "Área de Autorregulación y Trabajo Científico",
+    title: "Área de Acceso Curricular (Proyectos)",
     imageKey: "laboratorio",
     baseText: "Para un proyecto de ciencias naturales en 2.° básico, los estudiantes deben seguir un manual de cuatro instrucciones sucesivas para armar un germinador. Un estudiante con desafíos severos en memoria de trabajo y planificación se muestra abrumado y comienza a desarmar el material de sus compañeros de mesa.",
     twistText: "¡Alerta de Cambio! Al intentar mediar la situación, el estudiante derrama accidentalmente toda la tierra y el agua de su grupo sobre la mesa, provocando la burla y las quejas de sus pares de equipo.",
@@ -802,40 +803,3 @@ export const MINI_CASES_SEED: SeedCase[] = [
     ],
   },
 ];
-
-async function seed(adminSessionCookie: string) {
-  for (const miniCase of MINI_CASES_SEED) {
-    const response = await fetch(
-      "http://localhost:3000/api/admin/mini-cases",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: adminSessionCookie,
-        },
-        body: JSON.stringify(miniCase),
-      },
-    );
-
-    const result = (await response.json()) as {
-      success: boolean;
-      message: string;
-    };
-
-    console.log(miniCase.caseKey, result.success ? "OK" : result.message);
-  }
-}
-
-// Solo se ejecuta al correr el script (un test importa MINI_CASES_SEED y no debe sembrar nada).
-if (process.argv[1]?.endsWith("seedMiniCases.ts")) {
-  const cookie = process.argv[2];
-
-  if (!cookie) {
-    console.error(
-      'Falta la cookie de sesion. Uso: npx tsx server-scripts/seedMiniCases.ts "neuroflex_session=..."',
-    );
-    process.exit(1);
-  }
-
-  seed(cookie);
-}

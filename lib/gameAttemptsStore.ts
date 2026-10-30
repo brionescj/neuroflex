@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import {
   analyzeColorSequenceResponse,
   analyzeNodeEvents,
@@ -37,26 +35,11 @@ function isDuplicateKeyError(error: unknown): boolean {
 }
 
 /**
- * Los casos del banco cambian con el tiempo: la version identifica con que
- * redaccion jugo cada estudiante, para no mezclar partidas no comparables.
+ * Mini casos no lleva control de versiones: el administrador solo corrige gramatica o contextualiza
+ * mejor la redaccion, asi que todas las partidas del juego son comparables entre si. Se guarda siempre
+ * esta etiqueta (el cliente no la decide).
  */
-export async function miniCasesContentVersion(): Promise<string> {
-  const cases = await MiniCase.find({ enabled: true })
-    .sort({ caseKey: 1 })
-    .lean();
-
-  const hash = createHash("sha1");
-  hash.update(JSON.stringify(cases.map((c: Record<string, unknown>) => [
-    c.caseKey,
-    c.baseText,
-    c.twistText,
-    c.promptText,
-    c.options,
-    c.alternateOrders ?? [],
-  ])));
-
-  return `bank-${hash.digest("hex").slice(0, 10)}`;
-}
+export const MINI_CASES_CONTENT_VERSION = "mini-cases";
 
 /**
  * Devuelve el intento, creandolo si es el primer mensaje que llega. Devuelve
@@ -93,9 +76,7 @@ export async function ensureAttempt(
   const student = await Student.findOne({ rut }).lean();
   const snapshot = buildStudentSnapshot(student, info.startedAt);
   const contentVersion =
-    gameId === "mini-cases"
-      ? await miniCasesContentVersion()
-      : info.contentVersion;
+    gameId === "mini-cases" ? MINI_CASES_CONTENT_VERSION : info.contentVersion;
 
   // El numero de intento sale de contar los previos. Si dos mensajes crean
   // intentos a la vez, el indice unico rechaza al segundo y se reintenta.
@@ -197,10 +178,7 @@ async function upsertResult(
   if (gameId === "mini-cases" && report.orderedOptionKeys) {
     // El puntaje lo calcula el servidor con la clave de respuesta: lo que
     // diga el navegador sobre aciertos se ignora.
-    const miniCase = await MiniCase.findOne({
-      caseKey: report.key,
-      enabled: true,
-    });
+    const miniCase = await MiniCase.findOne({ caseKey: report.key });
 
     if (!miniCase) return "unknown-case";
 

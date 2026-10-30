@@ -323,7 +323,7 @@ describe("ensureAttempt", () => {
     expect(await ensureAttempt("11111111-1", "node-connection", info("attempt-0001"))).toBeNull();
   });
 
-  it("calcula la version del banco en mini casos (el cliente no la decide)", async () => {
+  it("mini casos guarda siempre la misma etiqueta: no hay control de versiones del banco", async () => {
     db.cases.push({ caseKey: "c1", baseText: "a", twistText: "b", promptText: "c", options: [] });
 
     const attempt = await ensureAttempt("11111111-1", "mini-cases", {
@@ -331,7 +331,7 @@ describe("ensureAttempt", () => {
       contentVersion: "lo-que-diga-el-cliente",
     });
 
-    expect(attempt?.contentVersion).toMatch(/^bank-[0-9a-f]{10}$/);
+    expect(attempt?.contentVersion).toBe("mini-cases");
   });
 });
 

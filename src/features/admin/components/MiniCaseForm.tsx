@@ -24,6 +24,8 @@ const STEP_HELP = [
 type MiniCaseFormProps = {
   /** Sin caso se crea uno nuevo; con caso se edita ese. */
   initial?: AdminMiniCase;
+  /** «Mini Caso 12»: el numero que lleva el caso (el siguiente libre, si es nuevo). */
+  label: string;
   onSaved: (saved: AdminMiniCase) => void;
   onCancel: () => void;
 };
@@ -32,7 +34,7 @@ type MiniCaseFormProps = {
  * Alta y edicion de un mini caso. Las 4 alternativas se escriben en el orden CORRECTO (la primera es la
  * que va en el paso 1); el juego se las muestra mezcladas al estudiante.
  */
-export function MiniCaseForm({ initial, onSaved, onCancel }: MiniCaseFormProps) {
+export function MiniCaseForm({ initial, label, onSaved, onCancel }: MiniCaseFormProps) {
   const [state, setState] = useState<MiniCaseFormState>(() => initialMiniCaseState(initial));
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -72,7 +74,6 @@ export function MiniCaseForm({ initial, onSaved, onCancel }: MiniCaseFormProps) 
         text: option.text.trim(),
         correctStep: (index + 1) as 1 | 2 | 3 | 4,
       })),
-      ...(editing ? { enabled: state.enabled } : {}),
     };
 
     setIsSaving(true);
@@ -95,23 +96,26 @@ export function MiniCaseForm({ initial, onSaved, onCancel }: MiniCaseFormProps) 
 
       {editing && (
         <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
-          Si cambias el texto del caso, de la alerta, de la consigna o de las alternativas, las partidas ya jugadas
-          quedan en otra versión del banco y no se comparan con las nuevas. Cambiar el título, la imagen o la
-          retroalimentación no tiene ese efecto.
+          Edita el texto, la alerta, la consigna o las alternativas solo para corregir gramática o contextualizar
+          mejor. Un cambio de fondo hace que las partidas ya jugadas no reflejen fielmente los datos estadísticos.
         </p>
       )}
 
       <Field>
         <FieldLabel htmlFor="mc-title">Título del mini caso</FieldLabel>
-        <Input
-          id="mc-title"
-          value={state.title}
-          maxLength={MAX_TITLE}
-          placeholder="Área de Lenguaje y Comunicación"
-          onChange={(event) => patch({ title: event.target.value })}
-        />
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-sm font-medium text-zinc-300">{label}:</span>
+          <Input
+            id="mc-title"
+            value={state.title}
+            maxLength={MAX_TITLE}
+            placeholder="Área de Lenguaje y Comunicación"
+            onChange={(event) => patch({ title: event.target.value })}
+          />
+        </div>
         <p className="text-xs text-zinc-500">
-          Solo el área, con la inicial de cada palabra importante en mayúscula y sin «Mini Caso» ni número.
+          Escribe solo el nombre del área, con la inicial de cada palabra importante en mayúscula. El estudiante ve
+          únicamente ese nombre; «{label}:» solo aparece en este panel.
         </p>
       </Field>
 
@@ -198,18 +202,6 @@ export function MiniCaseForm({ initial, onSaved, onCancel }: MiniCaseFormProps) 
 
         <MiniCaseImagePicker value={state.imageKey} onChange={(imageKey) => patch({ imageKey })} />
       </fieldset>
-
-      {editing && (
-        <label className="flex items-center gap-3 text-sm text-zinc-300">
-          <input
-            type="checkbox"
-            checked={state.enabled}
-            onChange={(event) => patch({ enabled: event.target.checked })}
-            className="size-5 accent-sky-500"
-          />
-          Incluido en el juego (desmárcalo para retirarlo sin borrarlo)
-        </label>
-      )}
 
       {error && (
         <p role="alert" className="text-sm text-rose-400">

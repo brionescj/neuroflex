@@ -40,7 +40,7 @@ export default async function handler(
     GameLevelResult.find({ studentRut: payload.rut })
       .select("attemptId gameId key index tryNumber metrics completedAt")
       .lean() as Promise<ScoreResult[]>,
-    MiniCase.find({ enabled: true }).select("caseKey").lean() as Promise<{ caseKey: string }[]>,
+    MiniCase.find().select("caseKey").lean() as Promise<{ caseKey: string }[]>,
   ]);
 
   // Numerados como en el banco (caso-2 antes que caso-10), para que "Caso 3" sea siempre el mismo.

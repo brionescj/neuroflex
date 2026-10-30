@@ -124,7 +124,7 @@ async function readChartData(def: ChartDef): Promise<StatsData> {
           "attemptId studentRut gameId key index tryNumber activeMsNet completedAt metrics.passed metrics.solved metrics.correctCount metrics.sequenceLength metrics.percent metrics.errors metrics.errorsAllowed metrics.correctSteps metrics.isFullyCorrect",
         )
         .lean() as Promise<ResultRow[]>;
-      casesRequest = MiniCase.find({ enabled: true }).select("caseKey title").lean() as Promise<{ caseKey: string; title: string }[]>;
+      casesRequest = MiniCase.find().select("caseKey title").lean() as Promise<{ caseKey: string; title: string }[]>;
     }
 
     // Las listas de avance necesitan el nivel (y el tiempo) de cada nivel de seriacion y nodos.

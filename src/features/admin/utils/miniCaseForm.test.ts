@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { AdminMiniCase } from "@/types";
 
-import { DEFAULT_PROMPT_TEXT, initialMiniCaseState, miniCaseFormProblem } from "./miniCaseForm";
+import {
+  DEFAULT_PROMPT_TEXT,
+  initialMiniCaseState,
+  miniCaseFormProblem,
+  miniCaseFullTitle,
+  miniCaseLabel,
+  miniCaseNumber,
+} from "./miniCaseForm";
 
 const saved: AdminMiniCase = {
   caseKey: "caso-13",
@@ -12,7 +19,6 @@ const saved: AdminMiniCase = {
   twistText: "¡Alerta de Cambio! Algo.",
   promptText: "Ordena:",
   feedback: "Porque sí.",
-  enabled: true,
   options: [
     { optionKey: "caso-13-a", text: "A (paso 3)", correctStep: 3 },
     { optionKey: "caso-13-b", text: "B (paso 1)", correctStep: 1 },
@@ -40,6 +46,12 @@ describe("formulario de mini casos", () => {
     expect(miniCaseFormProblem(state)).toBeNull();
   });
 
+  it("el panel rotula cada caso «Mini Caso N: nombre» a partir de su clave", () => {
+    expect(miniCaseNumber("caso-12")).toBe(12);
+    expect(miniCaseLabel("caso-3")).toBe("Mini Caso 3");
+    expect(miniCaseFullTitle("caso-1", "Área de Detección Temprana")).toBe("Mini Caso 1: Área de Detección Temprana");
+  });
+
   it("un caso antiguo sin imagen usa la predeterminada", () => {
     expect(initialMiniCaseState({ ...saved, imageKey: undefined }).imageKey).toBe("aula");
   });
@@ -47,7 +59,7 @@ describe("formulario de mini casos", () => {
   it("rechaza un título con «Mini Caso» y alternativas vacías o repetidas", () => {
     const base = initialMiniCaseState(saved);
 
-    expect(miniCaseFormProblem({ ...base, title: "Mini Caso 12: Lenguaje" })).toMatch(/Mini Caso/);
+    expect(miniCaseFormProblem({ ...base, title: "Mini Caso 12: Lenguaje" })).toMatch(/solo el nombre del área/);
     expect(
       miniCaseFormProblem({ ...base, options: base.options.map((o, i) => (i === 2 ? { ...o, text: "  " } : o)) }),
     ).toMatch(/4 alternativas/);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MINI_CASES_SEED } from "../server-scripts/seedMiniCases";
+import { MINI_CASES_SEED } from "./miniCasesSeed";
 import { isMiniCaseImageKey } from "./miniCaseImages";
 import { parseMiniCaseInput } from "./miniCaseInput";
 import { validateAlternateOrders } from "./miniCaseScoring";
@@ -17,6 +17,21 @@ describe("banco de mini casos (seed)", () => {
       expect(c.title, c.caseKey).not.toMatch(/mini\s*caso/i);
       expect(c.title, c.caseKey).toMatch(/^Área de /);
     }
+  });
+
+  it("los casos 1 a 10 llevan los nombres de área del documento «JUEGOS ABSTRACTOS - FE»", () => {
+    expect(MINI_CASES_SEED.slice(0, 10).map((c) => c.title)).toEqual([
+      "Área de Detección Temprana",
+      "Área de Co-enseñanza",
+      "Área de Estrategias Inclusivas (DUA)",
+      "Área de Apoyos Específicos (TEA)",
+      "Área de Evaluación Inclusiva",
+      "Área de Interculturalidad e Igualdad",
+      "Área de Co-regulación Emocional",
+      "Área de Co-enseñanza Matemática",
+      "Área de Ruta de Derivación Interna",
+      "Área de Acceso Curricular (Proyectos)",
+    ]);
   });
 
   it("cada caso trae una imagen del catálogo", () => {

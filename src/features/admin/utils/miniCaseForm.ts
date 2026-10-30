@@ -14,8 +14,24 @@ export type MiniCaseFormState = {
   feedback: string;
   /** Una por lugar correcto (la primera es el paso 1). Al editar conservan la clave de la alternativa. */
   options: { optionKey?: string; text: string }[];
-  enabled: boolean;
 };
+
+/** El numero del caso segun su clave («caso-12» es el 12). */
+export function miniCaseNumber(caseKey: string): number {
+  const found = /(\d+)\s*$/.exec(caseKey);
+
+  return found ? Number(found[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+/** Como se rotula un caso en el panel de administracion: «Mini Caso 12». */
+export function miniCaseLabel(caseKey: string): string {
+  return `Mini Caso ${miniCaseNumber(caseKey)}`;
+}
+
+/** El titulo completo que ve el administrador: «Mini Caso 12: Área de Lenguaje y Comunicación». */
+export function miniCaseFullTitle(caseKey: string, title: string): string {
+  return `${miniCaseLabel(caseKey)}: ${title}`;
+}
 
 export function initialMiniCaseState(initial: AdminMiniCase | undefined): MiniCaseFormState {
   if (!initial) {
@@ -27,7 +43,6 @@ export function initialMiniCaseState(initial: AdminMiniCase | undefined): MiniCa
       promptText: DEFAULT_PROMPT_TEXT,
       feedback: "",
       options: [{ text: "" }, { text: "" }, { text: "" }, { text: "" }],
-      enabled: true,
     };
   }
 
@@ -41,14 +56,13 @@ export function initialMiniCaseState(initial: AdminMiniCase | undefined): MiniCa
     promptText: initial.promptText,
     feedback: initial.feedback,
     options: ordered.map((option) => ({ optionKey: option.optionKey, text: option.text })),
-    enabled: initial.enabled,
   };
 }
 
 /** Lo que falta o sobra, en una frase; null si el formulario esta completo. */
 export function miniCaseFormProblem(state: MiniCaseFormState): string | null {
   if (state.title.trim().length === 0) return "Escribe el título del mini caso.";
-  if (/mini\s*caso/i.test(state.title)) return "El título no lleva «Mini Caso» ni su número: solo el área.";
+  if (/mini\s*caso/i.test(state.title)) return "Escribe solo el nombre del área: «Mini Caso N:» se agrega solo.";
   if (state.baseText.trim().length === 0) return "Escribe el caso.";
   if (state.twistText.trim().length === 0) return "Escribe la alerta de cambio.";
   if (state.promptText.trim().length === 0) return "Escribe la consigna.";

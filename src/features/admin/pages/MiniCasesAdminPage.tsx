@@ -8,13 +8,11 @@ import type { AdminMiniCase } from "@/types";
 
 import { listMiniCasesAction } from "../actions/miniCases.action";
 import { MiniCaseForm } from "../components/MiniCaseForm";
+import { Pagination } from "../components/Pagination";
+import { miniCaseFullTitle, miniCaseLabel, miniCaseNumber } from "../utils/miniCaseForm";
 
-/** El numero del caso segun su clave («caso-12» es el 12). */
-function caseNumber(caseKey: string): number {
-  const found = /(\d+)\s*$/.exec(caseKey);
-
-  return found ? Number(found[1]) : Number.MAX_SAFE_INTEGER;
-}
+/** Cuantos mini casos se listan por pagina. */
+const PAGE_SIZE = 5;
 
 type View = { kind: "list" } | { kind: "new" } | { kind: "edit"; miniCase: AdminMiniCase };
 
@@ -24,6 +22,7 @@ export default function MiniCasesAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ kind: "list" });
   const [notice, setNotice] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     setStatus("loading");
@@ -36,7 +35,7 @@ export default function MiniCasesAdminPage() {
       return;
     }
 
-    setCases([...response.data].sort((a, b) => caseNumber(a.caseKey) - caseNumber(b.caseKey)));
+    setCases([...response.data].sort((a, b) => miniCaseNumber(a.caseKey) - miniCaseNumber(b.caseKey)));
     setError(null);
     setStatus("ready");
   }, []);
@@ -47,7 +46,7 @@ export default function MiniCasesAdminPage() {
   }, [load]);
 
   function handleSaved(saved: AdminMiniCase) {
-    setNotice(`«${saved.title}» quedó guardado.`);
+    setNotice(`«${miniCaseFullTitle(saved.caseKey, saved.title)}» quedó guardado.`);
     setView({ kind: "list" });
     void load();
   }
@@ -58,6 +57,11 @@ export default function MiniCasesAdminPage() {
         <MiniCaseForm
           key={view.kind === "edit" ? view.miniCase.caseKey : "new"}
           initial={view.kind === "edit" ? view.miniCase : undefined}
+          label={
+            view.kind === "edit"
+              ? miniCaseLabel(view.miniCase.caseKey)
+              : `Mini Caso ${Math.max(0, ...cases.map((c) => miniCaseNumber(c.caseKey))) + 1}`
+          }
           onSaved={handleSaved}
           onCancel={() => setView({ kind: "list" })}
         />
@@ -65,7 +69,9 @@ export default function MiniCasesAdminPage() {
     );
   }
 
-  const active = cases.filter((c) => c.enabled).length;
+  const totalPages = Math.max(1, Math.ceil(cases.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const visible = cases.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6 text-white">
@@ -75,7 +81,7 @@ export default function MiniCasesAdminPage() {
 
           {status === "ready" && (
             <p className="text-sm text-zinc-400">
-              {cases.length} {cases.length === 1 ? "caso" : "casos"} en el banco, {active} en el juego.
+              {cases.length} {cases.length === 1 ? "caso" : "casos"} en el juego.
             </p>
           )}
         </div>
@@ -105,8 +111,9 @@ export default function MiniCasesAdminPage() {
       )}
 
       {status === "ready" && (
+        <>
         <ul className="flex flex-col gap-3">
-          {cases.map((miniCase) => (
+          {visible.map((miniCase) => (
             <li
               key={miniCase.caseKey}
               className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-3"
@@ -118,17 +125,13 @@ export default function MiniCasesAdminPage() {
               />
 
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-zinc-500">Caso {caseNumber(miniCase.caseKey)}</p>
-
-                <p className="font-medium leading-snug">{miniCase.title}</p>
-
-                {!miniCase.enabled && <p className="mt-1 text-xs text-amber-300">Retirado del juego</p>}
+                <p className="font-medium leading-snug">{miniCaseFullTitle(miniCase.caseKey, miniCase.title)}</p>
               </div>
 
               <Button
                 variant="outline"
                 size="icon"
-                aria-label={`Editar ${miniCase.title}`}
+                aria-label={`Editar ${miniCaseFullTitle(miniCase.caseKey, miniCase.title)}`}
                 onClick={() => {
                   setNotice(null);
                   setView({ kind: "edit", miniCase });
@@ -139,6 +142,9 @@ export default function MiniCasesAdminPage() {
             </li>
           ))}
         </ul>
+
+        <Pagination page={currentPage} totalPages={totalPages} onChange={setPage} />
+        </>
       )}
     </div>
   );

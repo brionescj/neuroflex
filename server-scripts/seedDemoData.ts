@@ -53,7 +53,7 @@ async function main() {
   const { GameLevelResult } = await import("../lib/models/GameLevelResult");
   const { GameUnlock } = await import("../lib/models/GameUnlock");
   const { MiniCase } = await import("../lib/models/MiniCase");
-  const { miniCasesContentVersion } = await import("../lib/gameAttemptsStore");
+  const { MINI_CASES_CONTENT_VERSION } = await import("../lib/gameAttemptsStore");
 
   console.log(`Base de datos: ${target(process.env.MONGODB_URI)}`);
   await connectDB();
@@ -93,14 +93,14 @@ async function main() {
   const byRut = new Map(students.map((s) => [s.rut as string, s]));
   const missing = profiles.filter((p) => !byRut.has(p.rut));
 
-  const cases = (await MiniCase.find({ enabled: true }).sort({ caseKey: 1 }).lean()) as {
+  const cases = (await MiniCase.find().sort({ caseKey: 1 }).lean()) as {
     caseKey: string;
     options: DemoMiniCase["options"];
     alternateOrders?: string[][];
   }[];
 
   if (cases.length === 0) {
-    console.error("No hay Mini casos en la base. Carga el banco primero (server-scripts/seedMiniCases.ts).");
+    console.error("No hay Mini casos en la base. El banco se carga solo al abrir la conexion (lib/startupTasks.ts): vuelve a ejecutar el script.");
     process.exit(1);
   }
 
@@ -109,7 +109,7 @@ async function main() {
     options: c.options.map((o) => ({ optionKey: o.optionKey, text: o.text, correctStep: o.correctStep })),
     alternateOrders: c.alternateOrders ?? [],
   }));
-  const miniCasesVersion = await miniCasesContentVersion();
+  const miniCasesVersion = MINI_CASES_CONTENT_VERSION;
   const now = new Date();
 
   // ---- Plan por estudiante (sin tocar la base todavia).

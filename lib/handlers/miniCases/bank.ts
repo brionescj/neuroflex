@@ -46,7 +46,7 @@ export default async function handler(
   }
 
   // Solo los campos que se entregan (correctStep ni se lee) y como objetos planos.
-  const cases = await MiniCase.find({ enabled: true })
+  const cases = await MiniCase.find()
     .select("caseKey title imageKey baseText twistText promptText feedback options.optionKey options.text")
     .sort({ caseKey: 1 })
     .lean();
