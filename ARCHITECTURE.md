@@ -36,8 +36,9 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
 1. El **RUT** es el identificador principal. Formato canónico en base de datos: `12345678-5`
    (sin puntos, con guion, K mayúscula). Se normaliza con `normalizeForDatabase()`.
 2. **Nunca** se inicia sesión con correo electrónico.
-3. **Nunca** se eliminan usuarios. Solo se marca `enabled: false`. La única
-   excepción es la limpieza única del rol de docente (`removeTeachers.ts`).
+3. **Nunca** se eliminan usuarios. Solo se marca `enabled: false`. Las únicas
+   excepciones son la limpieza única del rol de docente (`removeTeachers.ts`) y el
+   vaciado de la base antes de salir a producción (`resetDatabase.ts`, ítem 20).
 4. Solo pueden registrarse estudiantes **previamente cargados** por la universidad.
    Los administradores **no se autorregistran**: otro administrador los da de alta
    desde el panel (ficha + cuenta con contraseña inicial). Por eso `registerService` consulta
@@ -323,7 +324,8 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       se correrían un día) y manda todo como texto; **toda la interpretación vive en el servidor**
       (`lib/studentImport.ts`). Universidad y paralelo no vienen en el archivo: se eligen una vez para todos
       (**ambos obligatorios**: «Revisar datos» queda bloqueado hasta elegirlos). Primero se revisa (`dryRun`, no
-      guarda nada) y luego se confirma; en la revisión, «Cancelar carga» vuelve a la pantalla de elección conservando
+      guarda nada) y luego se confirma; **Escape no cierra el diálogo** (se cierra solo con sus botones; el teclado se
+      corta en el documento porque Chrome cierra un `<dialog>` con Escape repetido aunque se cancele `cancel`); en la revisión, «Cancelar carga» vuelve a la pantalla de elección conservando
       universidad, paralelo y archivo (el formulario sigue montado, oculto), por si hay que cambiar alguno. Máximo 600 filas por carga. Nombre = «Apellido_Paterno Apellido_Materno
       Nombres» (1 a 3 nombres); las partículas (de, del, la, las, los, lo, el, san, santa, da, di, du, van, von,
       der, den, le) se pegan a la palabra siguiente y forman un apellido compuesto («De La Fuente», «Del Río»).
@@ -366,6 +368,17 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       («Falta contactar» / «Contactado», en ámbar/verde según lo elegido) que usa el complemento
       `@onparallel/write-excel-file-data-validation` (mismo autor que `write-excel-file`, que no trae listas
       desplegables). Se genera en el navegador.
+
+20. **Dejar la base en limpio para producción** (`server-scripts/resetDatabase.ts`, núcleo en `lib/resetDatabase.ts`,
+    con tests sobre una base simulada). Vacía **todas** las colecciones (estudiantes, administradores, cuentas, partidas,
+    resultados, desbloqueos, sesiones de juego...) borrando documentos —no las colecciones, así se conservan sus
+    índices— y deja solo dos cuentas, pasadas por las mismas validaciones que usa la aplicación: el administrador
+    (Camilo Briones) y el estudiante de prueba (`99999999-9`, ya registrado, ficha completa). **Se conservan**
+    `minicases` (el banco del juego) y `migrations`; `--include-mini-cases` vacía también el banco (el servidor
+    recarga los 25 base al arrancar, pero se pierde lo editado). Sin `--apply` solo cuenta; para aplicar hay que
+    repetir el nombre de la base en `--confirm=`; antes de borrar guarda un respaldo en `server-scripts/backups/`
+    (ignorada por git; trae los hash de contraseña) y, si falla, no borra. Las contraseñas se generan al azar y se
+    muestran una sola vez (o se toman de `NEUROFLEX_ADMIN_PASSWORD` / `NEUROFLEX_STUDENT_PASSWORD`); no se guardan.
 
 ---
 
