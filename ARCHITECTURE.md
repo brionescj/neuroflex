@@ -172,8 +172,11 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       bajan y repetir un nivel no regala puntos.
     - Rangos (`RANKS`, también en la respuesta de `/student/scores` para el «?» de «Tu rango»): Chispa 0,
       Destello 100, Llama 300, Estrella 550, Constelación 800 (el máximo teórico ronda 1000 puntos).
-    - 34 insignias en 5 niveles de dificultad (Primeros pasos, Constancia, Dominio, Experto,
-      Maestría), definidas en `lib/studentBadges.ts`; se calculan al vuelo, nunca se guardan. Con umbrales
+    - 47 insignias en 5 niveles de dificultad (Primeros pasos, Constancia, Dominio, Experto,
+      Maestría), definidas en `lib/studentBadges.ts`; se calculan al vuelo, nunca se guardan. Las de mini casos
+      se miden contra el tamaño del banco (`bankSize`, `bankShare(0.5)`, `bankShare(0.8)`): crecen solas cuando
+      se agregan casos; además hay metas fijas de pasos en su lugar (40 y 80), partidas terminadas, días de
+      práctica y puntos (hasta 1.100). Los rangos (`RANKS`) NO se recalibraron con el banco de 25 casos. Con umbrales
       altos a propósito: un estudiante que pasa 10 niveles de Seriación y los 15 de Nodos sin fallar
       debe quedar con ≤ 13 de 47 (`studentBadges.test.ts` lo exige). «Racha impecable» = ≥ 10 niveles
       distintos, todos al primer intento (`FLAWLESS_RUN_LEVELS`). Las insignias por días usan los días
@@ -259,6 +262,13 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       siguiente `caso-N`. Al editar, las alternativas **conservan su `optionKey`** (los resultados y las
       estadísticas las usan) y las secuencias alternativas se conservan si no se envían. **Un caso no se puede
       retirar** (ni temporal ni definitivamente): `MiniCase` no tiene `enabled` y el formulario no tiene casilla.
+    - **Otros órdenes correctos:** la casilla «Este caso acepta otro orden correcto» (`AlternateOrdersFields`)
+      abre hasta 5 órdenes adicionales; cada uno elige, por posición, qué alternativa va ahí. El formulario los
+      envía **por lugar** (`alternateSteps: [[3,1,2,4]]`, el lugar que la alternativa tiene en el orden
+      principal) porque un caso nuevo aún no tiene `optionKey`; el handler los traduce a claves y los guarda en
+      `alternateOrders`. `alternateSteps: []` quita todos; si el campo no viaja, se conservan los que había. Al
+      editar, los órdenes guardados se muestran (p. ej. el caso 9: 1-2-3-4 y 3-1-2-4) y la lista del panel dice
+      «Acepta N órdenes correctos».
     - Los casos no tienen versión de contenido: `MINI_CASES_CONTENT_VERSION` es una constante
       (`"mini-cases"`). Editar un caso no separa las partidas anteriores de las nuevas.
     - Banco inicial: `lib/miniCasesSeed.ts` (25 casos; un test valida su estructura). **Se carga solo**:
@@ -297,7 +307,22 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       edad de mayor a menor; los sin dato van siempre al final y el desempate es el apellido. En el celular
       (tarjetas) hay un selector «Ordenar por». Las personas de **45 años o más** salen en amarillo
       (`text-yellow-300`) con la marca de texto «45+» (el color solo no es accesible). Lógica en
-      `features/admin/utils/studentTable.ts`.
+      `features/admin/utils/studentTable.ts`. **El RUT no ordena** (su título es fijo) y cada página muestra
+      **7 estudiantes**, tanto en la tabla como en las tarjetas del celular.
+    - **Carga masiva por Excel** (botón «Cargar desde Excel», `StudentImportDialog`; `POST /api/admin/students/import`,
+      `lib/handlers/admin/studentsImport.ts`): archivo .xlsx con las columnas NOMBRE, RUT, FECHA_NACIMIENTO, EMAIL,
+      CELULAR, COMUNA, REGION, JORNADA, GENERO (hay un botón para bajar el formato vacío). El navegador solo lee las
+      celdas (`read-excel-file`, cargado al usarlo; las fechas de Excel se leen en **UTC**, con la hora local de Chile
+      se correrían un día) y manda todo como texto; **toda la interpretación vive en el servidor**
+      (`lib/studentImport.ts`). Universidad y paralelo no vienen en el archivo: se eligen una vez para todos
+      (paralelo obligatorio; universidad en «Seleccionar» = sin universidad). Primero se revisa (`dryRun`, no
+      guarda nada) y luego se confirma. Máximo 600 filas por carga. Nombre = «Apellido_Paterno Apellido_Materno
+      Nombres» (1 a 3 nombres); las partículas (de, del, la, las, los, lo, el, san, santa, da, di, du, van, von,
+      der, den, le) se pegan a la palabra siguiente y forman un apellido compuesto («De La Fuente», «Del Río»).
+      Lo **obligatorio** es RUT válido y nombre separable en 2 apellidos + nombre(s); una fila mala se informa y no
+      frena a las demás (RUT repetido en el archivo o ya existente tampoco). Lo **opcional** que no se entiende
+      (correo, fecha, comuna, jornada, género…) se deja sin rellenar y se avisa; la comuna sin región deduce la región
+      si el nombre es único. Acepta fechas AAAA-MM-DD, DD/MM/AAAA, DD-MM-AAAA, DD.MM.AAAA y números de serie de Excel.
 
 ---
 
