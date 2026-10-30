@@ -105,8 +105,8 @@ describe("parseMiniCaseInput: otros órdenes correctos", () => {
     ["repite una alternativa", [[3, 3, 2, 4]], /una vez cada una/],
     ["fuera de rango", [[5, 1, 2, 4]], /una vez cada una/],
     ["igual al principal", [[1, 2, 3, 4]], /repite otro orden/],
-    ["dos iguales", [[3, 1, 2, 4], [3, 1, 2, 4]], /repite otro orden/],
-    ["demasiados", Array.from({ length: 6 }, (_, i) => [[2, 1, 3, 4], [3, 1, 2, 4], [4, 1, 2, 3], [1, 3, 2, 4], [1, 2, 4, 3], [2, 3, 1, 4]][i]), /hasta 5/],
+    ["dos órdenes, aunque sean distintos", [[2, 1, 3, 4], [3, 1, 2, 4]], /un solo otro orden/],
+    ["dos iguales", [[3, 1, 2, 4], [3, 1, 2, 4]], /un solo otro orden/],
   ])("rechaza un orden %s", (_label, value, message) => {
     const parsed = steps(value);
 

@@ -23,8 +23,8 @@ export type MiniCaseFormState = {
   alternateOrders: (number | null)[][];
 };
 
-/** Hasta cuantos ordenes correctos adicionales acepta un caso (igual que el servidor). */
-export const MAX_ALTERNATE_ORDERS = 5;
+/** Un caso acepta un solo otro orden correcto, ademas del principal (igual que el servidor). */
+export const MAX_ALTERNATE_ORDERS = 1;
 
 export const EMPTY_ALTERNATE_ORDER: (number | null)[] = [null, null, null, null];
 
@@ -62,7 +62,7 @@ export function initialMiniCaseState(initial: AdminMiniCase | undefined): MiniCa
 
   const ordered = [...initial.options].sort((a, b) => a.correctStep - b.correctStep);
   const stepOfKey = new Map(initial.options.map((option) => [option.optionKey, option.correctStep]));
-  const alternateOrders = (initial.alternateOrders ?? []).map((order) => order.map((key) => stepOfKey.get(key) ?? null));
+  const alternateOrders = (initial.alternateOrders ?? []).slice(0, MAX_ALTERNATE_ORDERS).map((order) => order.map((key) => stepOfKey.get(key) ?? null));
 
   return {
     title: initial.title,
@@ -107,8 +107,10 @@ function alternateOrdersProblem(state: MiniCaseFormState): string | null {
 
   const seen = new Set<string>(["1234"]);
 
-  for (const [index, order] of state.alternateOrders.entries()) {
-    const label = state.alternateOrders.length === 1 ? "El otro orden correcto" : `El orden correcto adicional ${index + 1}`;
+  if (state.alternateOrders.length > MAX_ALTERNATE_ORDERS) return "Un caso acepta un solo otro orden correcto.";
+
+  for (const order of state.alternateOrders) {
+    const label = "El otro orden correcto";
 
     if (order.some((step) => step === null)) return `${label} está incompleto: elige una alternativa en cada posición.`;
     if (new Set(order).size !== 4) return `${label} repite una alternativa: usa cada una solo una vez.`;

@@ -87,6 +87,15 @@ describe("formulario de mini casos", () => {
       expect(miniCaseFormProblem(state)).toBeNull();
     });
 
+    it("un caso guardado con más de un otro orden (ya no se permite) muestra solo el primero", () => {
+      const legacy: AdminMiniCase = {
+        ...withAlternate,
+        alternateOrders: [...(withAlternate.alternateOrders ?? []), ["caso-13-b", "caso-13-a", "caso-13-d", "caso-13-c"]],
+      };
+
+      expect(initialMiniCaseState(legacy).alternateOrders).toEqual([[3, 1, 2, 4]]);
+    });
+
     it("un caso sin otros órdenes parte con la casilla desmarcada y no envía ninguno", () => {
       const state = initialMiniCaseState(saved);
 
@@ -109,7 +118,7 @@ describe("formulario de mini casos", () => {
       expect(problem([[...EMPTY_ALTERNATE_ORDER]])).toMatch(/incompleto/);
       expect(problem([[1, 1, 2, 3]])).toMatch(/repite una alternativa/);
       expect(problem([[1, 2, 3, 4]])).toMatch(/igual al orden principal/);
-      expect(problem([[2, 1, 3, 4], [2, 1, 3, 4]])).toMatch(/orden correcto adicional 2 repite/);
+      expect(problem([[2, 1, 3, 4], [3, 1, 2, 4]])).toMatch(/un solo otro orden/);
       expect(problem([[2, 1, 3, 4]])).toBeNull();
     });
   });

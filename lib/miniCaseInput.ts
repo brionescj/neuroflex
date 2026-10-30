@@ -51,8 +51,8 @@ function text(raw: unknown, label: string, max: number): string | { error: strin
   return value;
 }
 
-/** Hasta cuantos ordenes correctos adicionales acepta un caso (4 alternativas dan 24 ordenes; mas de 5 ya no es un caso cerrado). */
-export const MAX_ALTERNATE_ORDERS = 5;
+/** Un caso acepta un solo otro orden correcto, ademas del principal. */
+export const MAX_ALTERNATE_ORDERS = 1;
 
 const SAME_PLACE = "1234";
 
@@ -62,7 +62,7 @@ const SAME_PLACE = "1234";
  */
 function parseAlternateSteps(raw: unknown): (1 | 2 | 3 | 4)[][] | string {
   if (!Array.isArray(raw)) return "Los órdenes correctos adicionales deben ser una lista.";
-  if (raw.length > MAX_ALTERNATE_ORDERS) return `Un caso acepta hasta ${MAX_ALTERNATE_ORDERS} órdenes correctos adicionales.`;
+  if (raw.length > MAX_ALTERNATE_ORDERS) return "Un caso acepta un solo otro orden correcto, además del principal.";
 
   const seen = new Set<string>([SAME_PLACE]);
   const orders: (1 | 2 | 3 | 4)[][] = [];

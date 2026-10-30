@@ -1,7 +1,6 @@
-import { Button } from "@/components/ui/Button";
 import { Field, FieldLabel } from "@/components/ui/Field";
 
-import { EMPTY_ALTERNATE_ORDER, MAX_ALTERNATE_ORDERS } from "../utils/miniCaseForm";
+import { EMPTY_ALTERNATE_ORDER } from "../utils/miniCaseForm";
 
 const SELECT_CLASS =
   "h-11 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white outline-none transition focus:border-white";
@@ -26,9 +25,10 @@ type AlternateOrdersFieldsProps = {
 };
 
 /**
- * «Este caso acepta otro orden correcto»: la casilla abre uno o mas ordenes adicionales. Cada uno se arma eligiendo,
- * para cada posicion, cual alternativa va ahi; la alternativa N es la que se escribio en el paso N del orden
- * principal. El estudiante que responda cualquiera de los ordenes queda como acierto.
+ * «Este caso acepta otro orden correcto»: la casilla abre UN segundo orden correcto (no hay boton para agregar mas).
+ * Se arma eligiendo, para cada posicion, cual alternativa va ahi; la alternativa N es la que se escribio en el paso N
+ * del orden principal, y una alternativa elegida en una posicion ya no se ofrece en las demas. El estudiante que
+ * responda cualquiera de los dos ordenes queda como acierto.
  */
 export function AlternateOrdersFields({ optionTexts, accepts, orders, onChange }: AlternateOrdersFieldsProps) {
   function toggle(checked: boolean) {
@@ -42,13 +42,6 @@ export function AlternateOrdersFields({ optionTexts, accepts, orders, onChange }
         i === orderIndex ? order.map((step, p) => (p === position ? (value === "" ? null : Number(value)) : step)) : order,
       ),
     });
-  }
-
-  function removeOrder(orderIndex: number) {
-    const next = orders.filter((_, i) => i !== orderIndex);
-
-    // Quitar el unico orden que quedaba equivale a desmarcar la casilla.
-    onChange({ accepts: next.length > 0, orders: next });
   }
 
   return (
@@ -73,53 +66,43 @@ export function AlternateOrdersFields({ optionTexts, accepts, orders, onChange }
         <>
           <p className="text-xs text-zinc-500">
             Para cada posición, elige qué alternativa va ahí. «Alternativa 1» es la que escribiste en el paso 1 arriba,
-            «Alternativa 2» la del paso 2, y así. Desmarcar la casilla (o quitar el orden) elimina estos órdenes al
-            guardar.
+            «Alternativa 2» la del paso 2, y así. Cada alternativa se puede usar una sola vez. Desmarcar la casilla elimina
+            este orden al guardar.
           </p>
 
-          {orders.map((order, orderIndex) => (
+          {orders.slice(0, 1).map((order, orderIndex) => (
             <fieldset key={orderIndex} className="flex flex-col gap-3 rounded-lg bg-zinc-900/60 p-3">
-              <legend className="px-1 text-sm font-medium text-zinc-200">
-                {orders.length === 1 ? "Otro orden correcto" : `Orden correcto adicional ${orderIndex + 1}`}
-              </legend>
+              <legend className="px-1 text-sm font-medium text-zinc-200">Otro orden correcto</legend>
 
-              {POSITIONS.map((position, index) => (
-                <Field key={position}>
-                  <FieldLabel htmlFor={`mc-alt-${orderIndex}-${index}`}>{position}</FieldLabel>
-                  <select
-                    id={`mc-alt-${orderIndex}-${index}`}
-                    className={SELECT_CLASS}
-                    value={order[index] ?? ""}
-                    onChange={(event) => setStep(orderIndex, index, event.target.value)}
-                  >
-                    <option value="" className="bg-zinc-900 text-white">
-                      Seleccionar
-                    </option>
-                    {optionTexts.map((text, step) => (
-                      <option key={step} value={step + 1} className="bg-zinc-900 text-white">
-                        {`Alternativa ${step + 1}: ${preview(text)}`}
+              {POSITIONS.map((position, index) => {
+                // Una alternativa ya elegida en otra posicion no se ofrece de nuevo: cada una va una sola vez.
+                const takenElsewhere = new Set(order.filter((step, other) => other !== index && step !== null));
+
+                return (
+                  <Field key={position}>
+                    <FieldLabel htmlFor={`mc-alt-${orderIndex}-${index}`}>{position}</FieldLabel>
+                    <select
+                      id={`mc-alt-${orderIndex}-${index}`}
+                      className={SELECT_CLASS}
+                      value={order[index] ?? ""}
+                      onChange={(event) => setStep(orderIndex, index, event.target.value)}
+                    >
+                      <option value="" className="bg-zinc-900 text-white">
+                        Seleccionar
                       </option>
-                    ))}
-                  </select>
-                </Field>
-              ))}
-
-              <Button type="button" variant="outline" onClick={() => removeOrder(orderIndex)} className="self-start">
-                Quitar este orden
-              </Button>
+                      {optionTexts.map((text, step) =>
+                        takenElsewhere.has(step + 1) ? null : (
+                          <option key={step} value={step + 1} className="bg-zinc-900 text-white">
+                            {`Alternativa ${step + 1}: ${preview(text)}`}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </Field>
+                );
+              })}
             </fieldset>
           ))}
-
-          {orders.length < MAX_ALTERNATE_ORDERS && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onChange({ accepts, orders: [...orders, [...EMPTY_ALTERNATE_ORDER]] })}
-              className="self-start"
-            >
-              Agregar otro orden correcto
-            </Button>
-          )}
         </>
       )}
     </div>
