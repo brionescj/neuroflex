@@ -32,13 +32,13 @@ export const TEAM: readonly TeamMember[] = [
     name: "Madelaine Mora Rojas",
     role: "Directora e investigadora responsable del proyecto",
     photoName: "madelaine-mora-rojas",
-    photoPosition: "80% 50%",
+    photoPosition: "95% 50%",
   },
   {
     name: "Arturo Pinto Guevara",
     role: "Coinvestigador",
     photoName: "arturo-pinto-guevara",
-    photoPosition: "50% 20%",
+    photoPosition: "50% 5%",
   },
 ];
 
