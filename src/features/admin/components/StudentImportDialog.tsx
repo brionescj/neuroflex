@@ -47,6 +47,19 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
     if (dialog && !dialog.open) dialog.showModal();
   }, []);
 
+  // Con solo cancelar el evento «cancel», Chrome cierra igual el dialogo si se aprieta Escape dos veces sin tocar
+  // nada entre medio. Se corta la tecla en el documento (el foco puede estar fuera del dialogo, por ejemplo al
+  // ocultarse el boton que se acaba de apretar) antes de que llegue a ese mecanismo.
+  useEffect(() => {
+    function ignoreEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") event.preventDefault();
+    }
+
+    document.addEventListener("keydown", ignoreEscape, true);
+
+    return () => document.removeEventListener("keydown", ignoreEscape, true);
+  }, []);
+
   const context: ImportWarningsContext = {
     university: university ? (universityLabel(university) ?? "") : "",
     paralelo: paralelo === "" ? 0 : paralelo,
@@ -116,11 +129,8 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
   return (
     <dialog
       ref={dialogRef}
-      onCancel={(event) => {
-        event.preventDefault();
-
-        if (!busy) close();
-      }}
+      // Escape no cierra la carga: a mitad de una revision se perderia todo sin querer. Se cierra con los botones.
+      onCancel={(event) => event.preventDefault()}
       aria-labelledby="student-import-title"
       className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-950 p-5 text-white backdrop:bg-black/70"
     >
