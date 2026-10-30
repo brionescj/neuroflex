@@ -34,7 +34,7 @@ export function MiniCaseImagePicker({ value, onChange, idPrefix = "imagen" }: Mi
               selected ? "border-sky-400 ring-2 ring-sky-400/60" : "border-zinc-700 hover:border-zinc-500",
             )}
           >
-            <MiniCaseImage imageKey={option.value} className="aspect-[8/5] w-full" />
+            <MiniCaseImage imageKey={option.value} className="aspect-8/5 w-full" />
 
             <span className="flex items-center justify-between gap-2 px-2.5 py-2 text-xs text-zinc-300">
               <span className="min-w-0 truncate">{option.label}</span>

@@ -121,7 +121,7 @@ export default function MiniCasesAdminPage() {
               <MiniCaseImage
                 imageKey={miniCase.imageKey}
                 label={miniCaseImageLabel(miniCase.imageKey ?? "aula")}
-                className="aspect-[8/5] w-24 shrink-0 rounded-lg sm:w-32"
+                className="aspect-8/5 w-24 shrink-0 rounded-lg sm:w-32"
               />
 
               <div className="min-w-0 flex-1">

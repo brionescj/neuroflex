@@ -257,7 +257,7 @@ export function MiniCasesGame() {
         <div className="flex w-full flex-col items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
           <MiniCaseImage
             imageKey={currentCase?.imageKey}
-            className="aspect-[8/5] w-full rounded-xl border border-zinc-700"
+            className="aspect-8/5 w-full rounded-xl border border-zinc-700"
           />
         </div>
       )}
