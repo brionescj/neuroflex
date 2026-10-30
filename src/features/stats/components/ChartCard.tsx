@@ -280,6 +280,7 @@ export function ChartCard({ result: full, description, subtitle, loading, stale,
           hidden={hidden}
           onToggle={(key) => setHidden(toggleGroup(hidden, groups, key))}
           onShowAll={() => setHidden(new Set())}
+          onChange={setHidden}
         />
 
         {canHideCategories(full) && (

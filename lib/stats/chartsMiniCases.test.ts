@@ -97,7 +97,7 @@ describe("Mini casos: alternativas que más fallan", () => {
     const card = chart.cards?.[0];
 
     expect(chart.views).toEqual(["cards"]);
-    expect(card?.group).toBe("Caso 1 · Cruzar la calle");
+    expect(card?.group).toBe("Mini Caso 1");
     expect(card?.items).toHaveLength(4);
 
     // «Esperar» (correcto: paso 2) y «Cruzar» (paso 3) las fallan B y C; las otras dos nadie.
@@ -132,7 +132,7 @@ describe("Mini casos: alternativas que más fallan", () => {
     const chart = run(data());
 
     expect(chart.table?.rows).toHaveLength(4);
-    expect(chart.table?.rows[0]?.slice(0, 3)).toEqual(["Caso 1 · Cruzar la calle", "Esperar la luz verde", "Paso 2"]);
+    expect(chart.table?.rows[0]?.slice(0, 3)).toEqual(["Mini Caso 1", "Esperar la luz verde", "Paso 2"]);
     // «Mal ubicado» es un porcentaje: la celda lleva su símbolo.
     expect(chart.table?.columns[4]).toBe("Mal ubicado");
     expect(chart.table?.rows[0]?.[4]).toBe("67 %");
@@ -158,20 +158,27 @@ describe("Mini casos: alternativas que más fallan", () => {
 
     // El de «1-1» ordena todo bien; el de «2-2» pone «Cruzar» antes de «Esperar».
     expect(chart.cards).toHaveLength(2);
-    expect(chart.cards?.[0]?.group).toMatch(/^Caso 1 · Cruzar la calle · .*1-1/);
-    expect(chart.cards?.[1]?.group).toMatch(/^Caso 1 · Cruzar la calle · .*2-2/);
+    expect(chart.cards?.[0]?.group).toMatch(/^Mini Caso 1 - .*1-1/);
+    expect(chart.cards?.[1]?.group).toMatch(/^Mini Caso 1 - .*2-2/);
     expect(new Set(chart.cards?.map((card) => card.slot)).size).toBe(2);
     expect(chart.cards?.[0]?.items.every((item) => item.value === "Nadie la ubicó mal")).toBe(true);
     expect(chart.cards?.[1]?.items[0]?.value).toBe("100 % la ubicó mal");
 
     expect(chart.table?.columns.slice(0, 3)).toEqual(["Caso", "Grupo", "Paso"]);
     expect(chart.table?.rows).toHaveLength(8);
+
+    // Los bloques se eligen en un panel: cada uno sabe a qué grupo pertenece y la tabla, de qué bloque es cada fila.
+    expect(chart.groupPanel).toBe("Mini casos");
+    expect(chart.cards?.map((card) => card.subgroup)).toEqual([expect.stringMatching(/1-1/), expect.stringMatching(/2-2/)]);
+    expect(chart.table?.rowGroups).toHaveLength(8);
+    expect(new Set(chart.table?.rowGroups)).toEqual(new Set(chart.cards?.map((card) => card.group)));
   });
 
   it("sin comparar, el gráfico sigue siendo uno solo y la tabla no lleva columna Grupo", () => {
     const chart = run(data());
 
     expect(chart.table?.columns).not.toContain("Grupo");
+    expect(chart.cards?.[0]?.subgroup).toBeUndefined();
   });
 
   it("sin datos funciona y no inventa tarjetas", () => {

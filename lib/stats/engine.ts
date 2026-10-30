@@ -54,7 +54,7 @@ export type Built = Pick<
   | "notes"
   | "studentsTotal"
 > &
-  Partial<Pick<ChartResult, "table" | "cards" | "pdfListsOnly" | "partLabel" | "totalLabel">>;
+  Partial<Pick<ChartResult, "table" | "cards" | "groupPanel" | "pdfListsOnly" | "partLabel" | "totalLabel">>;
 
 export type ChartDef = {
   id: ChartId;
@@ -513,7 +513,7 @@ export function caseNumber(key: string): number | null {
 }
 
 /**
- * Casos del 1 al 10, con su titulo. El banco baraja los casos para cada estudiante,
+ * Los mini casos, rotulados «Mini Caso N». El banco baraja los casos para cada estudiante,
  * asi que ordenar por la posicion en que se jugaron los dejaba en cualquier orden:
  * se ordenan por su numero.
  */
@@ -539,11 +539,11 @@ export function caseCategories(ctx: Ctx, units: Unit[]): { keys: string[]; label
     keys,
     labels: keys.map((key) => {
       const number = caseNumber(key);
-      const title = ctx.data.caseTitles[key];
 
-      if (number === null) return title ?? key;
+      if (number === null) return ctx.data.caseTitles[key] ?? key;
 
-      return title ? `Caso ${number} · ${title}` : `Caso ${number}`;
+      // El titulo del area no va en los graficos: «Mini Caso 3» basta y mantiene cortas las etiquetas.
+      return `Mini Caso ${number}`;
     }),
   };
 }

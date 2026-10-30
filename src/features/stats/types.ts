@@ -148,12 +148,16 @@ export type ChartSeries = {
 export type ChartTable = {
   columns: string[];
   rows: (string | number | null)[][];
+  /** Si viene, el grupo (el `group` de la tarjeta) de cada fila: al quitar un grupo se quitan sus filas. */
+  rowGroups?: string[];
 };
 
 /** Tarjetas de un resumen: un bloque por grupo comparado. */
 export type ChartCards = {
   group: string;
   slot: number;
+  /** El grupo comparado («UVM») al que pertenece el bloque, cuando cada bloque es un caso dentro de un grupo. */
+  subgroup?: string;
   items: {
     label: string;
     value: string;
@@ -183,6 +187,11 @@ export type ChartResult = {
   exploratory: boolean;
   table?: ChartTable;
   cards?: ChartCards;
+  /**
+   * Si viene, los bloques de `cards` se eligen en un panel plegable con una casilla por bloque (son
+   * demasiados para botones sueltos). El texto nombra lo que se elige: «Mini casos».
+   */
+  groupPanel?: string;
   /** El PDF lleva solo las listas con su titulo, sin el dibujo de las tarjetas. */
   pdfListsOnly?: boolean;
   xLabel: string;
@@ -306,7 +315,7 @@ export type PartidaItem = {
 
 /** Un nivel (o caso) de una partida, con lo que pidio el juego y lo que hizo el estudiante. */
 export type PartidaRow = {
-  /** «Nivel 3» o «Caso 2 · Cruzar la calle». */
+  /** «Nivel 3» o «Mini Caso 2: Cruzar la calle». */
   label: string;
   /** «Intento 2» (Seriacion y Nodos); null en Mini casos. */
   tryText: string | null;

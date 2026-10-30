@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { groupsOf, groupsSignature, toggleGroup, withoutGroups } from "./groups";
+import { groupsOf, groupsSignature, showOnly, subgroupsOf, toggleGroup, toggleSubgroup, withoutGroups } from "./groups";
 import type { ChartResult } from "../types";
 
 function result(extra: Partial<ChartResult> = {}): ChartResult {
@@ -94,5 +94,57 @@ describe("grupos comparados", () => {
     const two = groupsSignature(groupsOf(result({ series: result().series.slice(0, 2) })));
 
     expect(one).not.toBe(two);
+  });
+});
+
+describe("panel de bloques por grupo (casos × grupos)", () => {
+  const cards = [
+    { group: "Mini Caso 1 - UVM", slot: 0, subgroup: "UVM", items: [] },
+    { group: "Mini Caso 1 - Santo Tomás", slot: 1, subgroup: "Santo Tomás", items: [] },
+    { group: "Mini Caso 2 - UVM", slot: 0, subgroup: "UVM", items: [] },
+    { group: "Mini Caso 2 - Santo Tomás", slot: 1, subgroup: "Santo Tomás", items: [] },
+  ];
+  const full = result({
+    series: [],
+    cards,
+    groupPanel: "Mini casos",
+    table: {
+      columns: ["Caso", "Grupo"],
+      rows: [["Mini Caso 1", "UVM"], ["Mini Caso 1", "Santo Tomás"], ["Mini Caso 2", "UVM"], ["Mini Caso 2", "Santo Tomás"]],
+      rowGroups: cards.map((card) => card.group),
+    },
+  });
+
+  it("agrupa los bloques por grupo comparado, con su color", () => {
+    expect(subgroupsOf(full)).toEqual([
+      { label: "UVM", slot: 0, keys: ["Mini Caso 1 - UVM", "Mini Caso 2 - UVM"] },
+      { label: "Santo Tomás", slot: 1, keys: ["Mini Caso 1 - Santo Tomás", "Mini Caso 2 - Santo Tomás"] },
+    ]);
+    expect(subgroupsOf(result())).toEqual([]);
+  });
+
+  it("quitar un bloque quita también sus filas de la tabla", () => {
+    const shown = withoutGroups(full, new Set(["Mini Caso 1 - UVM"]));
+
+    expect(shown.cards?.map((card) => card.group)).toHaveLength(3);
+    expect(shown.table?.rows).toEqual([["Mini Caso 1", "Santo Tomás"], ["Mini Caso 2", "UVM"], ["Mini Caso 2", "Santo Tomás"]]);
+    expect(shown.table?.rowGroups).not.toContain("Mini Caso 1 - UVM");
+  });
+
+  it("quita o vuelve a poner todos los casos de un grupo, sin dejar el gráfico vacío", () => {
+    const groups = groupsOf(full);
+    const [uvm, santoTomas] = subgroupsOf(full);
+    const hiddenUvm = toggleSubgroup(new Set(), groups, uvm!.keys);
+
+    expect([...hiddenUvm].sort()).toEqual(["Mini Caso 1 - UVM", "Mini Caso 2 - UVM"]);
+    expect([...toggleSubgroup(hiddenUvm, groups, uvm!.keys)]).toEqual([]);
+    // Quitar también el otro grupo dejaría todo oculto: no se hace.
+    expect([...toggleSubgroup(hiddenUvm, groups, santoTomas!.keys)].sort()).toEqual([...hiddenUvm].sort());
+  });
+
+  it("«solo UVM» deja a la vista únicamente los casos de ese grupo", () => {
+    const [uvm] = subgroupsOf(full);
+
+    expect([...showOnly(groupsOf(full), uvm!.keys)].sort()).toEqual(["Mini Caso 1 - Santo Tomás", "Mini Caso 2 - Santo Tomás"]);
   });
 });

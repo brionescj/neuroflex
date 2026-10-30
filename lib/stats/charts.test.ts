@@ -811,7 +811,7 @@ describe("Mini casos", () => {
     };
     const chart = run(data, { chart: "mc-steps" });
 
-    expect(chart.categories).toEqual(["Caso 1 · El semáforo", "Caso 2", "Caso 3", "Caso 10 · La mochila"]);
+    expect(chart.categories).toEqual(["Mini Caso 1", "Mini Caso 2", "Mini Caso 3", "Mini Caso 10"]);
     expect(seriesOf(chart).values).toEqual([3, 1, 2, 4]);
   });
 

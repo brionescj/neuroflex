@@ -111,7 +111,7 @@ export const mcOptions: ChartDef = {
   game: "mini-cases",
   title: "Alternativas que más fallan",
   blurb:
-    "En cada mini caso hay 4 pasos que ordenar. Para cada caso muestra qué paso se ubica mal con más frecuencia, en qué lugar suelen ponerlo y qué estudiantes lo fallaron. Toca un paso para ver a esos estudiantes; la vista «Tabla» junta todos los casos. Con «Comparar», cada caso muestra un bloque por grupo, uno junto al otro.",
+    "En cada mini caso hay 4 pasos que ordenar. Para cada caso muestra qué paso se ubica mal con más frecuencia, en qué lugar suelen ponerlo y qué estudiantes lo fallaron. Toca un paso para ver a esos estudiantes; la vista «Tabla» junta todos los casos. Con «Comparar», cada caso muestra un bloque por grupo, uno junto al otro; el panel «Mini casos» permite quitar o volver a poner cada bloque.",
   views: ["cards"],
   exploratory: true,
   usesPartida: true,
@@ -126,6 +126,8 @@ export const mcOptions: ChartDef = {
 
     const cards: ChartCards = [];
     const tableRows: (string | number | null)[][] = [];
+    // El grupo de cada fila, para que quitar un grupo del panel tambien lo quite de la tabla.
+    const tableGroups: string[] = [];
     const students = new Set<string>();
     let withoutDetail = 0;
 
@@ -191,8 +193,10 @@ export const mcOptions: ChartDef = {
         const label = labels[caseIndex] as string;
 
         cards.push({
-          group: comparing ? `${label} · ${spec.label}` : label,
+          // «Mini Caso 3 - UVM»: sin repetir «Caso» ni el numero.
+          group: comparing ? `${label} - ${spec.label}` : label,
           slot: comparing ? spec.slot : caseIndex % 8,
+          ...(comparing ? { subgroup: spec.label } : {}),
           items: ordered.map((stats) => {
             const expected = topOf(stats.expectedAt)?.value ?? null;
             const percent = Math.round(percentOf(stats.wrong, stats.plays) ?? 0);
@@ -200,6 +204,7 @@ export const mcOptions: ChartDef = {
               .filter(([, own]) => own.wrong > 0)
               .sort((a, b) => b[1].wrong - a[1].wrong || a[0].localeCompare(b[0]));
 
+            tableGroups.push(comparing ? `${label} - ${spec.label}` : label);
             tableRows.push([
               label,
               ...(comparing ? [spec.label] : []),
@@ -253,6 +258,7 @@ export const mcOptions: ChartDef = {
       categories: [],
       series: [],
       cards,
+      groupPanel: "Mini casos",
       pdfListsOnly: true,
       table: {
         columns: [
@@ -266,6 +272,7 @@ export const mcOptions: ChartDef = {
           "Estudiantes que lo fallaron",
         ],
         rows: tableRows,
+        rowGroups: tableGroups,
       },
       notes: [
         ...contextNotes(ctx),

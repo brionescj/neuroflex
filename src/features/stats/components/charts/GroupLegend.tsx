@@ -2,8 +2,9 @@ import { cn } from "@/lib/utils";
 
 import { seriesColor } from "../../utils/colors";
 import { formatNumber } from "../../utils/format";
-import { groupsOf } from "../../utils/groups";
+import { groupsOf, subgroupsOf } from "../../utils/groups";
 import type { ChartResult, ViewId } from "../../types";
+import { GroupPanel } from "./GroupPanel";
 import { useSingleStudent } from "./singleStudent";
 
 type GroupLegendProps = {
@@ -14,6 +15,8 @@ type GroupLegendProps = {
   hidden: ReadonlySet<string>;
   onToggle: (key: string) => void;
   onShowAll: () => void;
+  /** Cambia de una vez los grupos ocultos; lo usa el panel de bloques. */
+  onChange?: (keys: Set<string>) => void;
   /** En el PDF: muestra lo mismo pero sin las instrucciones de tocar (no se puede tocar un PDF). */
   readOnly?: boolean;
 };
@@ -23,11 +26,30 @@ type GroupLegendProps = {
  * boton: tocarlo lo quita del grafico y volver a tocarlo lo pone de nuevo. Con
  * un solo grupo no hace falta (el titulo ya dice que se mira).
  */
-export function GroupLegend({ result, view, hidden, onToggle, onShowAll, readOnly = false }: GroupLegendProps) {
+export function GroupLegend({ result, view, hidden, onToggle, onShowAll, onChange, readOnly = false }: GroupLegendProps) {
   const single = useSingleStudent();
   const groups = groupsOf(result);
 
   if (groups.length < 2) return null;
+
+  // Un bloque por caso y por grupo son demasiados para botones sueltos: se eligen en un panel plegable.
+  if (result.groupPanel) {
+    if (!readOnly && onChange) return <GroupPanel result={result} hidden={hidden} onChange={onChange} />;
+
+    // El PDF no se toca: solo dice que grupos se comparan.
+    const compared = subgroupsOf(result);
+
+    return compared.length === 0 ? null : (
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--viz-text-2)]" aria-label="Grupos comparados">
+        {compared.map((subgroup) => (
+          <li key={subgroup.label} className="flex items-center gap-1.5">
+            <span aria-hidden="true" className="inline-block size-2.5 rounded-sm" style={{ background: seriesColor(subgroup.slot) }} />
+            {subgroup.label}
+          </li>
+        ))}
+      </ul>
+    );
+  }
 
   // En torta y apiladas el color es de cada categoria, no del grupo.
   const showSwatch = view !== "pie" && view !== "stacked";

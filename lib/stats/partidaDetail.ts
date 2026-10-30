@@ -145,7 +145,7 @@ function miniCaseRow(result: PartidaResult, titles: Record<string, string>): Par
   const { metrics } = result;
   const number = caseNumber(result.key);
   const title = titles[result.key];
-  const label = number === null ? (title ?? result.key) : title ? `Caso ${number} · ${title}` : `Caso ${number}`;
+  const label = number === null ? (title ?? result.key) : title ? `Mini Caso ${number}: ${title}` : `Mini Caso ${number}`;
   const correctSteps = numberOf(metrics.correctSteps);
   const full = metrics.isFullyCorrect === true;
 

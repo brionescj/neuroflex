@@ -132,7 +132,7 @@ describe("detalle de una partida: mini casos", () => {
     });
     const row = buildPartidaDetail(attempt("mini-cases"), [mc], { "caso-2": "Cruzar la calle" }, NOW).rows[0];
 
-    expect(row).toMatchObject({ label: "Caso 2 · Cruzar la calle", tryText: null, result: "2 de 4 pasos en su lugar", ok: false });
+    expect(row).toMatchObject({ label: "Mini Caso 2: Cruzar la calle", tryText: null, result: "2 de 4 pasos en su lugar", ok: false });
     expect(row?.lines[0]?.items.map((i) => i.text)).toEqual(["1. Mirar", "2. Esperar", "3. Cruzar", "4. Seguir"]);
     expect(row?.lines[1]?.items.map((i) => [i.text, i.ok])).toEqual([
       ["1. Mirar", true],
