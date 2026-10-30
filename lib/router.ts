@@ -14,6 +14,7 @@ import adminStatsStudentEvolution from "./handlers/admin/statsStudentEvolution";
 import adminStatsStudentHistory from "./handlers/admin/statsStudentHistory";
 import adminStatsStudentPartida from "./handlers/admin/statsStudentPartida";
 import adminStudentDetails from "./handlers/admin/studentDetails";
+import adminStudentContact from "./handlers/admin/studentContact";
 import adminStudents from "./handlers/admin/students";
 import adminStudentsImport from "./handlers/admin/studentsImport";
 import adminStudentPassword from "./handlers/admin/studentPassword";
@@ -74,6 +75,7 @@ export const ROUTES: RouteDef[] = [
   { pattern: "admin/stats/students/:rut/partidas/:attemptId", handler: adminStatsStudentPartida },
   { pattern: "admin/students", handler: adminStudents },
   { pattern: "admin/students/import", handler: adminStudentsImport },
+  { pattern: "admin/students/:rut/contact", handler: adminStudentContact },
   { pattern: "admin/students/:rut/details", handler: adminStudentDetails },
   { pattern: "admin/students/:rut/password", handler: adminStudentPassword },
   { pattern: "admin/students/:rut/status", handler: adminStudentStatus },

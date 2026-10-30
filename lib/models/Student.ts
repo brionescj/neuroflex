@@ -26,6 +26,11 @@ export type StudentDocument = {
   deletedAt?: Date;
   deletedBy?: string;
   deletionReason?: string;
+  /** Un administrador ya llamo al estudiante para que complete su perfil (ausente = falta contactar). */
+  contacted?: boolean;
+  contactedAt?: Date;
+  /** RUT del administrador que lo marco. */
+  contactedBy?: string;
 };
 
 const studentSchema = new Schema<StudentDocument>({
@@ -55,6 +60,9 @@ const studentSchema = new Schema<StudentDocument>({
   deletedAt: Date,
   deletedBy: String,
   deletionReason: String,
+  contacted: Boolean,
+  contactedAt: Date,
+  contactedBy: String,
 });
 
 export const Student =

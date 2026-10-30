@@ -4,6 +4,7 @@ import {
   importStudents,
   listStudents,
   prefetchStudents,
+  setStudentContacted,
   setStudentEnabled,
   updateStudentDetails,
   type CreateStudentPayload,
@@ -26,6 +27,10 @@ export async function importStudentsAction(payload: ImportStudentsPayload) {
 
 export async function setStudentEnabledAction(rut: string, enabled: boolean) {
   return setStudentEnabled(rut, enabled);
+}
+
+export async function setStudentContactedAction(rut: string, contacted: boolean) {
+  return setStudentContacted(rut, contacted);
 }
 
 export async function updateStudentDetailsAction(

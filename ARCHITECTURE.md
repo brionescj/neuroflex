@@ -263,7 +263,8 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       estadísticas las usan) y las secuencias alternativas se conservan si no se envían. **Un caso no se puede
       retirar** (ni temporal ni definitivamente): `MiniCase` no tiene `enabled` y el formulario no tiene casilla.
     - **Otros órdenes correctos:** la casilla «Este caso acepta otro orden correcto» (`AlternateOrdersFields`)
-      abre hasta 5 órdenes adicionales; cada uno elige, por posición, qué alternativa va ahí. El formulario los
+      abre **un solo** otro orden correcto (sin botón para agregar más; tope 1 también en el servidor); se elige, por
+      posición, qué alternativa va ahí, y una alternativa ya elegida en una posición no se ofrece en las demás. El formulario los
       envía **por lugar** (`alternateSteps: [[3,1,2,4]]`, el lugar que la alternativa tiene en el orden
       principal) porque un caso nuevo aún no tiene `optionKey`; el handler los traduce a claves y los guarda en
       `alternateOrders`. `alternateSteps: []` quita todos; si el campo no viaja, se conservan los que había. Al
@@ -286,7 +287,8 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
 
 16. **Inicio del estudiante** (`ROUTES.STUDENT`): página con el nombre del proyecto, su financiamiento y el
     equipo (`src/config/projectInfo.ts`). Las fotos del equipo no se suben desde la app: se dejan en
-    `public/equipo/` (ver `LEEME.txt`). Los juegos están en `ROUTES.STUDENT_GAMES`.
+    `public/equipo/` (ver `LEEME.txt`). El encuadre de cada foto dentro del círculo es `photoPosition` (CSS `object-position`) en
+    `projectInfo.ts`; solo mueve la imagen si no es cuadrada. Los juegos están en `ROUTES.STUDENT_GAMES`.
 
 17. **Ficha del estudiante:** jornada (`studyShift`: diurna/vespertina) y 5 paralelos. En el alta manual,
     «Universidad» va antes que «Paralelo». El estudiante puede editar correo, fecha de nacimiento y jornada
@@ -330,6 +332,21 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
     JS inicial). Aparece en el menú lateral (escritorio y cajón móvil, admin y estudiante) y en `AuthLayout`
     (inicio de sesión y registro). El azul marino contrasta poco sobre el fondo oscuro; si se quiere más legible,
     hay que aclarar solo el color de «Neuro» en el SVG, sin tocar el resto.
+
+19. **Datos incompletos (inicio del admin):** tercera pestaña «Datos incompletos» (`IncompleteStudentsSection`). Lista a los
+    estudiantes **habilitados** a los que les falta algún dato de la ficha (regla en `utils/incompleteProfile.ts`:
+    correo, fecha de nacimiento, jornada, región y comuna —los completa el estudiante en «Mi perfil»— y celular, género y
+    universidad —solo los registra un administrador—). Columnas: nombre, RUT, universidad, paralelo, celular (enlace
+    `tel:`), cuántos faltan y contacto; el ojo abre la lista de lo que falta. Usa la búsqueda del panel y se vuelve a
+    pedir al abrir la pestaña.
+    - **Contacto:** cada estudiante tiene «Falta contactar» (por defecto) o «Contactado»
+      (`PATCH /api/admin/students/:rut/contact`, `{ contacted: boolean }`; guarda `contacted`, `contactedAt` y
+      `contactedBy` en `Student`, y al volver a «Falta contactar» borra fecha y administrador). El filtro «Mostrar»
+      (Todos / Falta contactar / Contactado) lleva contadores. El cambio se ve al instante y se revierte si el
+      servidor falla.
+    - **Excel** («Descargar Excel (N)»): baja lo que se está viendo (búsqueda y filtro aplicados). Todas las columnas de
+      la ficha; cada dato faltante dice «Falta» en rojo (`textColor #9C0006` sobre `#FFC7CE`) y una columna junta lo que
+      falta. Se genera en el navegador con `write-excel-file`.
 
 ---
 

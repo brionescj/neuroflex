@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { AdminTabs, type AdminTab } from "../components/AdminTabs";
 import { AdminsSection } from "../components/AdminsSection";
+import { IncompleteStudentsSection } from "../components/IncompleteStudentsSection";
 import { StudentsSection } from "../components/StudentsSection";
 
 export default function AdminDashboard() {
@@ -27,6 +28,9 @@ export default function AdminDashboard() {
 
       <div className={tab === "students" ? "" : "hidden"}>
         <StudentsSection searchQuery={searchQuery} isActive={tab === "students"} />
+      </div>
+      <div className={tab === "incomplete" ? "" : "hidden"}>
+        <IncompleteStudentsSection searchQuery={searchQuery} isActive={tab === "incomplete"} />
       </div>
       <div className={tab === "admins" ? "" : "hidden"}>
         <AdminsSection searchQuery={searchQuery} isActive={tab === "admins"} />

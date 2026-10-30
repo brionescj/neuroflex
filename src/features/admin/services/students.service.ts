@@ -159,6 +159,20 @@ export async function setStudentEnabled(
   }
 }
 
+/** Marca al estudiante como «Contactado» (true) o «Falta contactar» (false) para que complete su perfil. */
+export async function setStudentContacted(rut: string, contacted: boolean): Promise<ApiResponse<Student>> {
+  try {
+    const response = await api.patch<ApiResponse<Student>>(`/admin/students/${rut}/contact`, { contacted });
+
+    return response.data;
+  } catch (error) {
+    if (isAxiosError(error) && error.response) {
+      return responseFromError<Student>(error.response);
+    }
+    return fail("No se pudo conectar con el servidor.");
+  }
+}
+
 /** La contraseña nueva de un estudiante, tal como la entrega el servidor (una sola vez). */
 export type GeneratedStudentPassword = {
   password: string;

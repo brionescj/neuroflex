@@ -45,6 +45,14 @@ export type Student = {
   deletedBy?: string;
 
   deletionReason?: string;
+
+  /** Un administrador ya llamo al estudiante para que complete su perfil (ausente = falta contactar). */
+  contacted?: boolean;
+
+  contactedAt?: string;
+
+  /** RUT del administrador que lo marco. */
+  contactedBy?: string;
 };
 
 /** Una fila del Excel de carga masiva, con todas las celdas como texto (el servidor las interpreta). */
