@@ -33,9 +33,12 @@ import {
 import { birthDateRange, formatBirthDate, toInputDate } from "../utils/birthDate";
 import { matchesQuery } from "../utils/matchesQuery";
 import { formatNameInput } from "../utils/sanitizeInput";
+import { DEFAULT_SORT, ageOf, isOlder, nextSort, sortStudents, type SortKey, type SortState } from "../utils/studentTable";
 import { HighlightMatch } from "./HighlightMatch";
 import { Pagination } from "./Pagination";
 import { GeneratePasswordDialog } from "./GeneratePasswordDialog";
+import { SortableHeader } from "./SortableHeader";
+import { StudentSortBar } from "./StudentSortBar";
 
 const EMPTY_FORM = {
   rut: "",
@@ -316,6 +319,33 @@ function StudentDetailsView({
   );
 }
 
+/** Amarillo para quien tiene 45 años o más: RUT, nombre y edad. */
+const OLDER_TEXT = "text-yellow-300";
+
+function older(student: Student): boolean {
+  return isOlder(ageOf(student.birthDate));
+}
+
+/** La edad; desde los 45 anos va en amarillo y con una marca de texto, para no depender solo del color. */
+function AgeCell({ age }: { age: number | null }) {
+  if (age === null) return <span className="text-zinc-500">—</span>;
+
+  if (!isOlder(age)) return <span className="text-zinc-400">{age}</span>;
+
+  return (
+    <span className="inline-flex items-center gap-1.5 font-medium text-yellow-300">
+      {age}
+      <span
+        title="Tiene 45 años o más"
+        className="rounded border border-yellow-300/60 px-1 text-[10px] font-semibold leading-4"
+      >
+        45+
+        <span className="sr-only"> (45 años o más)</span>
+      </span>
+    </span>
+  );
+}
+
 function StudentActions({
   student,
   isEditing,
@@ -404,6 +434,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
 
   const [editingRut, setEditingRut] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditFormState>(EMPTY_EDIT_FORM);
@@ -414,13 +445,22 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
   const isCardView = !useMediaQuery("(min-width: 1024px)");
   const pageSize = isCardView ? 5 : 12;
 
-  const filteredStudents = students.filter((s) => matchesQuery(s, searchQuery));
+  // Ordenada la lista completa (no solo la pagina), por la columna elegida; por defecto, de mayor a menor edad.
+  const filteredStudents = sortStudents(
+    students.filter((s) => matchesQuery(s, searchQuery)),
+    sort,
+  );
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
   const paginatedStudents = filteredStudents.slice(
     (page - 1) * pageSize,
     page * pageSize,
   );
+
+  function changeSort(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
 
   async function loadStudents() {
     // Con un listado ya a la vista (o recordado) se actualiza sin taparlo con "Cargando...".
@@ -834,11 +874,9 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800 text-zinc-500">
-                    <th className="p-3 font-normal">RUT</th>
-                    <th className="p-3 font-normal">Nombre</th>
-                    <th className="p-3 font-normal">Paralelo</th>
-                    <th className="p-3 font-normal">Ingreso</th>
-                    <th className="p-3 font-normal">Estado</th>
+                    {(["rut", "name", "university", "paralelo", "age", "entry", "status"] as const).map((key: SortKey) => (
+                      <SortableHeader key={key} sortKey={key} sort={sort} onSort={(k) => changeSort(nextSort(sort, k))} />
+                    ))}
                     <th className="p-3 font-normal" />
                   </tr>
                 </thead>
@@ -846,14 +884,18 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
                   {paginatedStudents.map((student) => (
                     <Fragment key={student.rut}>
                       <tr className="border-b border-zinc-800/50 last:border-0">
-                        <td className="p-3">{student.rut}</td>
-                        <td className="p-3">
+                        <td className={cn("p-3", older(student) && OLDER_TEXT)}>{student.rut}</td>
+                        <td className={cn("p-3", older(student) && OLDER_TEXT)}>
                           <HighlightMatch
                             text={`${student.firstName} ${student.paternalLastName} ${student.maternalLastName}`}
                             query={searchQuery}
                           />
                         </td>
+                        <td className="p-3 text-zinc-400">{universityLabel(student.university) ?? "Sin registrar"}</td>
                         <td className="p-3 text-zinc-400">{student.paralelo}</td>
+                        <td className="p-3">
+                          <AgeCell age={ageOf(student.birthDate)} />
+                        </td>
                         <td className="p-3 text-zinc-400">{student.entryYear}</td>
                         <td className="p-3">
                           <span
@@ -879,7 +921,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
 
                       {editingRut === student.rut && (
                         <tr className="border-b border-zinc-800/50 bg-zinc-900/50">
-                          <td colSpan={6} className="p-3">
+                          <td colSpan={8} className="p-3">
                             <StudentEditForm
                               editForm={editForm}
                               setEditForm={setEditForm}
@@ -894,7 +936,7 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
 
                       {viewingRut === student.rut && (
                         <tr className="border-b border-zinc-800/50 bg-zinc-900/50">
-                          <td colSpan={6} className="p-3">
+                          <td colSpan={8} className="p-3">
                             <StudentDetailsView student={student} />
                           </td>
                         </tr>
@@ -908,6 +950,8 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
 
           {!isLoading && filteredStudents.length > 0 && (
             <div className="flex flex-col gap-3 lg:hidden">
+              <StudentSortBar sort={sort} onChange={changeSort} />
+
               {paginatedStudents.map((student) => (
                 <div
                   key={student.rut}
@@ -915,13 +959,13 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="font-medium text-white">
+                      <p className={cn("font-medium text-white", older(student) && OLDER_TEXT)}>
                         <HighlightMatch
                           text={`${student.firstName} ${student.paternalLastName} ${student.maternalLastName}`}
                           query={searchQuery}
                         />
                       </p>
-                      <p className="text-xs text-zinc-500">{student.rut}</p>
+                      <p className={cn("text-xs text-zinc-500", older(student) && OLDER_TEXT)}>{student.rut}</p>
                     </div>
 
                     <span
@@ -934,9 +978,13 @@ export function StudentsSection({ searchQuery, isActive  }: StudentsSectionProps
                     </span>
                   </div>
 
-                  <div className="mt-2 flex gap-4 text-xs text-zinc-400">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400">
+                    <span>{universityLabel(student.university) ?? "Universidad sin registrar"}</span>
                     <span>Paralelo {student.paralelo}</span>
                     <span>Ingreso {student.entryYear}</span>
+                    <span className="flex items-center gap-1">
+                      Edad <AgeCell age={ageOf(student.birthDate)} />
+                    </span>
                   </div>
 
                   <div className="mt-3">
