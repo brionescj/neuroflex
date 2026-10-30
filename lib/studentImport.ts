@@ -247,7 +247,17 @@ export function parseImportRow(input: ImportRowInput, now: Date = new Date()): P
     if (!inferred) {
       warnings.push(`Comuna: «${communeText}» no es una comuna de Chile.`);
     } else if (!normalizeCommune(inferred, communeText)) {
-      warnings.push(`Comuna: «${communeText}» no pertenece a la región ${inferred}.`);
+      const actual = regionOfCommune(communeText);
+
+      // Desde 2018 las comunas de Ñuble ya no son del Biobio, pero muchas fichas siguen diciendolo: la comuna manda.
+      if (inferred === "Biobío" && actual === "Ñuble") {
+        region = actual;
+        set.comuna = normalizeCommune(actual, communeText) as string;
+      } else {
+        warnings.push(
+          `Comuna: «${communeText}» no pertenece a la región ${inferred}${actual ? ` (es de ${actual})` : ""}.`,
+        );
+      }
     } else {
       region = inferred;
       set.comuna = normalizeCommune(inferred, communeText) as string;

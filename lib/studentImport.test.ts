@@ -159,6 +159,32 @@ describe("parseImportRow", () => {
     expect(mismatch.ok && mismatch.warnings.join(" ")).toMatch(/Temuco.*no pertenece a la región Biobío/);
   });
 
+  it("reconoce la región aunque venga abreviada y valida la comuna contra ella", () => {
+    const parsed = parseImportRow(row({ region: "Libertador Gral. B. O'Higgins", comuna: "Rancagua" }), NOW);
+
+    expect(parsed.ok && parsed.set).toMatchObject({
+      region: "Libertador General Bernardo O'Higgins",
+      comuna: "Rancagua",
+    });
+    expect(parsed.ok && parsed.warnings).toEqual([]);
+  });
+
+  it("una comuna de Ñuble escrita con Biobío (la región de antes de 2018) queda en Ñuble, sin aviso", () => {
+    for (const region of ["Biobío", "Bio Bio", "VIII Región"]) {
+      const parsed = parseImportRow(row({ region, comuna: "COELEMU" }), NOW);
+
+      expect(parsed.ok && parsed.set).toMatchObject({ region: "Ñuble", comuna: "Coelemu" });
+      expect(parsed.ok && parsed.warnings).toEqual([]);
+    }
+  });
+
+  it("si la comuna es de otra región, no se adivina: el aviso dice de cuál es", () => {
+    const parsed = parseImportRow(row({ region: "Biobío", comuna: "Temuco" }), NOW);
+
+    expect(parsed.ok && parsed.set.comuna).toBeUndefined();
+    expect(parsed.ok && parsed.warnings).toEqual(["Comuna: «Temuco» no pertenece a la región Biobío (es de La Araucanía)."]);
+  });
+
   it("un dato opcional que no se entiende queda sin rellenar y se avisa, sin perder la fila", () => {
     const parsed = parseImportRow(
       row({
