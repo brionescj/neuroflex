@@ -322,14 +322,22 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       celdas (`read-excel-file`, cargado al usarlo; las fechas de Excel se leen en **UTC**, con la hora local de Chile
       se correrían un día) y manda todo como texto; **toda la interpretación vive en el servidor**
       (`lib/studentImport.ts`). Universidad y paralelo no vienen en el archivo: se eligen una vez para todos
-      (paralelo obligatorio; universidad en «Seleccionar» = sin universidad). Primero se revisa (`dryRun`, no
-      guarda nada) y luego se confirma. Máximo 600 filas por carga. Nombre = «Apellido_Paterno Apellido_Materno
+      (**ambos obligatorios**: «Revisar datos» queda bloqueado hasta elegirlos). Primero se revisa (`dryRun`, no
+      guarda nada) y luego se confirma; en la revisión, «Cancelar carga» vuelve a la pantalla de elección conservando
+      universidad, paralelo y archivo (el formulario sigue montado, oculto), por si hay que cambiar alguno. Máximo 600 filas por carga. Nombre = «Apellido_Paterno Apellido_Materno
       Nombres» (1 a 3 nombres); las partículas (de, del, la, las, los, lo, el, san, santa, da, di, du, van, von,
       der, den, le) se pegan a la palabra siguiente y forman un apellido compuesto («De La Fuente», «Del Río»).
       Lo **obligatorio** es RUT válido y nombre separable en 2 apellidos + nombre(s); una fila mala se informa y no
       frena a las demás (RUT repetido en el archivo o ya existente tampoco). Lo **opcional** que no se entiende
       (correo, fecha, comuna, jornada, género…) se deja sin rellenar y se avisa; la comuna sin región deduce la región
-      si el nombre es único. Acepta fechas AAAA-MM-DD, DD/MM/AAAA, DD-MM-AAAA, DD.MM.AAAA y números de serie de Excel.
+      si el nombre es único. **La región se reconoce por palabras**, no por texto exacto (`normalizeRegion` en
+      `lib/region.ts` y su copia `src/utils/region.ts`, mismos tests): ignora orden, tildes, apóstrofes y «Región de»,
+      expande abreviaturas («Gral.», «B.», «Bdo.», «Lib.», «Valpo»), acepta el número («VI», «8») y tolera una falta
+      de ortografía (más de una palabra de otra región, o un número que no calza con el nombre, no se adivina).
+      Una comuna de **Ñuble** escrita con Biobío (la región de antes de 2018) se guarda en Ñuble sin aviso; cualquier
+      otro desacuerdo comuna/región no se adivina y el aviso dice a qué región pertenece la comuna. La revisión
+      permite **descargar un Excel de los datos sin rellenar** (`features/admin/utils/importWarningsExcel.ts`: una fila
+      por dato, con fila del archivo, nombre, RUT, universidad, paralelo, dato y motivo). Acepta fechas AAAA-MM-DD, DD/MM/AAAA, DD-MM-AAAA, DD.MM.AAAA y números de serie de Excel.
 
 18. **Logo:** el nombre «NeuroFlex» en texto se reemplazó por el logo (`public/logo-neuroflex.svg`, vectorial:
     «Neuro» azul marino `#05326b` con la red neuronal en blanco, «flex» con degradado turquesa → azul → violeta,
@@ -337,6 +345,9 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
     JS inicial). Aparece en el menú lateral (escritorio y cajón móvil, admin y estudiante) y en `AuthLayout`
     (inicio de sesión y registro). El azul marino contrasta poco sobre el fondo oscuro; si se quiere más legible,
     hay que aclarar solo el color de «Neuro» en el SVG, sin tocar el resto.
+    **Ícono de la pestaña:** `public/favicon.svg` es la «N» del mismo logo (se recorta de las mismas curvas) sobre
+    un cuadrado blanco de esquinas redondeadas, para que se vea igual en pestañas claras y oscuras; `favicon-32.png`
+    y `apple-touch-icon.png` son su respaldo para navegadores que no leen SVG. Se enlazan en `index.html`.
 
 19. **Datos incompletos (inicio del admin):** tercera pestaña «Datos incompletos» (`IncompleteStudentsSection`). Lista a los
     estudiantes **habilitados** a los que les falta algo (regla en `utils/incompleteProfile.ts`): registrarse en la

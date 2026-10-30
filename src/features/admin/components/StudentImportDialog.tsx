@@ -1,4 +1,4 @@
-import { FileSpreadsheet } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -8,6 +8,7 @@ import { saveBlob } from "@/features/stats/utils/download";
 import type { Paralelo, StudentImportReport, StudentImportRow, University } from "@/types";
 
 import { importStudentsAction } from "../actions/students.action";
+import { downloadImportWarningsExcel, type ImportWarningsContext } from "../utils/importWarningsExcel";
 import { importTemplateBlob, readImportFile } from "../utils/studentImportFile";
 
 const SELECT_CLASS =
@@ -38,11 +39,18 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const canReview = university !== "" && paralelo !== "";
+
   useEffect(() => {
     const dialog = dialogRef.current;
 
     if (dialog && !dialog.open) dialog.showModal();
   }, []);
+
+  const context: ImportWarningsContext = {
+    university: university ? (universityLabel(university) ?? "") : "",
+    paralelo: paralelo === "" ? 0 : paralelo,
+  };
 
   function close() {
     if (step.name === "done") onImported();
@@ -57,6 +65,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
   async function handleReview(event: FormEvent) {
     event.preventDefault();
 
+    if (university === "") return setError("Elige la universidad de los estudiantes del archivo.");
     if (paralelo === "") return setError("Elige el paralelo de los estudiantes del archivo.");
     if (!file) return setError("Elige el archivo Excel.");
 
@@ -72,7 +81,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
 
     const response = await importStudentsAction({
       paralelo,
-      ...(university ? { university } : {}),
+      university,
       dryRun: true,
       rows: read.rows,
     });
@@ -85,14 +94,14 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
   }
 
   async function handleConfirm(rows: StudentImportRow[]) {
-    if (paralelo === "") return;
+    if (paralelo === "" || university === "") return;
 
     setError(null);
     setBusy(true);
 
     const response = await importStudentsAction({
       paralelo,
-      ...(university ? { university } : {}),
+      university,
       dryRun: false,
       rows,
     });
@@ -123,8 +132,9 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
           </h2>
         </div>
 
-        {step.name === "choose" && (
-          <form onSubmit={handleReview} className="flex flex-col gap-4">
+        {/* Sigue montado (oculto) mientras se revisa: asi, al cancelar la carga, el archivo elegido no se pierde. */}
+        {step.name !== "done" && (
+          <form onSubmit={handleReview} className={step.name === "choose" ? "flex flex-col gap-4" : "hidden"}>
             <p className="text-sm text-zinc-400">
               El archivo debe ser un Excel (.xlsx) con las columnas NOMBRE, RUT, FECHA_NACIMIENTO, EMAIL, CELULAR, COMUNA,
               REGION, JORNADA y GENERO. El nombre va como «Apellido Paterno, Apellido Materno y Nombres»; los apellidos como
@@ -202,17 +212,29 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
                 Cancelar
               </Button>
 
-              <Button type="submit" disabled={busy} className="bg-white text-black hover:bg-zinc-200">
-                {busy ? "Revisando..." : "Revisar archivo"}
+              <Button
+                type="submit"
+                disabled={busy || !canReview}
+                aria-describedby={canReview ? undefined : "import-review-hint"}
+                className="bg-white text-black hover:bg-zinc-200"
+              >
+                {busy ? "Revisando..." : "Revisar datos"}
               </Button>
             </div>
+
+            {!canReview && (
+              <p id="import-review-hint" className="text-xs text-zinc-400 sm:text-right">
+                Elige la universidad y el paralelo para poder revisar los datos.
+              </p>
+            )}
           </form>
         )}
 
         {step.name === "review" && (
           <ReviewStep
             report={step.report}
-            scope={`Paralelo ${paralelo}${university ? ` · ${universityLabel(university)}` : ""}`}
+            context={context}
+            scope={`Paralelo ${paralelo} · ${universityLabel(university as University) ?? ""}`}
             busy={busy}
             error={error}
             onBack={() => {
@@ -223,7 +245,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
           />
         )}
 
-        {step.name === "done" && <DoneStep report={step.report} onClose={close} />}
+        {step.name === "done" && <DoneStep report={step.report} context={context} onClose={close} />}
       </div>
     </dialog>
   );
@@ -242,7 +264,7 @@ function Summary({ items }: { items: { label: string; value: number; tone: strin
   );
 }
 
-function Problems({ report }: { report: StudentImportReport }) {
+function Problems({ report, context }: { report: StudentImportReport; context: ImportWarningsContext }) {
   const problems = report.results.filter((result) => result.status === "exists" || result.status === "error");
   const warned = report.results.filter((result) => result.warnings.length > 0);
 
@@ -264,25 +286,32 @@ function Problems({ report }: { report: StudentImportReport }) {
       )}
 
       {warned.length > 0 && (
-        <details className="rounded-lg border border-zinc-800 p-3 text-sm">
-          <summary className="min-h-11 cursor-pointer py-2 text-amber-300">
-            {warned.length} {warned.length === 1 ? "estudiante con datos" : "estudiantes con datos"} que no se pudieron
-            cargar (quedan sin rellenar)
-          </summary>
-          <ul className="mt-2 flex flex-col gap-1.5">
-            {warned.map((result) => (
-              <li key={result.row} className="rounded-lg bg-zinc-900 p-2">
-                <span className="font-medium">Fila {result.row}</span>
-                <span className="text-zinc-400"> · {result.name}</span>
-                {result.warnings.map((warning) => (
-                  <span key={warning} className="block text-zinc-300">
-                    {warning}
-                  </span>
-                ))}
-              </li>
-            ))}
-          </ul>
-        </details>
+        <section aria-label="Datos sin rellenar" className="flex flex-col gap-2">
+          <details className="rounded-lg border border-zinc-800 p-3 text-sm">
+            <summary className="min-h-11 cursor-pointer py-2 text-amber-300">
+              {warned.length} {warned.length === 1 ? "estudiante con datos" : "estudiantes con datos"} que no se pudieron
+              cargar (quedan sin rellenar)
+            </summary>
+            <ul className="mt-2 flex flex-col gap-1.5">
+              {warned.map((result) => (
+                <li key={result.row} className="rounded-lg bg-zinc-900 p-2">
+                  <span className="font-medium">Fila {result.row}</span>
+                  <span className="text-zinc-400"> · {result.name}</span>
+                  {result.warnings.map((warning) => (
+                    <span key={warning} className="block text-zinc-300">
+                      {warning}
+                    </span>
+                  ))}
+                </li>
+              ))}
+            </ul>
+          </details>
+
+          <Button type="button" variant="outline" onClick={() => void downloadImportWarningsExcel(report.results, context)}>
+            <Download className="size-4" aria-hidden="true" />
+            Descargar Excel de datos sin rellenar
+          </Button>
+        </section>
       )}
     </>
   );
@@ -290,6 +319,7 @@ function Problems({ report }: { report: StudentImportReport }) {
 
 type ReviewStepProps = {
   report: StudentImportReport;
+  context: ImportWarningsContext;
   scope: string;
   busy: boolean;
   error: string | null;
@@ -297,7 +327,7 @@ type ReviewStepProps = {
   onConfirm: () => void;
 };
 
-function ReviewStep({ report, scope, busy, error, onBack, onConfirm }: ReviewStepProps) {
+function ReviewStep({ report, context, scope, busy, error, onBack, onConfirm }: ReviewStepProps) {
   const { summary } = report;
 
   return (
@@ -316,7 +346,7 @@ function ReviewStep({ report, scope, busy, error, onBack, onConfirm }: ReviewSte
         ]}
       />
 
-      <Problems report={report} />
+      <Problems report={report} context={context} />
 
       {error && (
         <p role="alert" className="text-sm text-rose-400">
@@ -326,7 +356,7 @@ function ReviewStep({ report, scope, busy, error, onBack, onConfirm }: ReviewSte
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Button type="button" variant="outline" onClick={onBack} disabled={busy}>
-          Elegir otro archivo
+          Cancelar carga
         </Button>
 
         <Button
@@ -342,7 +372,15 @@ function ReviewStep({ report, scope, busy, error, onBack, onConfirm }: ReviewSte
   );
 }
 
-function DoneStep({ report, onClose }: { report: StudentImportReport; onClose: () => void }) {
+function DoneStep({
+  report,
+  context,
+  onClose,
+}: {
+  report: StudentImportReport;
+  context: ImportWarningsContext;
+  onClose: () => void;
+}) {
   const { summary } = report;
 
   return (
@@ -352,7 +390,7 @@ function DoneStep({ report, onClose }: { report: StudentImportReport; onClose: (
         {summary.exists + summary.errors > 0 ? ` ${summary.exists + summary.errors} no se cargaron.` : ""}
       </p>
 
-      <Problems report={report} />
+      <Problems report={report} context={context} />
 
       <Button type="button" onClick={onClose} className="bg-white text-black hover:bg-zinc-200">
         Cerrar
