@@ -27,6 +27,12 @@ type AdminNameFormProps = {
   /** Guarda los nombres (y el correo, si se edita); devuelve el mensaje de error, o null si salio bien. */
   onSubmit: (names: PersonNames, email: string) => Promise<string | null>;
   onCancel: () => void;
+  /**
+   * Con texto, los botones son de texto («Guardar cambios» / «Cancelar cambios», uno al lado del otro); sin el, son
+   * el icono de guardar y «Cancelar» (la lista de administradores).
+   */
+  submitLabel?: string;
+  cancelLabel?: string;
   stacked?: boolean;
 };
 
@@ -34,7 +40,16 @@ type AdminNameFormProps = {
  * Corrige nombres y apellidos de un administrador (el propio o el de otro). El
  * servidor guarda cada palabra con su inicial en mayuscula, igual que se ve aqui.
  */
-export function AdminNameForm({ initial, idPrefix, email, onSubmit, onCancel, stacked }: AdminNameFormProps) {
+export function AdminNameForm({
+  initial,
+  idPrefix,
+  email,
+  onSubmit,
+  onCancel,
+  submitLabel,
+  cancelLabel,
+  stacked,
+}: AdminNameFormProps) {
   const [names, setNames] = useState(initial);
   const [mail, setMail] = useState(email ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -110,22 +125,30 @@ export function AdminNameForm({ initial, idPrefix, email, onSubmit, onCancel, st
 
       {error && <p className={cn("text-sm text-rose-400", !stacked && "sm:col-span-3")}>{error}</p>}
 
-      <div className={cn("flex items-center gap-3", !stacked && "sm:col-span-3")}>
+      <div className={cn("flex flex-wrap items-center", submitLabel ? "gap-2" : "gap-3", !stacked && "sm:col-span-3")}>
         <button
           type="submit"
-          title="Guardar"
+          title={submitLabel ?? "Guardar"}
           disabled={isSaving}
-          className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-black transition-colors hover:bg-zinc-200 disabled:opacity-50"
+          className={cn(
+            "flex h-10 items-center justify-center rounded-lg bg-white text-black transition-colors hover:bg-zinc-200 disabled:opacity-50",
+            submitLabel ? "h-11 px-4 text-sm font-semibold" : "w-10",
+          )}
         >
-          <Save className="size-4" />
+          {submitLabel ? (isSaving ? "Guardando..." : submitLabel) : <Save className="size-4" />}
         </button>
 
         <button
           type="button"
           onClick={onCancel}
-          className="flex h-10 items-center justify-center rounded-lg bg-zinc-700 px-4 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-600"
+          className={cn(
+            "flex items-center justify-center rounded-lg text-sm font-medium transition-colors",
+            cancelLabel
+              ? "min-h-11 px-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+              : "h-10 bg-zinc-700 px-4 text-zinc-200 hover:bg-zinc-600",
+          )}
         >
-          Cancelar
+          {cancelLabel ?? "Cancelar"}
         </button>
       </div>
     </form>

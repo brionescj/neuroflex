@@ -292,7 +292,7 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
 
 16. **Inicio de estudiante y de administrador** (`ROUTES.STUDENT` / `ROUTES.ADMIN`): la **misma** página
     (`ProjectHome` en `src/components/project/`, junto con `TeamPhoto`; es compartida porque una feature no importa de
-    otra): nombre del proyecto, su financiamiento, el **objetivo general** (`PROJECT_OBJECTIVE`), el equipo y quien desarrolló la plataforma
+    otra): nombre del proyecto, su financiamiento, el **objetivo general** (`PROJECT_OBJECTIVE`, justificado y con «OBJETIVO GENERAL:» al comienzo del párrafo), el equipo y quien desarrolló la plataforma
     (`src/config/projectInfo.ts`). Solo cambia el botón: «Ir a los juegos» (estudiante) o «Ir a la carga de datos»
     (administrador). Lo que antes era el «Inicio» del administrador (estudiantes, datos incompletos, administradores y
     carga masiva) es ahora **«Carga de datos»** (`ROUTES.ADMIN_DATA`, `AdminDataPage`). Las fotos del equipo no se suben desde la app: se dejan en
@@ -383,6 +383,14 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
     repetir el nombre de la base en `--confirm=`; antes de borrar guarda un respaldo en `server-scripts/backups/`
     (ignorada por git; trae los hash de contraseña) y, si falla, no borra. Las contraseñas se generan al azar y se
     muestran una sola vez (o se toman de `NEUROFLEX_ADMIN_PASSWORD` / `NEUROFLEX_STUDENT_PASSWORD`); no se guardan.
+
+21. **Perfil (estudiante y administrador):** el avatar vive **dentro de la tarjeta** del usuario (`AvatarPicker`,
+    `features/profile/components/`). Fuera de la edición es solo el dibujo; con el lápiz de la tarjeta se puede tocar
+    y despliega los 6 avatares (Escape, tocar fuera o elegir uno lo cierra). **«Guardar cambios» no existe hasta
+    apretar el lápiz**: aparece junto a «Cancelar cambios», que descarta todo, avatar incluido. En el administrador
+    el avatar se guarda junto con nombres y correo (`saveAdminData`); como el correo es obligatorio para guardarlo,
+    sin un correo válido se avisa. `AdminNameForm` usa botones de texto solo si recibe `submitLabel`/`cancelLabel`
+    (la lista de administradores sigue con el icono de guardar).
 
 ---
 

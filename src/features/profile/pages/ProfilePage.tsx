@@ -9,19 +9,19 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { EmailInput } from "@/components/forms/EmailInput";
 import { RegionCommuneFields } from "@/components/forms/RegionCommuneFields";
-import { AVATARS, type AvatarId } from "@/config/avatars";
 import { GENDER_OPTIONS, STUDY_SHIFT_OPTIONS, genderLabel, studyShiftLabel, universityLabel } from "@/config/studentOptions";
 import { useAuth } from "@/context";
 import { updateAdminNamesAction } from "@/features/admin/actions/admins.action";
 import { AdminNameForm, type PersonNames } from "@/features/admin/components/AdminNameForm";
 import { birthDateRange, formatBirthDate, toInputDate } from "@/features/admin/utils/birthDate";
 import { ChangePasswordForm } from "@/features/auth/components";
-import { cn } from "@/lib/utils";
+import { emailProblem, normalizeEmail } from "@/utils/email";
 import { placeForSelects } from "@/utils/commune";
 import type { ProfileDetails } from "@/services/profile.service";
 import type { Gender, StudyShift } from "@/types";
 
 import { getProfileAction } from "../actions/getProfile.action";
+import { AvatarPicker } from "../components/AvatarPicker";
 import { updateProfileAction } from "../actions/updateProfile.action";
 import {
   ProfileFormSchema,
@@ -108,11 +108,11 @@ export default function ProfilePage() {
   }, [rut, role, form]);
 
   async function onSubmit(data: ProfileFormInput) {
-    if (!user || !details) {
+    // El administrador guarda desde el formulario de su tarjeta (saveAdminData), no desde este.
+    if (!user || !details || details.role !== "student") {
       return;
     }
 
-    const isStudent = details.role === "student";
     const saved = contactValues(details);
 
     // La fecha, la jornada, la region y la comuna solo viajan si cambiaron: un dato antiguo que el selector no
@@ -123,12 +123,12 @@ export default function ProfilePage() {
       role: user.role,
       email: data.email,
       avatarId: data.avatarId,
-      ...(isStudent && data.birthDate !== saved.birthDate && { birthDate: data.birthDate }),
-      ...(isStudent && data.studyShift !== saved.studyShift && { studyShift: data.studyShift }),
-      ...(isStudent && data.gender !== saved.gender && { gender: data.gender }),
-      ...(isStudent && regionChanged && { region: data.region }),
+      ...(data.birthDate !== saved.birthDate && { birthDate: data.birthDate }),
+      ...(data.studyShift !== saved.studyShift && { studyShift: data.studyShift }),
+      ...(data.gender !== saved.gender && { gender: data.gender }),
+      ...(regionChanged && { region: data.region }),
       // Al cambiar de region se manda la comuna aunque quede vacia: la anterior ya no es de esa region.
-      ...(isStudent && (regionChanged || data.comuna !== saved.comuna) && { comuna: data.comuna }),
+      ...((regionChanged || data.comuna !== saved.comuna) && { comuna: data.comuna }),
     });
 
     if (!result.success) {
@@ -147,13 +147,11 @@ export default function ProfilePage() {
       ...details,
       email: data.email,
       avatarId: data.avatarId,
-      ...(isStudent && {
-        birthDate: stored.birthDate,
-        studyShift: stored.studyShift,
-        gender: stored.gender,
-        region: stored.region,
-        comuna: stored.comuna,
-      }),
+      birthDate: stored.birthDate,
+      studyShift: stored.studyShift,
+      gender: stored.gender,
+      region: stored.region,
+      comuna: stored.comuna,
     } as ProfileDetails;
 
     setDetails(next);
@@ -162,7 +160,7 @@ export default function ProfilePage() {
     toast.success(result.message);
   }
 
-  /** Descarta lo escrito en el lapiz (correo, fecha, jornada, genero, region y comuna) y vuelve a lo ultimo guardado. */
+  /** Descarta lo escrito en el lapiz (correo, fecha, jornada, genero, region, comuna y avatar) y vuelve a lo ultimo guardado. */
   function cancelContactEdit() {
     if (details) {
       const saved = contactValues(details);
@@ -173,23 +171,34 @@ export default function ProfilePage() {
       form.resetField("gender", { defaultValue: saved.gender });
       form.resetField("region", { defaultValue: saved.region });
       form.resetField("comuna", { defaultValue: saved.comuna });
+      form.resetField("avatarId", { defaultValue: details.avatarId });
     }
 
     setIsEditingContact(false);
   }
 
   /**
-   * Los datos del administrador (nombres y correo) se guardan juntos desde su tarjeta. El avatar es
-   * aparte, con «Guardar cambios». Si los nombres se guardan y el correo no, se dice cual quedo sin guardar.
+   * Los datos del administrador (nombres, correo y avatar) se guardan juntos desde su tarjeta. Si los nombres
+   * se guardan y lo demas no, se dice que quedo sin guardar.
    */
   async function saveAdminData(names: PersonNames, email: string): Promise<string | null> {
     if (!user || details?.role !== "admin") return null;
 
+    const avatarId = form.getValues("avatarId");
     const namesChanged =
       names.firstName !== details.firstName ||
       names.paternalLastName !== details.paternalLastName ||
       names.maternalLastName !== details.maternalLastName;
     const emailChanged = email !== details.email;
+    const avatarChanged = avatarId !== details.avatarId;
+
+    // El avatar se guarda junto con el correo: sin un correo valido no hay con que guardarlo.
+    if (avatarChanged && emailProblem(normalizeEmail(email))) {
+      return "Para guardar el avatar, primero registra un correo válido.";
+    }
+
+    // La sesion se va actualizando con lo que se guardo, para no pisar un cambio con una copia vieja.
+    let session = user;
 
     if (namesChanged) {
       const result = await updateAdminNamesAction(user.rut, names);
@@ -197,26 +206,34 @@ export default function ProfilePage() {
       if (!result.success) return result.message;
 
       // El saludo de la sesion se arma con el nombre: se actualiza junto con la ficha.
-      login({ ...user, displayName: `${result.data.firstName} ${result.data.paternalLastName}` });
+      session = { ...session, displayName: `${result.data.firstName} ${result.data.paternalLastName}` };
+      login(session);
       setDetails((current) => (current ? { ...current, ...names } : current));
     }
 
-    if (emailChanged) {
-      // Se guarda el avatar que ya estaba guardado, no uno elegido abajo y sin guardar todavia.
-      const result = await updateProfileAction({ rut: user.rut, role: user.role, email, avatarId: details.avatarId });
+    if (emailChanged || avatarChanged) {
+      const result = await updateProfileAction({ rut: user.rut, role: user.role, email, avatarId });
 
       if (!result.success) {
-        return namesChanged ? `Los nombres se guardaron, pero el correo no: ${result.message}` : result.message;
+        return namesChanged ? `Los nombres se guardaron, pero lo demás no: ${result.message}` : result.message;
       }
 
-      form.resetField("email", { defaultValue: email });
-      setDetails((current) => (current ? { ...current, email } : current));
+      login({ ...session, avatarId });
+      form.resetField("avatarId", { defaultValue: avatarId });
+      setDetails((current) => (current ? { ...current, email, avatarId } : current));
     }
 
     setIsEditingData(false);
-    toast.success(namesChanged || emailChanged ? "Datos actualizados." : "No había cambios que guardar.");
+    toast.success(namesChanged || emailChanged || avatarChanged ? "Datos actualizados." : "No había cambios que guardar.");
 
     return null;
+  }
+
+  /** Descarta lo editado en la tarjeta del administrador, incluido el avatar elegido y sin guardar. */
+  function cancelAdminEdit() {
+    if (details) form.resetField("avatarId", { defaultValue: details.avatarId });
+
+    setIsEditingData(false);
   }
 
   if (!user || isLoading) {
@@ -237,37 +254,55 @@ export default function ProfilePage() {
         <h1 className="text-[28px] font-bold text-white">Mi perfil</h1>
         <p className="text-[16px] text-zinc-400">
           {details.role === "admin"
-            ? "Puedes actualizar tu nombre, tu correo, tu avatar y tu contraseña."
-            : "Los datos institucionales no son editables. Puedes actualizar tu correo, tu fecha de nacimiento, tu jornada, tu región, tu comuna, tu avatar y tu contraseña."}
+            ? "Con el lápiz de tu tarjeta puedes actualizar tu nombre, tu correo y tu avatar. También puedes cambiar tu contraseña."
+            : "Los datos institucionales no son editables. Con el lápiz de tu tarjeta puedes actualizar tu correo, tu fecha de nacimiento, tu jornada, tu género, tu región, tu comuna y tu avatar. También puedes cambiar tu contraseña."}
         </p>
       </div>
 
       {details.role === "admin" && (
         <div className="rounded-2xl border border-zinc-800 p-4">
-          {isEditingData ? (
-            <AdminNameForm
-              idPrefix="profile"
-              initial={details}
-              email={details.email}
-              onSubmit={saveAdminData}
-              onCancel={() => setIsEditingData(false)}
-              stacked
+          <div className="flex items-start gap-3">
+            <Controller
+              control={form.control}
+              name="avatarId"
+              render={({ field }) => (
+                <AvatarPicker value={field.value} onChange={field.onChange} editing={isEditingData} />
+              )}
             />
-          ) : (
-            <div className="flex items-start justify-between gap-2">
+
+            <div className="min-w-0 flex-1 pt-1">
               <p className="font-medium text-white">
                 {details.firstName} {details.paternalLastName} {details.maternalLastName}
               </p>
 
+              {isEditingData && <p className="mt-1 text-xs text-zinc-500">Toca tu avatar para elegir otro.</p>}
+            </div>
+
+            {!isEditingData && (
               <button
                 type="button"
                 onClick={() => setIsEditingData(true)}
-                title="Editar datos"
-                aria-label="Editar datos"
-                className="-my-1 shrink-0 rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                title="Editar nombre, correo y avatar"
+                aria-label="Editar nombre, correo y avatar"
+                className="shrink-0 rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
               >
                 <Pencil className="size-4" />
               </button>
+            )}
+          </div>
+
+          {isEditingData && (
+            <div className="mt-4">
+              <AdminNameForm
+                idPrefix="profile"
+                initial={details}
+                email={details.email}
+                onSubmit={saveAdminData}
+                onCancel={cancelAdminEdit}
+                submitLabel="Guardar cambios"
+                cancelLabel="Cancelar cambios"
+                stacked
+              />
             </div>
           )}
 
@@ -290,28 +325,39 @@ export default function ProfilePage() {
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         {details.role === "student" && (
           <div className="rounded-2xl border border-zinc-800 p-4">
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-medium text-white">
-                {details.firstName} {details.paternalLastName}{" "}
-                {details.maternalLastName}
-              </p>
+            <div className="flex items-start gap-3">
+              <Controller
+                control={form.control}
+                name="avatarId"
+                render={({ field }) => (
+                  <AvatarPicker value={field.value} onChange={field.onChange} editing={isEditingContact} />
+                )}
+              />
+
+              <div className="min-w-0 flex-1 pt-1">
+                <p className="font-medium text-white">
+                  {details.firstName} {details.paternalLastName} {details.maternalLastName}
+                </p>
+
+                <div className="mt-1 flex gap-4 text-xs text-zinc-400">
+                  <span>Paralelo {details.paralelo}</span>
+                  <span>Ingreso {details.entryYear}</span>
+                </div>
+
+                {isEditingContact && <p className="mt-1 text-xs text-zinc-500">Toca tu avatar para elegir otro.</p>}
+              </div>
 
               {!isEditingContact && (
                 <button
                   type="button"
                   onClick={() => setIsEditingContact(true)}
-                  title="Editar correo, fecha de nacimiento, jornada, género, región y comuna"
-                  aria-label="Editar correo, fecha de nacimiento, jornada, género, región y comuna"
-                  className="-my-1 shrink-0 rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                  title="Editar correo, fecha de nacimiento, jornada, género, región, comuna y avatar"
+                  aria-label="Editar correo, fecha de nacimiento, jornada, género, región, comuna y avatar"
+                  className="shrink-0 rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
                 >
                   <Pencil className="size-4" />
                 </button>
               )}
-            </div>
-
-            <div className="mt-1 flex gap-4 text-xs text-zinc-400">
-              <span>Paralelo {details.paralelo}</span>
-              <span>Ingreso {details.entryYear}</span>
             </div>
 
             <div className="mt-3 grid grid-cols-1 gap-4 border-t border-zinc-800 pt-3 min-[420px]:grid-cols-2">
@@ -454,11 +500,19 @@ export default function ProfilePage() {
                     )}
                   />
 
-                  <div className="min-[420px]:col-span-2">
+                  <div className="flex flex-wrap items-center gap-2 min-[420px]:col-span-2">
+                    <Button
+                      type="submit"
+                      disabled={form.formState.isSubmitting}
+                      className="h-11 bg-white px-4 text-sm text-black hover:bg-zinc-200"
+                    >
+                      {form.formState.isSubmitting ? "Guardando..." : "Guardar cambios"}
+                    </Button>
+
                     <button
                       type="button"
                       onClick={cancelContactEdit}
-                      className="min-h-11 rounded-lg px-3 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                      className="min-h-11 rounded-lg px-2 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
                     >
                       Cancelar cambios
                     </button>
@@ -504,54 +558,6 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
-
-        <Controller
-          control={form.control}
-          name="avatarId"
-          render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
-              <FieldLabel>Avatar</FieldLabel>
-              <div className="flex flex-wrap gap-3">
-                {(
-                  Object.entries(AVATARS) as [
-                    AvatarId,
-                    (typeof AVATARS)[AvatarId],
-                  ][]
-                ).map(([id, { icon: Icon, color }]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => field.onChange(id)}
-                    className={cn(
-                      "flex size-12 items-center justify-center rounded-full text-white transition",
-                      color,
-                      field.value === id
-                        ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-950"
-                        : "opacity-60 hover:opacity-100",
-                    )}
-                  >
-                    <Icon className="size-5" />
-                  </button>
-                ))}
-              </div>
-              <FieldError errors={[fieldState.error]} />
-            </Field>
-          )}
-        />
-
-        {details.role === "admin" && form.formState.errors.email && (
-          <p role="alert" className="text-sm text-rose-400">
-            Para guardar el avatar, primero registra un correo válido con el lápiz de tu tarjeta.
-          </p>
-        )}
-
-        <Button
-          type="submit"
-          disabled={form.formState.isSubmitting}
-          className="h-13 bg-white text-black hover:bg-zinc-200"
-        >
-          {form.formState.isSubmitting ? "Guardando..." : "Guardar cambios"}
-        </Button>
       </form>
 
       <ChangePasswordForm />
