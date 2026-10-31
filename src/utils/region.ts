@@ -68,6 +68,10 @@ const EXPANSIONS: Record<string, string> = {
   grl: "general",
   gen: "general",
   b: "bernardo",
+  c: "carlos",
+  h: "higgins",
+  stgo: "santiago",
+  sgo: "santiago",
   bdo: "bernardo",
   bno: "bernardo",
   bernd: "bernardo",
@@ -185,7 +189,7 @@ function distance(a: string, b: string): number {
 function sameWord(written: string, official: string): boolean {
   if (written === official) return true;
   if (written.length < 3) return false;
-  if (written.length >= 4 && official.startsWith(written)) return true;
+  if (official.startsWith(written)) return true;
 
   return distance(written, official) <= allowedTypos(official.length);
 }
