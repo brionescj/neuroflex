@@ -1,19 +1,19 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { GameAttempt } from "../../models/GameAttempt";
-import { GameLevelResult } from "../../models/GameLevelResult";
-import { Student } from "../../models/Student";
-import { RUT_LIKE } from "../../stats/request";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { GameAttempt } from "../../models/GameAttempt.js";
+import { GameLevelResult } from "../../models/GameLevelResult.js";
+import { Student } from "../../models/Student.js";
+import { RUT_LIKE } from "../../stats/request.js";
 import {
   HISTORY_PAGE_SIZE,
   historyPage,
   historyRow,
   historyWindow,
   parseHistoryQuery,
-} from "../../stats/studentHistory";
-import type { AttemptRow, ResultRow } from "../../stats/types";
+} from "../../stats/studentHistory.js";
+import type { AttemptRow, ResultRow } from "../../stats/types.js";
 
 const ATTEMPT_FIELDS = "attemptId studentRut gameId attemptNumber status startedAt lastActivityAt finishedAt";
 

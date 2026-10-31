@@ -53,6 +53,10 @@ Lee `ARCHITECTURE.md` antes de escribir código. Es la fuente de verdad.
     tabla de `lib/router.ts`.
     Un test falla si `api/` tiene algo mas o si un handler queda sin ruta.
 
+18. **Imports relativos con extensión `.js` en `api/` y `lib/`.** En Vercel la API corre como ESM y
+    Node no resuelve `"./router"` sin extensión (`ERR_MODULE_NOT_FOUND`). Escribe `"./router.js"` aunque el
+    archivo sea `router.ts`. Un test (`lib/esmImports.test.ts`) lo comprueba.
+
 ## Estado de los datos
 
 Los datasources de `src/data/` son **arrays mutables en memoria**.

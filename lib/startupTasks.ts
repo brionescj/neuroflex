@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
 
-import { normalizeCommune } from "./communes";
-import { MINI_CASES_SEED } from "./miniCasesSeed";
-import { GameAttempt } from "./models/GameAttempt";
-import { MiniCase } from "./models/MiniCase";
-import { Student } from "./models/Student";
-import { normalizeRegion } from "./region";
+import { normalizeCommune } from "./communes.js";
+import { MINI_CASES_SEED } from "./miniCasesSeed.js";
+import { GameAttempt } from "./models/GameAttempt.js";
+import { MiniCase } from "./models/MiniCase.js";
+import { Student } from "./models/Student.js";
+import { normalizeRegion } from "./region.js";
 
 /**
  * Titulos que tuvieron los casos 1 a 10 antes de usar los nombres del documento «JUEGOS ABSTRACTOS - FE»

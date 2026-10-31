@@ -1,11 +1,11 @@
-import { isFirstTryTime } from "../gameAttempts";
-import { buildChart } from "./charts";
-import { chileDate, fullName, miniCasesProgress, shiftText, universityText } from "./chartsLists";
-import { deductionOf } from "./deductions";
-import { mean, median, round } from "./numbers";
-import { DAY_MS, DECIMAL, SECONDS, emptyResult as empty, num } from "./profileCommon";
-import { parseChartRequest } from "./request";
-import { bestLevelOf as maxLevelOf, stateOf } from "./studentHistory";
+import { isFirstTryTime } from "../gameAttempts.js";
+import { buildChart } from "./charts.js";
+import { chileDate, fullName, miniCasesProgress, shiftText, universityText } from "./chartsLists.js";
+import { deductionOf } from "./deductions.js";
+import { mean, median, round } from "./numbers.js";
+import { DAY_MS, DECIMAL, SECONDS, emptyResult as empty, num } from "./profileCommon.js";
+import { parseChartRequest } from "./request.js";
+import { bestLevelOf as maxLevelOf, stateOf } from "./studentHistory.js";
 import {
   GAME_LABELS,
   type AttemptRow,
@@ -19,7 +19,7 @@ import {
   type StudentProfile,
   type StudentProfileChart,
   type StudentRow,
-} from "./types";
+} from "./types.js";
 
 /**
  * La ficha de desempeno de un estudiante: su resumen, su historial de partidas

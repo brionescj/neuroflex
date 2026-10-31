@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 
 import type { VercelResponse } from "@vercel/node";
 
-import { clearSessionCookie } from "./cookies";
-import type { TokenPayload } from "./jwt";
-import { AuthUser } from "./models/AuthUser";
+import { clearSessionCookie } from "./cookies.js";
+import type { TokenPayload } from "./jwt.js";
+import { AuthUser } from "./models/AuthUser.js";
 
 /**
  * Sesion unica del estudiante: solo el ultimo inicio de sesion vale. Al entrar desde otro

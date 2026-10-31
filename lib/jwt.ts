@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-import { getRequiredEnv } from "./env";
+import { getRequiredEnv } from "./env.js";
 
 const SECRET = getRequiredEnv("JWT_SECRET");
 

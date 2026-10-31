@@ -1,5 +1,5 @@
-import { Student } from "./models/Student";
-import { Admin } from "./models/Admin";
+import { Student } from "./models/Student.js";
+import { Admin } from "./models/Admin.js";
 
 /** La ficha de una cuenta segun su rol. Un rol que ya no existe no tiene ficha. */
 export async function findProfile(rut: string, role: string) {

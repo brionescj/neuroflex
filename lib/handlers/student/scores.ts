@@ -1,16 +1,16 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { GameAttempt } from "../../models/GameAttempt";
-import { GameLevelResult } from "../../models/GameLevelResult";
-import { MiniCase } from "../../models/MiniCase";
-import { ensureCurrentSession } from "../../sessions";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { GameAttempt } from "../../models/GameAttempt.js";
+import { GameLevelResult } from "../../models/GameLevelResult.js";
+import { MiniCase } from "../../models/MiniCase.js";
+import { ensureCurrentSession } from "../../sessions.js";
 import {
   buildStudentScores,
   type ScoreAttempt,
   type ScoreResult,
-} from "../../studentScores";
+} from "../../studentScores.js";
 
 /**
  * Puntajes, insignias y graficos del propio estudiante. Solo lee SUS datos

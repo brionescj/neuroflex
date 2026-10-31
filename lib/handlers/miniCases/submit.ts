@@ -1,15 +1,15 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { ensureGameHeld } from "../../gameLease";
-import { ensureCurrentSession } from "../../sessions";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { ensureGameHeld } from "../../gameLease.js";
+import { ensureCurrentSession } from "../../sessions.js";
 import {
   isPermutationOfOptions,
   scoreMiniCaseOrder,
-} from "../../miniCaseScoring";
-import { resolveMiniCasesAccess } from "../../gameUnlocksStore";
-import { MiniCase } from "../../models/MiniCase";
+} from "../../miniCaseScoring.js";
+import { resolveMiniCasesAccess } from "../../gameUnlocksStore.js";
+import { MiniCase } from "../../models/MiniCase.js";
 
 export default async function handler(
   req: VercelRequest,

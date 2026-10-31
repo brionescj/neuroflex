@@ -1,12 +1,12 @@
-import { ageAt } from "../gameAttempts";
-import { MAX_STUDENT_AGE, PARALELOS } from "../studentFields";
-import { REGIONS, normalizeRegion } from "../region";
+import { ageAt } from "../gameAttempts.js";
+import { MAX_STUDENT_AGE, PARALELOS } from "../studentFields.js";
+import { REGIONS, normalizeRegion } from "../region.js";
 import type {
   AttemptRow,
   DimensionId,
   OptionChoice,
   StudentRow,
-} from "./types";
+} from "./types.js";
 
 /**
  * Caracteristicas por las que se filtra y se compara. El valor de cada una sale

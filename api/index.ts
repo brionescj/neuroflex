@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { dispatch } from "../lib/router";
+import { dispatch } from "../lib/router.js";
 
 /**
  * Unica funcion de la API: reparte cada peticion segun su ruta (ver

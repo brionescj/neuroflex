@@ -1,15 +1,15 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
 import {
   GAME_LEASE_LOST_CODE,
   GAME_LEASE_LOST_MESSAGE,
   claimGame,
   holdsGame,
   isLeaseId,
-} from "../../gameLease";
-import { ensureCurrentSession } from "../../sessions";
+} from "../../gameLease.js";
+import { ensureCurrentSession } from "../../sessions.js";
 
 const GAME_IDS = ["color-sequence", "mini-cases", "node-connection"];
 

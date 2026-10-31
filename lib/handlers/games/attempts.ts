@@ -1,23 +1,23 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { ensureGameHeld } from "../../gameLease";
-import { ensureCurrentSession } from "../../sessions";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { ensureGameHeld } from "../../gameLease.js";
+import { ensureCurrentSession } from "../../sessions.js";
 import {
   isAttemptGameId,
   parseAttemptInfo,
   parseCloseStatus,
   parseLevelReport,
   type LevelReport,
-} from "../../gameAttempts";
+} from "../../gameAttempts.js";
 import {
   closeAttempt,
   ensureAttempt,
   saveLevelResults,
-} from "../../gameAttemptsStore";
-import { MINI_CASES_UNLOCK_LEVEL } from "../../gameUnlocks";
-import { resolveMiniCasesAccess } from "../../gameUnlocksStore";
+} from "../../gameAttemptsStore.js";
+import { MINI_CASES_UNLOCK_LEVEL } from "../../gameUnlocks.js";
+import { resolveMiniCasesAccess } from "../../gameUnlocksStore.js";
 
 /** Tope de resultados por lote: ninguna partida real se acerca. */
 const MAX_BATCH = 100;

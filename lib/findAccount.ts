@@ -1,4 +1,4 @@
-import { AuthUser } from "./models/AuthUser";
+import { AuthUser } from "./models/AuthUser.js";
 
 export type Account = {
   id: string;

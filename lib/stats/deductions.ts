@@ -1,4 +1,4 @@
-import type { ChartId } from "./types";
+import type { ChartId } from "./types.js";
 
 /**
  * La «leyenda de deduccion» de cada grafico: que se puede concluir al mirarlo y

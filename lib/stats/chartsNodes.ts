@@ -1,6 +1,6 @@
-import { isLevelResultPassed } from "../gameAttempts";
-import { nodeAllowedErrors, nodeErrorsOf } from "../nodeRules";
-import { levelPlays } from "./chartsSeriation";
+import { isLevelResultPassed } from "../gameAttempts.js";
+import { nodeAllowedErrors, nodeErrorsOf } from "../nodeRules.js";
+import { levelPlays } from "./chartsSeriation.js";
 import {
   AS_OPTION,
   COMPOSITION_VIEWS,
@@ -24,9 +24,9 @@ import {
   unitRut,
   type ChartDef,
   type Unit,
-} from "./engine";
-import { percentOf } from "./numbers";
-import type { ResultRow } from "./types";
+} from "./engine.js";
+import { percentOf } from "./numbers.js";
+import type { ResultRow } from "./types.js";
 
 const GAME = "node-connection" as const;
 

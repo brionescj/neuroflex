@@ -1,9 +1,9 @@
-import { isColorSequenceResultPassed } from "../gameAttempts";
-import { deductionOf } from "./deductions";
-import { chartsGeneral } from "./chartsGeneral";
-import { chartsNodes } from "./chartsNodes";
-import { mcOptions } from "./chartsMiniCases";
-import { chartsSeriation } from "./chartsSeriation";
+import { isColorSequenceResultPassed } from "../gameAttempts.js";
+import { deductionOf } from "./deductions.js";
+import { chartsGeneral } from "./chartsGeneral.js";
+import { chartsNodes } from "./chartsNodes.js";
+import { mcOptions } from "./chartsMiniCases.js";
+import { chartsSeriation } from "./chartsSeriation.js";
 import {
   AS_OPTION,
   BUCKET_OPTION,
@@ -27,7 +27,7 @@ import {
   unitRut,
   type ChartDef,
   type Ctx,
-} from "./engine";
+} from "./engine.js";
 import {
   DIMENSION_LABELS,
   FILTER_DIMENSIONS,
@@ -36,16 +36,16 @@ import {
   TABLET_MIN_SHORT_SIDE,
   ageOf,
   dimensionValue,
-} from "./dimensions";
-import { mean, median, percentOf } from "./numbers";
+} from "./dimensions.js";
+import { mean, median, percentOf } from "./numbers.js";
 import {
   groupItems,
   indexStudents,
   passesAge,
   passesFilters,
   type GroupItem,
-} from "./pipeline";
-import { bucketKey, bucketLabel, bucketRange, MAX_BUCKETS } from "./time";
+} from "./pipeline.js";
+import { bucketKey, bucketLabel, bucketRange, MAX_BUCKETS } from "./time.js";
 import {
   GAME_IDS,
   GAME_LABELS,
@@ -55,9 +55,9 @@ import {
   type GameId,
   type StatsData,
   type StudentRow,
-} from "./types";
+} from "./types.js";
 
-export type { ChartDef } from "./engine";
+export type { ChartDef } from "./engine.js";
 
 // --------------------------------------------------------------------- juegos
 

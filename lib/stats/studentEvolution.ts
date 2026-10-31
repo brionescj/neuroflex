@@ -1,9 +1,9 @@
-import { isFirstTryTime } from "../gameAttempts";
-import { SERIATION_TIME_CAUTION, deductionOf } from "./deductions";
-import { mean, round } from "./numbers";
-import { emptyResult, num } from "./profileCommon";
-import { bestLevelOf } from "./studentHistory";
-import { bucketKey, bucketLabel, chileDay, chileLocalToUtc, nextBucketKey } from "./time";
+import { isFirstTryTime } from "../gameAttempts.js";
+import { SERIATION_TIME_CAUTION, deductionOf } from "./deductions.js";
+import { mean, round } from "./numbers.js";
+import { emptyResult, num } from "./profileCommon.js";
+import { bestLevelOf } from "./studentHistory.js";
+import { bucketKey, bucketLabel, chileDay, chileLocalToUtc, nextBucketKey } from "./time.js";
 import {
   GAME_LABELS,
   type AttemptRow,
@@ -14,7 +14,7 @@ import {
   type ResultRow,
   type StudentEvolution,
   type StudentProfileChart,
-} from "./types";
+} from "./types.js";
 
 /**
  * Evolucion de un estudiante: el promedio de sus partidas en cada semana (de lunes a

@@ -1,8 +1,8 @@
-import { isLevelResultPassed } from "../gameAttempts";
-import { chileDate } from "./chartsLists";
-import { round } from "./numbers";
-import { isDateKey, rangeWindow } from "./time";
-import { GAME_LABELS, type AttemptRow, type AttemptState, type GameId, type HistoryPage, type ResultRow } from "./types";
+import { isLevelResultPassed } from "../gameAttempts.js";
+import { chileDate } from "./chartsLists.js";
+import { round } from "./numbers.js";
+import { isDateKey, rangeWindow } from "./time.js";
+import { GAME_LABELS, type AttemptRow, type AttemptState, type GameId, type HistoryPage, type ResultRow } from "./types.js";
 
 /**
  * El historial «partida a partida» de un estudiante, una pagina a la vez. Se

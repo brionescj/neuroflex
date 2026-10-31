@@ -1,7 +1,7 @@
-import { parseNameChanges } from "./personName";
-import { isValidRut, normalizeForDatabase } from "./rut";
-import { parseStudentDetails } from "./studentFields";
-import { validatePasswordStrength } from "./password";
+import { parseNameChanges } from "./personName.js";
+import { isValidRut, normalizeForDatabase } from "./rut.js";
+import { parseStudentDetails } from "./studentFields.js";
+import { validatePasswordStrength } from "./password.js";
 
 /**
  * Nucleo del script server-scripts/resetDatabase.ts: deja la base «en limpio» para salir a produccion, con solo la

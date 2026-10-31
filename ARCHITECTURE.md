@@ -466,7 +466,13 @@ importaciones cruzadas entre features.
 | Repositorios | clase + instancia exportada en minúscula | `export const authRepository` |
 | Servicios transversales | objeto literal | `export const sessionService` |
 | Imports internos | siempre alias `@/` | `import { ok } from "@/types"` |
+| Imports en `api/` y `lib/` (servidor) | relativos **con extensión `.js`** (el alias `@/` no existe aquí) | `import { dispatch } from "../lib/router.js"` |
 | Tipos en imports | `import type` obligatorio | `verbatimModuleSyntax` está activo |
+
+**Por qué `.js` en el servidor:** en Vercel la API corre como módulo ESM (`"type": "module"`) y Node no adivina
+extensiones: un `import "./router"` falla en producción con `ERR_MODULE_NOT_FOUND` aunque funcione con `tsx` o
+`vitest`. TypeScript resuelve `./router.js` al archivo `router.ts`, así que se escribe `.js` aunque el fuente sea
+`.ts`. `lib/esmImports.test.ts` falla si algún import relativo de `api/` o `lib/` queda sin extensión.
 
 `tsconfig.app.json` corre con `strict: true`, `noUncheckedIndexedAccess`,
 `noUnusedLocals`, `erasableSyntaxOnly`. **No se desactivan.**

@@ -1,7 +1,7 @@
-import { isColorSequenceResultPassed, isLevelResultPassed } from "../gameAttempts";
-import { MINI_CASES_UNLOCK_LEVEL } from "../gameUnlocks";
-import { cohortOf, countLabel, isAbandoned, type ChartDef, type Ctx } from "./engine";
-import { studentName } from "./pipeline";
+import { isColorSequenceResultPassed, isLevelResultPassed } from "../gameAttempts.js";
+import { MINI_CASES_UNLOCK_LEVEL } from "../gameUnlocks.js";
+import { cohortOf, countLabel, isAbandoned, type ChartDef, type Ctx } from "./engine.js";
+import { studentName } from "./pipeline.js";
 import {
   GAME_IDS,
   GAME_LABELS,
@@ -12,7 +12,7 @@ import {
   type ResultRow,
   type StudentRow,
   type UnlockRow,
-} from "./types";
+} from "./types.js";
 
 /**
  * Listas de estudiantes para saber a quien abordar: quien dejo de jugar, quien

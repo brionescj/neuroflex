@@ -1,10 +1,10 @@
-import { isFirstTryTime } from "../gameAttempts";
+import { isFirstTryTime } from "../gameAttempts.js";
 import {
   ageOf,
   deviceOfAttempt,
   dimensionValue,
-} from "./dimensions";
-import { mean, median, round, splitPercent } from "./numbers";
+} from "./dimensions.js";
+import { mean, median, round, splitPercent } from "./numbers.js";
 import {
   ABANDON_AFTER_MS,
   attemptPasses,
@@ -15,14 +15,14 @@ import {
   pickPartida,
   type GroupItem,
   type Grouped,
-} from "./pipeline";
+} from "./pipeline.js";
 import {
   PERIOD_LABELS,
   formatDateRange,
   periodStart,
   rangeWindow,
   type Bucket,
-} from "./time";
+} from "./time.js";
 import {
   GAME_IDS,
   GAME_LABELS,
@@ -40,7 +40,7 @@ import {
   type StatsData,
   type StudentRow,
   type ViewId,
-} from "./types";
+} from "./types.js";
 
 /** Lo que cada grafico calcula; el resto del resultado lo completa `buildChart`. */
 export type Built = Pick<

@@ -1,14 +1,14 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
-import { verifyPassword } from "../../password";
-import { signToken } from "../../jwt";
-import { startStudentSession } from "../../sessions";
-import { setSessionCookie } from "../../cookies";
-import { normalizeForDatabase } from "../../rut";
-import { findAccount } from "../../findAccount";
-import { findSessionProfile } from "../../findProfile";
-import { findUnlockedGames } from "../../unlockedGames";
+import { connectDB } from "../../db.js";
+import { verifyPassword } from "../../password.js";
+import { signToken } from "../../jwt.js";
+import { startStudentSession } from "../../sessions.js";
+import { setSessionCookie } from "../../cookies.js";
+import { normalizeForDatabase } from "../../rut.js";
+import { findAccount } from "../../findAccount.js";
+import { findSessionProfile } from "../../findProfile.js";
+import { findUnlockedGames } from "../../unlockedGames.js";
 
 export default async function handler(
   req: VercelRequest,

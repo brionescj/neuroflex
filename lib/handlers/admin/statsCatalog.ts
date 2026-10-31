@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { buildCatalog } from "../../stats/catalog";
-import { loadStudents } from "../../stats/loadData";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { buildCatalog } from "../../stats/catalog.js";
+import { loadStudents } from "../../stats/loadData.js";
 
 /**
  * Lo que la pantalla de estadisticas necesita para armarse: juegos, graficos

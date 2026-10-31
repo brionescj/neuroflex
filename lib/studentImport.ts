@@ -1,8 +1,8 @@
-import { normalizeCommune } from "./communes";
-import { parsePersonName } from "./personName";
-import { normalizeRegion, plainText, REGIONS } from "./region";
-import { normalizeForDatabase, isValidRut } from "./rut";
-import { parseStudentDetails } from "./studentFields";
+import { normalizeCommune } from "./communes.js";
+import { parsePersonName } from "./personName.js";
+import { normalizeRegion, plainText, REGIONS } from "./region.js";
+import { normalizeForDatabase, isValidRut } from "./rut.js";
+import { parseStudentDetails } from "./studentFields.js";
 
 /**
  * Carga masiva de estudiantes desde Excel. El archivo trae NOMBRE, RUT, FECHA_NACIMIENTO, EMAIL, CELULAR, COMUNA,

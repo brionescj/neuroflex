@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
-import { requireAuth } from "../../auth";
-import { confirmAdminPassword } from "../../adminConfirm";
-import { generatePassword, hashPassword } from "../../password";
-import { Admin } from "../../models/Admin";
-import { AuthUser } from "../../models/AuthUser";
+import { connectDB } from "../../db.js";
+import { requireAuth } from "../../auth.js";
+import { confirmAdminPassword } from "../../adminConfirm.js";
+import { generatePassword, hashPassword } from "../../password.js";
+import { Admin } from "../../models/Admin.js";
+import { AuthUser } from "../../models/AuthUser.js";
 
 /**
  * Un administrador genera una contraseña nueva para otro que la olvido, para que

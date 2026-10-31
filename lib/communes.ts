@@ -1,4 +1,4 @@
-import { type Region, plainText } from "./region";
+import { type Region, plainText } from "./region.js";
 
 /**
  * Las 346 comunas de Chile agrupadas en sus 16 regiones: la division oficial vigente (Ñuble incluida, desde 2018).

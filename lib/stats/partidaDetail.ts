@@ -1,7 +1,7 @@
-import { isLevelResultPassed } from "../gameAttempts";
-import { chileDate } from "./chartsLists";
-import { caseNumber } from "./engine";
-import { outcomeOf } from "./studentHistory";
+import { isLevelResultPassed } from "../gameAttempts.js";
+import { chileDate } from "./chartsLists.js";
+import { caseNumber } from "./engine.js";
+import { outcomeOf } from "./studentHistory.js";
 import {
   GAME_LABELS,
   type AttemptRow,
@@ -9,7 +9,7 @@ import {
   type PartidaItem,
   type PartidaRow,
   type ResultRow,
-} from "./types";
+} from "./types.js";
 
 /**
  * Los datos de una partida, nivel por nivel: en Seriacion los colores que pidio el

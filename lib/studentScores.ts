@@ -14,11 +14,11 @@
 import {
   isLevelResultPassed,
   type AttemptGameId,
-} from "./gameAttempts";
-import { buildBadges, type Badge } from "./studentBadges";
+} from "./gameAttempts.js";
+import { buildBadges, type Badge } from "./studentBadges.js";
 
-export { BADGE_COUNT, TIER_NAMES } from "./studentBadges";
-export type { Badge, BadgeTier } from "./studentBadges";
+export { BADGE_COUNT, TIER_NAMES } from "./studentBadges.js";
+export type { Badge, BadgeTier } from "./studentBadges.js";
 
 /** Cuantos niveles tiene Conexion de nodos (src/features/games/node-connection/levels.ts). */
 export const NODE_TOTAL_LEVELS = 15;

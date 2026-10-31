@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { readSessionCookie } from "./cookies";
-import { verifyToken, type TokenPayload } from "./jwt";
+import { readSessionCookie } from "./cookies.js";
+import { verifyToken, type TokenPayload } from "./jwt.js";
 
 export function requireAuth(
   req: VercelRequest,

@@ -1,4 +1,4 @@
-import { chileDay, chileLocalToUtc } from "../stats/time";
+import { chileDay, chileLocalToUtc } from "../stats/time.js";
 
 export { chileLocalToUtc };
 

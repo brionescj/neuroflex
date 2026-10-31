@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
-import { requireAuth } from "../../auth";
-import { hashPassword, validatePasswordStrength } from "../../password";
-import { NAME_FIELDS, parseNameChanges } from "../../personName";
-import { isValidRut, normalizeForDatabase } from "../../rut";
-import { Admin } from "../../models/Admin";
-import { AuthUser } from "../../models/AuthUser";
+import { connectDB } from "../../db.js";
+import { requireAuth } from "../../auth.js";
+import { hashPassword, validatePasswordStrength } from "../../password.js";
+import { NAME_FIELDS, parseNameChanges } from "../../personName.js";
+import { isValidRut, normalizeForDatabase } from "../../rut.js";
+import { Admin } from "../../models/Admin.js";
+import { AuthUser } from "../../models/AuthUser.js";
 
 /**
  * Los administradores. Quien administra da de alta a otro con su contrasena

@@ -1,7 +1,7 @@
-import { ageAt } from "../gameAttempts";
-import { buildStudentScores, type StudentScores } from "../studentScores";
-import { fullName, shiftText, universityText } from "./chartsLists";
-import type { AttemptRow, ResultRow, StudentRow } from "./types";
+import { ageAt } from "../gameAttempts.js";
+import { buildStudentScores, type StudentScores } from "../studentScores.js";
+import { fullName, shiftText, universityText } from "./chartsLists.js";
+import type { AttemptRow, ResultRow, StudentRow } from "./types.js";
 
 /**
  * El ranking de logros: los mismos puntos e insignias que ve cada estudiante en «Mis

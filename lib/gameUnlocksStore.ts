@@ -1,13 +1,13 @@
-import { isColorSequenceResultPassed } from "./gameAttempts";
-import { isNodeResultPassed } from "./nodeRules";
+import { isColorSequenceResultPassed } from "./gameAttempts.js";
+import { isNodeResultPassed } from "./nodeRules.js";
 import {
   MINI_CASES_RULE_VERSION,
   MINI_CASES_UNLOCK_LEVEL,
   meetsMiniCasesRule,
   type MiniCasesEvidence,
-} from "./gameUnlocks";
-import { GameLevelResult } from "./models/GameLevelResult";
-import { GameUnlock } from "./models/GameUnlock";
+} from "./gameUnlocks.js";
+import { GameLevelResult } from "./models/GameLevelResult.js";
+import { GameUnlock } from "./models/GameUnlock.js";
 
 function isDuplicateKeyError(error: unknown): boolean {
   return (

@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { RUT_LIKE } from "../../stats/request";
-import { loadStudentProfileData } from "../../stats/loadData";
-import { buildStudentProfile, parseStatesQuery } from "../../stats/studentProfile";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { RUT_LIKE } from "../../stats/request.js";
+import { loadStudentProfileData } from "../../stats/loadData.js";
+import { buildStudentProfile, parseStatesQuery } from "../../stats/studentProfile.js";
 
 /** La ficha de desempeno de un estudiante: resumen y graficos por juego (el partida a partida se pide aparte, por paginas). */
 export default async function handler(

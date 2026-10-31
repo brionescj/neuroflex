@@ -10,8 +10,8 @@ import {
   dimensionValueLabel,
   deviceOfAttempt,
   fixedValues,
-} from "./dimensions";
-import { formatDateRange } from "./time";
+} from "./dimensions.js";
+import { formatDateRange } from "./time.js";
 import type {
   AgeRange,
   AttemptRow,
@@ -21,7 +21,7 @@ import type {
   Partida,
   StudentRow,
   Take,
-} from "./types";
+} from "./types.js";
 
 /** Tope de series en un grafico: pasado esto, los grupos chicos se juntan en "Otros". */
 export const MAX_COLORED_GROUPS = 7;

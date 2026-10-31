@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
-import { requireAuth } from "../../auth";
-import { confirmAdminPassword } from "../../adminConfirm";
-import { generatePassword, hashPassword } from "../../password";
-import { AuthUser } from "../../models/AuthUser";
-import { Student } from "../../models/Student";
+import { connectDB } from "../../db.js";
+import { requireAuth } from "../../auth.js";
+import { confirmAdminPassword } from "../../adminConfirm.js";
+import { generatePassword, hashPassword } from "../../password.js";
+import { AuthUser } from "../../models/AuthUser.js";
+import { Student } from "../../models/Student.js";
 
 /**
  * Genera una contrasena nueva para un estudiante y la guarda (encriptada). Pide

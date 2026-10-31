@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
-import { getRequiredEnv } from "./env";
-import { runStartupTasks } from "./startupTasks";
-import { addDbTime } from "./timing";
+import { getRequiredEnv } from "./env.js";
+import { runStartupTasks } from "./startupTasks.js";
+import { addDbTime } from "./timing.js";
 
 const uri = getRequiredEnv("MONGODB_URI");
 

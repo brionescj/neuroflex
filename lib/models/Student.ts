@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-import { GENDERS, PARALELOS, STUDY_SHIFTS, UNIVERSITIES } from "../studentFields";
+import { GENDERS, PARALELOS, STUDY_SHIFTS, UNIVERSITIES } from "../studentFields.js";
 
 const { Schema, model, models } = mongoose;
 

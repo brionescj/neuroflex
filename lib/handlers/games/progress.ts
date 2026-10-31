@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { ensureGameHeld } from "../../gameLease";
-import { ensureCurrentSession } from "../../sessions";
-import { GameProgress, type GameId } from "../../models/GameProgress";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { ensureGameHeld } from "../../gameLease.js";
+import { ensureCurrentSession } from "../../sessions.js";
+import { GameProgress, type GameId } from "../../models/GameProgress.js";
 
 const VALID_GAME_IDS: GameId[] = [
   "color-sequence",

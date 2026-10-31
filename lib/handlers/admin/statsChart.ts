@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { buildChart } from "../../stats/charts";
-import { loadChartData } from "../../stats/loadData";
-import { parseChartRequest } from "../../stats/request";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { buildChart } from "../../stats/charts.js";
+import { loadChartData } from "../../stats/loadData.js";
+import { parseChartRequest } from "../../stats/request.js";
 
 /** Calcula un grafico con los filtros y la comparacion que pide la pantalla. */
 export default async function handler(

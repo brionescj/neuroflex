@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { connectDB } from "../../db";
-import { requireAuth } from "../../auth";
-import { isValidRut, normalizeForDatabase } from "../../rut";
-import { Student } from "../../models/Student";
-import { isParalelo, parseStudentDetails } from "../../studentFields";
+import { connectDB } from "../../db.js";
+import { requireAuth } from "../../auth.js";
+import { isValidRut, normalizeForDatabase } from "../../rut.js";
+import { Student } from "../../models/Student.js";
+import { isParalelo, parseStudentDetails } from "../../studentFields.js";
 
 export default async function handler(
   req: VercelRequest,

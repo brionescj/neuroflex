@@ -1,13 +1,13 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
-import { verifyToken } from "../../jwt";
-import { ensureCurrentSession } from "../../sessions";
-import { readSessionCookie } from "../../cookies";
-import { emailProblem, normalizeEmail } from "../../email";
-import { Student } from "../../models/Student";
-import { Admin } from "../../models/Admin";
-import { parseStudentDetails } from "../../studentFields";
+import { connectDB } from "../../db.js";
+import { verifyToken } from "../../jwt.js";
+import { ensureCurrentSession } from "../../sessions.js";
+import { readSessionCookie } from "../../cookies.js";
+import { emailProblem, normalizeEmail } from "../../email.js";
+import { Student } from "../../models/Student.js";
+import { Admin } from "../../models/Admin.js";
+import { parseStudentDetails } from "../../studentFields.js";
 
 function modelFor(role: string) {
   if (role === "student") return Student;

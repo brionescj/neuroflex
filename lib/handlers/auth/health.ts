@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
+import { connectDB } from "../../db.js";
 
 /**
  * "Calienta" el servidor: hace que la funcion arranque y abra la conexion a la base.

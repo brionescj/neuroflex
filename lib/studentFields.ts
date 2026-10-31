@@ -1,7 +1,7 @@
-import { normalizeCommune } from "./communes";
-import { emailProblem, normalizeEmail } from "./email";
-import { parseNameChanges, type NameField } from "./personName";
-import { normalizeRegion } from "./region";
+import { normalizeCommune } from "./communes.js";
+import { emailProblem, normalizeEmail } from "./email.js";
+import { parseNameChanges, type NameField } from "./personName.js";
+import { normalizeRegion } from "./region.js";
 
 /**
  * Datos del estudiante que el admin puede cargar al darlo de alta o corregir

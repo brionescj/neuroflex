@@ -1,9 +1,9 @@
-import { GameAttempt } from "../models/GameAttempt";
-import { GameLevelResult } from "../models/GameLevelResult";
-import { GameUnlock } from "../models/GameUnlock";
-import { MiniCase } from "../models/MiniCase";
-import { Student } from "../models/Student";
-import type { ChartDef } from "./charts";
+import { GameAttempt } from "../models/GameAttempt.js";
+import { GameLevelResult } from "../models/GameLevelResult.js";
+import { GameUnlock } from "../models/GameUnlock.js";
+import { MiniCase } from "../models/MiniCase.js";
+import { Student } from "../models/Student.js";
+import type { ChartDef } from "./charts.js";
 import type {
   AttemptRow,
   GameId,
@@ -11,7 +11,7 @@ import type {
   StatsData,
   StudentRow,
   UnlockRow,
-} from "./types";
+} from "./types.js";
 
 /**
  * Lectura de la base para las estadisticas. Solo trae los campos que se usan:

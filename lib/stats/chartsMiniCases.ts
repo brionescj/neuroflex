@@ -1,4 +1,4 @@
-import { BASE_COLUMNS, baseCells } from "./chartsLists";
+import { BASE_COLUMNS, baseCells } from "./chartsLists.js";
 import {
   caseCategories,
   contextNotes,
@@ -7,10 +7,10 @@ import {
   ownResults,
   unitRut,
   type ChartDef,
-} from "./engine";
-import { percentOf } from "./numbers";
-import { studentName } from "./pipeline";
-import type { ChartCards, ResultRow, StudentRow } from "./types";
+} from "./engine.js";
+import { percentOf } from "./numbers.js";
+import { studentName } from "./pipeline.js";
+import type { ChartCards, ResultRow, StudentRow } from "./types.js";
 
 /**
  * «Alternativas que más fallan»: por cada mini caso, cual de sus 4 pasos se

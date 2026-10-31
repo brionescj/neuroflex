@@ -1,14 +1,14 @@
-import { CHARTS } from "./charts";
-import { universityText } from "./chartsLists";
+import { CHARTS } from "./charts.js";
+import { universityText } from "./chartsLists.js";
 import {
   DIMENSION_IDS,
   DIMENSION_LABELS,
   FILTER_DIMENSIONS,
   filterOptions,
-} from "./dimensions";
-import { studentName } from "./pipeline";
-import { MAX_AGE, MAX_COMPARED_STUDENTS, MIN_AGE } from "./request";
-import { MAX_DATE_RANGES, PERIOD_LABELS, PERIODS, chileDay } from "./time";
+} from "./dimensions.js";
+import { studentName } from "./pipeline.js";
+import { MAX_AGE, MAX_COMPARED_STUDENTS, MIN_AGE } from "./request.js";
+import { MAX_DATE_RANGES, PERIOD_LABELS, PERIODS, chileDay } from "./time.js";
 import {
   GAME_LABELS,
   MAX_PARTIDA,
@@ -18,7 +18,7 @@ import {
   type OptionChoice,
   type StatGame,
   type StudentRow,
-} from "./types";
+} from "./types.js";
 
 export type CatalogChart = {
   id: string;

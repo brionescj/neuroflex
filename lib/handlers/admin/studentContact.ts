@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { Student } from "../../models/Student";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { Student } from "../../models/Student.js";
 
 /**
  * Marca si un administrador ya contacto a un estudiante para pedirle que complete su perfil

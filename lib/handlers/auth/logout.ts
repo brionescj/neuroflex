@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { clearSessionCookie } from "../../cookies";
+import { clearSessionCookie } from "../../cookies.js";
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
   clearSessionCookie(res);

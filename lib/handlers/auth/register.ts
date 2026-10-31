@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { normalizeForDatabase } from "../../rut";
+import { normalizeForDatabase } from "../../rut.js";
 
-import { connectDB } from "../../db";
-import { hashPassword, validatePasswordStrength } from "../../password";
-import { AuthUser } from "../../models/AuthUser";
-import { Student } from "../../models/Student";
+import { connectDB } from "../../db.js";
+import { hashPassword, validatePasswordStrength } from "../../password.js";
+import { AuthUser } from "../../models/AuthUser.js";
+import { Student } from "../../models/Student.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {

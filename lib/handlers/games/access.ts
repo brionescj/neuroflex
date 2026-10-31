@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { resolveMiniCasesAccess } from "../../gameUnlocksStore";
-import { ensureCurrentSession } from "../../sessions";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { resolveMiniCasesAccess } from "../../gameUnlocksStore.js";
+import { ensureCurrentSession } from "../../sessions.js";
 
 /**
  * A que juegos con desbloqueo tiene acceso el estudiante. Solo dice si o no:

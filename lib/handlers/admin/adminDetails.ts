@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
-import { requireAuth } from "../../auth";
-import { parseNameChanges } from "../../personName";
-import { Admin } from "../../models/Admin";
+import { connectDB } from "../../db.js";
+import { requireAuth } from "../../auth.js";
+import { parseNameChanges } from "../../personName.js";
+import { Admin } from "../../models/Admin.js";
 
 /**
  * Corrige los nombres y apellidos de un administrador (tambien el propio): la

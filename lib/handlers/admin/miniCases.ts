@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { nextCaseKey, parseMiniCaseInput } from "../../miniCaseInput";
-import { validateAlternateOrders } from "../../miniCaseScoring";
-import { MiniCase } from "../../models/MiniCase";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { nextCaseKey, parseMiniCaseInput } from "../../miniCaseInput.js";
+import { validateAlternateOrders } from "../../miniCaseScoring.js";
+import { MiniCase } from "../../models/MiniCase.js";
 
 const LETTERS = ["a", "b", "c", "d"];
 

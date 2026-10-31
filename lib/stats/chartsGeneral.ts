@@ -13,10 +13,10 @@ import {
   periodNote,
   totalStudents,
   type ChartDef,
-} from "./engine";
-import { median, percentOf, round } from "./numbers";
-import { isFirstTryTime, isLevelResultPassed } from "../gameAttempts";
-import { chileWeekdayHour } from "./time";
+} from "./engine.js";
+import { median, percentOf, round } from "./numbers.js";
+import { isFirstTryTime, isLevelResultPassed } from "../gameAttempts.js";
+import { chileWeekdayHour } from "./time.js";
 import {
   GAME_IDS,
   GAME_LABELS,
@@ -25,10 +25,10 @@ import {
   type GameId,
   type ResultRow,
   type StudentRow,
-} from "./types";
-import { studentName } from "./pipeline";
-import { rankStudents, topScoreRows, TOP_SCORE_COLUMNS } from "./topScores";
-import { LIST_CHARTS, baseCells, chileDate, lockedMiniCases, miniCasesCells, miniCasesColumns } from "./chartsLists";
+} from "./types.js";
+import { studentName } from "./pipeline.js";
+import { rankStudents, topScoreRows, TOP_SCORE_COLUMNS } from "./topScores.js";
+import { LIST_CHARTS, baseCells, chileDate, lockedMiniCases, miniCasesCells, miniCasesColumns } from "./chartsLists.js";
 
 const PERIOD_ONLY = { usesPartida: false, usesPeriod: true } as const;
 

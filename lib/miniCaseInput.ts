@@ -1,4 +1,4 @@
-import { isMiniCaseImageKey } from "./miniCaseImages";
+import { isMiniCaseImageKey } from "./miniCaseImages.js";
 
 /**
  * Valida lo que el administrador envia para crear o editar un mini caso. Es una funcion pura para

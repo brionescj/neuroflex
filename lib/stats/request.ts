@@ -1,7 +1,7 @@
-import { MAX_STUDENT_AGE, MIN_STUDENT_AGE } from "../studentFields";
-import { findChart, type ChartDef } from "./charts";
-import { DIMENSION_IDS, FILTER_DIMENSIONS } from "./dimensions";
-import { MAX_DATE_RANGES, PERIODS, isDateKey, type DateRange } from "./time";
+import { MAX_STUDENT_AGE, MIN_STUDENT_AGE } from "../studentFields.js";
+import { findChart, type ChartDef } from "./charts.js";
+import { DIMENSION_IDS, FILTER_DIMENSIONS } from "./dimensions.js";
+import { MAX_DATE_RANGES, PERIODS, isDateKey, type DateRange } from "./time.js";
 import type {
   AgeRange,
   ChartRequest,
@@ -12,8 +12,8 @@ import type {
   Partida,
   Take,
   Period,
-} from "./types";
-import { MAX_PARTIDA } from "./types";
+} from "./types.js";
+import { MAX_PARTIDA } from "./types.js";
 
 export const MAX_COMPARED_STUDENTS = 6;
 

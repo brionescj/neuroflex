@@ -1,4 +1,4 @@
-import { GameUnlock } from "./models/GameUnlock";
+import { GameUnlock } from "./models/GameUnlock.js";
 
 /** Lo que se adelanta de los desbloqueos al abrir la sesion: solo los que YA estan registrados. */
 export type UnlockedGames = { miniCases?: true };

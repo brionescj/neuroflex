@@ -10,8 +10,8 @@
 import {
   reconcileColorSequenceEvents,
   sanitizeNodeEvents,
-} from "./attemptEvents";
-import { NODE_MAX_TRIES, isNodeResultPassed } from "./nodeRules";
+} from "./attemptEvents.js";
+import { NODE_MAX_TRIES, isNodeResultPassed } from "./nodeRules.js";
 
 export const ATTEMPT_GAME_IDS = [
   "color-sequence",

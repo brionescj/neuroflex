@@ -1,20 +1,20 @@
-import { analyzeColorSequenceResponse, type ColorTap } from "../attemptEvents";
+import { analyzeColorSequenceResponse, type ColorTap } from "../attemptEvents.js";
 import {
   buildStudentSnapshot,
   colorSequenceThresholdPercent,
   scoreColorSequenceLevel,
   summarizeResults,
   type StudentSnapshot,
-} from "../gameAttempts";
-import { NODE_MAX_TRIES, NODE_MIN_LEVELS, nodeAllowedErrors, nodeErrorsOf } from "../nodeRules";
+} from "../gameAttempts.js";
+import { NODE_MAX_TRIES, NODE_MIN_LEVELS, nodeAllowedErrors, nodeErrorsOf } from "../nodeRules.js";
 import {
   MINI_CASES_UNLOCK_LEVEL,
   meetsMiniCasesRule,
   type MiniCasesEvidence,
-} from "../gameUnlocks";
-import { analyzeMiniCaseOrder, primaryOrder, type TextOption } from "../miniCaseScoring";
-import { chileLocalToUtc, chileToday } from "./chileTime";
-import type { DemoProfile } from "./profiles";
+} from "../gameUnlocks.js";
+import { analyzeMiniCaseOrder, primaryOrder, type TextOption } from "../miniCaseScoring.js";
+import { chileLocalToUtc, chileToday } from "./chileTime.js";
+import type { DemoProfile } from "./profiles.js";
 import {
   between,
   clamp,
@@ -27,7 +27,7 @@ import {
   shuffle,
   sigmoid,
   type Rng,
-} from "./random";
+} from "./random.js";
 
 /**
  * Partidas inventadas para ver los graficos con datos. Cada una sigue las

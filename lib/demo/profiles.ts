@@ -1,4 +1,4 @@
-import { between, int, makeRng, seedFrom } from "./random";
+import { between, int, makeRng, seedFrom } from "./random.js";
 
 /**
  * Datos de prueba de las fichas: correo, universidad, fecha de nacimiento,

@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
-import { requireAuth } from "../../auth";
-import { Student } from "../../models/Student";
+import { connectDB } from "../../db.js";
+import { requireAuth } from "../../auth.js";
+import { Student } from "../../models/Student.js";
 
 export default async function handler(
   req: VercelRequest,

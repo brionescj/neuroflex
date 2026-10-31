@@ -1,5 +1,5 @@
-import { verifyPassword } from "./password";
-import { AuthUser } from "./models/AuthUser";
+import { verifyPassword } from "./password.js";
+import { AuthUser } from "./models/AuthUser.js";
 
 export type Confirmation = { ok: true } | { ok: false; status: number; message: string };
 

@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
-import { requireAuth } from "../../auth";
-import { Admin } from "../../models/Admin";
-import { AuthUser } from "../../models/AuthUser";
+import { connectDB } from "../../db.js";
+import { requireAuth } from "../../auth.js";
+import { Admin } from "../../models/Admin.js";
+import { AuthUser } from "../../models/AuthUser.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "PATCH") {

@@ -3,7 +3,7 @@ import {
   analyzeNodeEvents,
   sanitizeColorTaps,
   sanitizeNodeEvents,
-} from "./attemptEvents";
+} from "./attemptEvents.js";
 import {
   buildStudentSnapshot,
   sanitizeMiniCaseBehavior,
@@ -14,17 +14,17 @@ import {
   type AttemptInfo,
   type LevelReport,
   type StoredResult,
-} from "./gameAttempts";
+} from "./gameAttempts.js";
 import {
   analyzeMiniCaseOrder,
   isPermutationOfOptions,
   type TextOption,
-} from "./miniCaseScoring";
-import { scoreNodeTry } from "./nodeRules";
-import { GameAttempt } from "./models/GameAttempt";
-import { GameLevelResult } from "./models/GameLevelResult";
-import { MiniCase } from "./models/MiniCase";
-import { Student } from "./models/Student";
+} from "./miniCaseScoring.js";
+import { scoreNodeTry } from "./nodeRules.js";
+import { GameAttempt } from "./models/GameAttempt.js";
+import { GameLevelResult } from "./models/GameLevelResult.js";
+import { MiniCase } from "./models/MiniCase.js";
+import { Student } from "./models/Student.js";
 
 function isDuplicateKeyError(error: unknown): boolean {
   return (

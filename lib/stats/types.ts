@@ -5,7 +5,7 @@
  * leer la respuesta, no un test.
  */
 
-import type { DateRange, Period } from "./time";
+import type { DateRange, Period } from "./time.js";
 
 export type { DateRange, Period };
 

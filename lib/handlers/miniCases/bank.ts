@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { requireAuth } from "../../auth";
-import { connectDB } from "../../db";
-import { resolveMiniCasesAccess } from "../../gameUnlocksStore";
-import { DEFAULT_MINI_CASE_IMAGE, isMiniCaseImageKey } from "../../miniCaseImages";
-import { MiniCase } from "../../models/MiniCase";
-import { ensureCurrentSession } from "../../sessions";
+import { requireAuth } from "../../auth.js";
+import { connectDB } from "../../db.js";
+import { resolveMiniCasesAccess } from "../../gameUnlocksStore.js";
+import { DEFAULT_MINI_CASE_IMAGE, isMiniCaseImageKey } from "../../miniCaseImages.js";
+import { MiniCase } from "../../models/MiniCase.js";
+import { ensureCurrentSession } from "../../sessions.js";
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items];

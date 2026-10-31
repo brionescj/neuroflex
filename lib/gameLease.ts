@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { GameLease } from "./models/GameLease";
+import { GameLease } from "./models/GameLease.js";
 
 /**
  * Un juego se juega desde UN solo lugar a la vez: quien lo abre en ultimo lugar "tiene" el juego,

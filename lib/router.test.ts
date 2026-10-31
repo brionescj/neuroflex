@@ -292,7 +292,7 @@ describe("una sola funcion de Vercel", () => {
 
     for (const file of handlers) {
       // En Windows readdirSync devuelve "lib\\handlers\\...": se normaliza antes.
-      const importPath = "./" + posix(file).replace(/^lib\//, "").replace(/\.ts$/, "");
+      const importPath = "./" + posix(file).replace(/^lib\//, "").replace(/\.ts$/, ".js");
 
       expect(routerSource, file).toContain(`"${importPath}"`);
     }

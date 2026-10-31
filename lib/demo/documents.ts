@@ -1,4 +1,4 @@
-import type { DemoPlan } from "./plan";
+import type { DemoPlan } from "./plan.js";
 
 /**
  * Los documentos tal como se guardan en la base (misma forma que los que crea

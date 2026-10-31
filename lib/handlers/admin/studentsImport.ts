@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { connectDB } from "../../db";
-import { requireAuth } from "../../auth";
-import { Student } from "../../models/Student";
-import { isParalelo, UNIVERSITIES } from "../../studentFields";
-import { MAX_IMPORT_ROWS, parseImportRow, type ImportRowInput } from "../../studentImport";
+import { connectDB } from "../../db.js";
+import { requireAuth } from "../../auth.js";
+import { Student } from "../../models/Student.js";
+import { isParalelo, UNIVERSITIES } from "../../studentFields.js";
+import { MAX_IMPORT_ROWS, parseImportRow, type ImportRowInput } from "../../studentImport.js";
 
 /** Lo que pasa con cada fila del Excel. */
 export type ImportRowStatus = "ready" | "created" | "exists" | "error";

@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
-import { verifyToken } from "../../jwt";
-import { readSessionCookie } from "../../cookies";
-import { findSessionProfile } from "../../findProfile";
-import { findUnlockedGames } from "../../unlockedGames";
-import { isCurrentSession, SESSION_REPLACED_CODE, SESSION_REPLACED_MESSAGE } from "../../sessions";
-import { clearSessionCookie } from "../../cookies";
+import { connectDB } from "../../db.js";
+import { verifyToken } from "../../jwt.js";
+import { readSessionCookie } from "../../cookies.js";
+import { findSessionProfile } from "../../findProfile.js";
+import { findUnlockedGames } from "../../unlockedGames.js";
+import { isCurrentSession, SESSION_REPLACED_CODE, SESSION_REPLACED_MESSAGE } from "../../sessions.js";
+import { clearSessionCookie } from "../../cookies.js";
 
 export default async function handler(
   req: VercelRequest,

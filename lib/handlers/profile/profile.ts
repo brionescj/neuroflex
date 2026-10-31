@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
-import { verifyToken } from "../../jwt";
-import { readSessionCookie } from "../../cookies";
-import { findProfile } from "../../findProfile";
-import { ensureCurrentSession } from "../../sessions";
+import { connectDB } from "../../db.js";
+import { verifyToken } from "../../jwt.js";
+import { readSessionCookie } from "../../cookies.js";
+import { findProfile } from "../../findProfile.js";
+import { ensureCurrentSession } from "../../sessions.js";
 
 export default async function handler(
   req: VercelRequest,

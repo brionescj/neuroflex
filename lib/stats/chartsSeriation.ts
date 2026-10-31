@@ -1,4 +1,4 @@
-import { isColorSequenceResultPassed } from "../gameAttempts";
+import { isColorSequenceResultPassed } from "../gameAttempts.js";
 import {
   AS_OPTION,
   COMPOSITION_VIEWS,
@@ -19,11 +19,11 @@ import {
   type ChartDef,
   type Ctx,
   type Unit,
-} from "./engine";
-import { BASE_COLUMNS, baseCells } from "./chartsLists";
-import { percentOf } from "./numbers";
-import { studentName, type Grouped } from "./pipeline";
-import type { ChartOptionDef, ChartTable, ResultRow, StudentRow } from "./types";
+} from "./engine.js";
+import { BASE_COLUMNS, baseCells } from "./chartsLists.js";
+import { percentOf } from "./numbers.js";
+import { studentName, type Grouped } from "./pipeline.js";
+import type { ChartOptionDef, ChartTable, ResultRow, StudentRow } from "./types.js";
 
 const GAME = "color-sequence" as const;
 

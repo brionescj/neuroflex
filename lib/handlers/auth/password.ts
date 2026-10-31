@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { connectDB } from "../../db";
-import { requireAuth } from "../../auth";
-import { ensureCurrentSession } from "../../sessions";
-import { hashPassword, validatePasswordStrength, verifyPassword } from "../../password";
-import { AuthUser } from "../../models/AuthUser";
+import { connectDB } from "../../db.js";
+import { requireAuth } from "../../auth.js";
+import { ensureCurrentSession } from "../../sessions.js";
+import { hashPassword, validatePasswordStrength, verifyPassword } from "../../password.js";
+import { AuthUser } from "../../models/AuthUser.js";
 
 /**
  * Cambio de contrasena de quien tiene la sesion iniciada (estudiante o admin).

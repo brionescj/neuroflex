@@ -1,5 +1,5 @@
-import { round } from "./numbers";
-import type { ChartId, ChartResult } from "./types";
+import { round } from "./numbers.js";
+import type { ChartId, ChartResult } from "./types.js";
 
 /** Piezas que comparten la ficha de desempeno y la evolucion de un estudiante. */
 
