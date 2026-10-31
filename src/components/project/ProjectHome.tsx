@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import {
   DEVELOPER,
   PROJECT_FUND,
+  PROJECT_OBJECTIVE,
   PROJECT_SUBTITLE,
   PROJECT_TITLE,
   TEAM,
@@ -24,7 +25,7 @@ export function ProjectHome({ action }: ProjectHomeProps) {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-8 text-center text-white">
       <header className="flex flex-col items-center gap-4">
-        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">NeuroFlex</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Neuroflex</h1>
 
         <p className="text-base font-semibold leading-snug sm:text-lg">{PROJECT_TITLE}</p>
 
@@ -34,6 +35,14 @@ export function ProjectHome({ action }: ProjectHomeProps) {
           {PROJECT_FUND}
         </p>
       </header>
+
+      <section aria-labelledby="project-objective" className="flex w-full flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 text-left sm:p-6">
+        <h2 id="project-objective" className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+          Objetivo general
+        </h2>
+
+        <p className="text-sm leading-relaxed text-zinc-200 sm:text-base">{PROJECT_OBJECTIVE}</p>
+      </section>
 
       <section aria-label="Equipo del proyecto" className="grid w-full grid-cols-1 gap-8 min-[480px]:grid-cols-2">
         {TEAM.map((member) => (

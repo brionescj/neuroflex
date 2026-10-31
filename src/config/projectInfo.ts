@@ -12,6 +12,9 @@ export const PROJECT_TITLE =
 export const PROJECT_SUBTITLE =
   "Un modelo comparativo basado en Neurociencias para la optimización de la formación superior en modalidad online y presencial en dos contextos regionales";
 
+export const PROJECT_OBJECTIVE =
+  "Optimizar el desarrollo de las Funciones Ejecutivas (planificación, flexibilidad cognitiva, autocontrol y memoria de trabajo) como base fundamental para la comprensión lectora, mediante un modelo comparativo que integra estrategias de innovación y el uso de una APP móvil basada en fundamento de las neurociencias, analizando su transferencia en estudiantes de Educación Diferencial en modalidades online y presencial de la Universidad Viña del Mar de la V Región y Universidad Santo Tomás de la Región metropolitana.";
+
 export const PROJECT_FUND = "FONDO INTERNO DE INVESTIGACIÓN (FII) 2026";
 
 export type TeamMember = {
