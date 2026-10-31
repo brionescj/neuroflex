@@ -1,4 +1,4 @@
-import { DEFAULT_MINI_CASE_IMAGE, isMiniCaseImageKey, miniCaseImageLabel } from "@/config/miniCaseImages";
+import { DEFAULT_MINI_CASE_IMAGE, isMiniCaseImageKey } from "@/config/miniCaseImages";
 import { SCENES, SCENE_HEIGHT, SCENE_WIDTH } from "./scenes";
 
 type MiniCaseImageProps = {
@@ -24,7 +24,8 @@ export function MiniCaseImage({ imageKey, className, label }: MiniCaseImageProps
       preserveAspectRatio="xMidYMid slice"
       data-image={key}
     >
-      <title>{label ?? miniCaseImageLabel(key)}</title>
+      {/* El <title> solo va si la imagen se anuncia (administracion): en el juego es decoracion y su titulo saldria al pasar el mouse. */}
+      {label ? <title>{label}</title> : null}
       <Scene />
     </svg>
   );
