@@ -64,15 +64,15 @@ export function ProjectHome({ action }: ProjectHomeProps) {
         {action.label}
       </Link>
 
-      <footer className="flex w-full flex-col items-center gap-1 border-t border-zinc-800 pt-6 text-sm text-zinc-400">
-        <p className="text-xs uppercase tracking-wide text-zinc-500">Desarrollo de la plataforma</p>
-        <p className="font-semibold text-zinc-200">{DEVELOPER.name}</p>
+      <footer className="flex w-full flex-col items-center gap-1 border-t border-zinc-800 pt-6 text-xs text-zinc-400">
+        <p className="text-[11px] uppercase tracking-wide text-zinc-500">Desarrollo de la plataforma</p>
+        <p className="text-[13px] font-semibold text-zinc-200">{DEVELOPER.name}</p>
         <p>{DEVELOPER.role}</p>
         <a
           href={DEVELOPER.phoneLink}
-          className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+          className="mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white"
         >
-          <Phone className="size-4" aria-hidden="true" />
+          <Phone className="size-3.5" aria-hidden="true" />
           {DEVELOPER.phone}
         </a>
       </footer>

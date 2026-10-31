@@ -33,7 +33,7 @@ export type TeamMember = {
 export const TEAM: readonly TeamMember[] = [
   {
     name: "Madelaine Mora Rojas",
-    role: "Directora e investigadora responsable del proyecto",
+    role: "Investigadora responsable del proyecto",
     photoName: "madelaine-mora-rojas",
     photoPosition: "95% 50%",
   },
