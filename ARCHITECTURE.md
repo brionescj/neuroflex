@@ -388,6 +388,10 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
     repetir el nombre de la base en `--confirm=`; antes de borrar guarda un respaldo en `server-scripts/backups/`
     (ignorada por git; trae los hash de contraseña) y, si falla, no borra. Las contraseñas se generan al azar y se
     muestran una sola vez (o se toman de `NEUROFLEX_ADMIN_PASSWORD` / `NEUROFLEX_STUDENT_PASSWORD`); no se guardan.
+    **Regla para `server-scripts/`:** `tsc -b` los compila (están en `tsconfig.server.json`) y Vercel ejecuta
+    `npm run build`, así que un script **nunca** puede hacer `import` de un archivo ignorado por git
+    (`roster-2.json` tiene datos personales): se lee al ejecutar con `readFileSync`, como en `seedRoster2.ts` y
+    `seedDemoData.ts`. Un `import` estático rompe el build en cualquier máquina que no tenga el archivo.
 
 21. **Perfil (estudiante y administrador):** el avatar vive **dentro de la tarjeta** del usuario (`AvatarPicker`,
     `features/profile/components/`). Fuera de la edición es solo el dibujo; con el lápiz de la tarjeta se puede tocar

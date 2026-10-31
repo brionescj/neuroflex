@@ -1,4 +1,24 @@
-import roster from "./roster-2.json";
+import { readFileSync } from "node:fs";
+
+/**
+ * La lista (roster-2.json) tiene datos personales y no se sube a git. Se lee al
+ * ejecutar, no con `import`: un import estatico haria que `tsc -b` (y por lo
+ * tanto el build de Vercel) fallara en cualquier maquina que no tenga el archivo.
+ */
+const ROSTER_PATH = new URL("./roster-2.json", import.meta.url);
+
+type RosterRow = {
+  raw: string;
+  rut: string;
+  ciudad: string;
+  region: string;
+  celular: string;
+  email: string;
+};
+
+function readRoster(): RosterRow[] {
+  return JSON.parse(readFileSync(ROSTER_PATH, "utf8")) as RosterRow[];
+}
 
 function titleCase(input: string): string {
   return input
@@ -22,7 +42,7 @@ function parseName(raw: string) {
 }
 
 async function seed(adminSessionCookie: string) {
-  for (const row of roster) {
+  for (const row of readRoster()) {
     const { paternalLastName, maternalLastName, firstName } = parseName(row.raw);
 
     const response = await fetch("http://localhost:3000/api/admin/students", {
