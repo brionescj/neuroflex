@@ -1,14 +1,17 @@
 import { Download, FileSpreadsheet } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
+import { RegionCommuneFields } from "@/components/forms/RegionCommuneFields";
 import { Button } from "@/components/ui/Button";
 import { Field, FieldLabel } from "@/components/ui/Field";
 import { PARALELO_OPTIONS, UNIVERSITY_OPTIONS, universityLabel } from "@/config/studentOptions";
 import { saveBlob } from "@/features/stats/utils/download";
-import type { Paralelo, StudentImportReport, StudentImportRow, University } from "@/types";
+import type { Paralelo, StudentImportReport, StudentImportRow, StudentImportRowResult, University } from "@/types";
+import { officialCommune, placeForSelects } from "@/utils/commune";
 
 import { importStudentsAction } from "../actions/students.action";
 import { downloadImportWarningsExcel, type ImportWarningsContext } from "../utils/importWarningsExcel";
+import { applyPlaceFix, hasPlaceWarning } from "../utils/importPlaceFix";
 import { importTemplateBlob, readImportFile } from "../utils/studentImportFile";
 
 const SELECT_CLASS =
@@ -16,7 +19,7 @@ const SELECT_CLASS =
 
 type Step =
   | { name: "choose" }
-  | { name: "review"; rows: StudentImportRow[]; report: StudentImportReport }
+  | { name: "review"; rows: StudentImportRow[]; report: StudentImportReport; fixed: number[] }
   | { name: "done"; report: StudentImportReport };
 
 type StudentImportDialogProps = {
@@ -38,6 +41,8 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Numera las revisiones pedidas al corregir a mano: solo la ultima actualiza la pantalla. */
+  const reviewSeq = useRef(0);
 
   const canReview = university !== "" && paralelo !== "";
 
@@ -103,7 +108,39 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
 
     if (!response.success) return setError(response.message);
 
-    setStep({ name: "review", rows: read.rows, report: response.data });
+    setStep({ name: "review", rows: read.rows, report: response.data, fixed: [] });
+  }
+
+  /**
+   * El administrador eligio region y comuna para un estudiante cuya region o comuna no se pudo asociar: se
+   * reemplazan en esa fila y se vuelve a revisar (nada se guarda) para que los avisos y los totales sean los reales.
+   */
+  async function handleFixPlace(current: Extract<Step, { name: "review" }>, rowNumber: number, place: { region: string; comuna: string }) {
+    if (university === "" || paralelo === "") return;
+
+    // Al elegir la region por primera vez se conserva la comuna del Excel si es de esa region (si no, se perderia).
+    const original = current.rows.find((row) => row.row === rowNumber);
+    const keepCommune =
+      !current.fixed.includes(rowNumber) && place.region !== "" && place.comuna === "" && original !== undefined;
+    const chosen = keepCommune ? { ...place, comuna: officialCommune(place.region, original.comuna) } : place;
+
+    const rows = applyPlaceFix(current.rows, rowNumber, chosen);
+    const fixed = current.fixed.includes(rowNumber) ? current.fixed : [...current.fixed, rowNumber];
+    const seq = ++reviewSeq.current;
+
+    setError(null);
+    setStep({ ...current, rows, fixed });
+    setBusy(true);
+
+    const response = await importStudentsAction({ paralelo, university, dryRun: true, rows });
+
+    if (seq !== reviewSeq.current) return;
+
+    setBusy(false);
+
+    if (!response.success) return setError(response.message);
+
+    setStep({ name: "review", rows, report: response.data, fixed });
   }
 
   async function handleConfirm(rows: StudentImportRow[]) {
@@ -243,6 +280,9 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
         {step.name === "review" && (
           <ReviewStep
             report={step.report}
+            rows={step.rows}
+            fixed={step.fixed}
+            onFixPlace={(rowNumber, place) => handleFixPlace(step, rowNumber, place)}
             context={context}
             scope={`Paralelo ${paralelo} · ${universityLabel(university as University) ?? ""}`}
             busy={busy}
@@ -274,9 +314,30 @@ function Summary({ items }: { items: { label: string; value: number; tone: strin
   );
 }
 
-function Problems({ report, context }: { report: StudentImportReport; context: ImportWarningsContext }) {
+type PlaceFixProps = {
+  rows: StudentImportRow[];
+  /** Filas cuya region o comuna ya se corrigio a mano (siguen en la lista para poder cambiarlas otra vez). */
+  fixed: number[];
+  onFixPlace: (rowNumber: number, place: { region: string; comuna: string }) => void;
+};
+
+const FIX_SELECT_CLASS =
+  "h-11 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 text-sm text-white outline-none transition focus:border-white disabled:opacity-50";
+
+function Problems({
+  report,
+  context,
+  fix,
+}: {
+  report: StudentImportReport;
+  context: ImportWarningsContext;
+  /** Solo en la revision: permite elegir a mano la region y la comuna que no se pudieron asociar. */
+  fix?: PlaceFixProps;
+}) {
   const problems = report.results.filter((result) => result.status === "exists" || result.status === "error");
   const warned = report.results.filter((result) => result.warnings.length > 0);
+  // En la revision tambien siguen a la vista los ya corregidos, para poder cambiarlos otra vez.
+  const listed = report.results.filter((result) => result.warnings.length > 0 || fix?.fixed.includes(result.row));
 
   return (
     <>
@@ -295,15 +356,24 @@ function Problems({ report, context }: { report: StudentImportReport; context: I
         </section>
       )}
 
-      {warned.length > 0 && (
+      {listed.length > 0 && (
         <section aria-label="Datos sin rellenar" className="flex flex-col gap-2">
-          <details className="rounded-lg border border-zinc-800 p-3 text-sm">
-            <summary className="min-h-11 cursor-pointer py-2 text-amber-300">
-              {warned.length} {warned.length === 1 ? "estudiante con datos" : "estudiantes con datos"} que no se pudieron
-              cargar (quedan sin rellenar)
+          <details open={fix !== undefined && warned.length === 0} className="rounded-lg border border-zinc-800 p-3 text-sm">
+            <summary className={`min-h-11 cursor-pointer py-2 ${warned.length > 0 ? "text-amber-300" : "text-emerald-300"}`}>
+              {warned.length > 0
+                ? `${warned.length} ${warned.length === 1 ? "estudiante con datos" : "estudiantes con datos"} que no se pudieron cargar (quedan sin rellenar)`
+                : `${listed.length} ${listed.length === 1 ? "estudiante corregido" : "estudiantes corregidos"} a mano`}
             </summary>
+
+            {fix && warned.some(hasPlaceWarning) && (
+              <p className="mt-2 text-xs text-zinc-400">
+                Si la región o la comuna no se pudo asociar, elígela aquí antes de cargar. Si la dejas en «Seleccionar»,
+                queda sin rellenar.
+              </p>
+            )}
+
             <ul className="mt-2 flex flex-col gap-1.5">
-              {warned.map((result) => (
+              {listed.map((result) => (
                 <li key={result.row} className="rounded-lg bg-zinc-900 p-2">
                   <span className="font-medium">Fila {result.row}</span>
                   <span className="text-zinc-400"> · {result.name}</span>
@@ -312,23 +382,59 @@ function Problems({ report, context }: { report: StudentImportReport; context: I
                       {warning}
                     </span>
                   ))}
+
+                  {fix && (hasPlaceWarning(result) || fix.fixed.includes(result.row)) && (
+                    <PlaceFixer result={result} fix={fix} />
+                  )}
                 </li>
               ))}
             </ul>
           </details>
 
-          <Button type="button" variant="outline" onClick={() => void downloadImportWarningsExcel(report.results, context)}>
-            <Download className="size-4" aria-hidden="true" />
-            Descargar Excel de datos sin rellenar
-          </Button>
+          {warned.length > 0 && (
+            <Button type="button" variant="outline" onClick={() => void downloadImportWarningsExcel(report.results, context)}>
+              <Download className="size-4" aria-hidden="true" />
+              Descargar Excel de datos sin rellenar
+            </Button>
+          )}
         </section>
       )}
     </>
   );
 }
 
+/** Region y comuna de un estudiante, para elegirlas de las listas oficiales cuando el Excel no las trae bien. */
+function PlaceFixer({ result, fix }: { result: StudentImportRowResult; fix: PlaceFixProps }) {
+  const source = fix.rows.find((row) => row.row === result.row);
+  const place = placeForSelects(source?.region, source?.comuna);
+  const wasFixed = fix.fixed.includes(result.row);
+
+  return (
+    <div className="mt-2 flex flex-col gap-2 border-t border-zinc-800 pt-2">
+      {wasFixed && !hasPlaceWarning(result) && (
+        <span className="text-xs text-emerald-300">Corregido a mano: se cargará con lo que elegiste.</span>
+      )}
+
+      <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+        <RegionCommuneFields
+          idPrefix={`fix-${result.row}`}
+          region={place.region}
+          comuna={place.comuna}
+          onChange={(next) => fix.onFixPlace(result.row, next)}
+          selectClassName={FIX_SELECT_CLASS}
+          optionClassName="bg-zinc-900 text-white"
+          allowClear
+        />
+      </div>
+    </div>
+  );
+}
+
 type ReviewStepProps = {
   report: StudentImportReport;
+  rows: StudentImportRow[];
+  fixed: number[];
+  onFixPlace: PlaceFixProps["onFixPlace"];
   context: ImportWarningsContext;
   scope: string;
   busy: boolean;
@@ -337,7 +443,7 @@ type ReviewStepProps = {
   onConfirm: () => void;
 };
 
-function ReviewStep({ report, context, scope, busy, error, onBack, onConfirm }: ReviewStepProps) {
+function ReviewStep({ report, rows, fixed, onFixPlace, context, scope, busy, error, onBack, onConfirm }: ReviewStepProps) {
   const { summary } = report;
 
   return (
@@ -356,7 +462,7 @@ function ReviewStep({ report, context, scope, busy, error, onBack, onConfirm }: 
         ]}
       />
 
-      <Problems report={report} context={context} />
+      <Problems report={report} context={context} fix={{ rows, fixed, onFixPlace }} />
 
       {error && (
         <p role="alert" className="text-sm text-rose-400">

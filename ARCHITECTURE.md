@@ -341,7 +341,12 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
       expande abreviaturas («Gral.», «B.», «Bdo.», «Lib.», «Valpo»), acepta el número («VI», «8») y tolera una falta
       de ortografía (más de una palabra de otra región, o un número que no calza con el nombre, no se adivina).
       Una comuna de **Ñuble** escrita con Biobío (la región de antes de 2018) se guarda en Ñuble sin aviso; cualquier
-      otro desacuerdo comuna/región no se adivina y el aviso dice a qué región pertenece la comuna. La revisión
+      otro desacuerdo comuna/región no se adivina y el aviso dice a qué región pertenece la comuna. Si la **región o la comuna de un estudiante no se pudo asociar**, la revisión muestra bajo su
+      aviso los selectores oficiales de región y comuna (`RegionCommuneFields`, con «Seleccionar» para dejarlas sin
+      rellenar): al elegir se reemplazan en esa fila (`importPlaceFix.ts`; la comuna del Excel se conserva si es de la
+      región elegida) y se vuelve a revisar —nada se guarda— para que avisos y totales sean los reales; la fila sigue a
+      la vista como «corregida a mano» y la carga final lleva lo elegido. Solo región y comuna se corrigen así; los
+      demás avisos (correo, fecha...) quedan sin rellenar. La revisión
       permite **descargar un Excel de los datos sin rellenar** (`features/admin/utils/importWarningsExcel.ts`: una fila
       por dato, con fila del archivo, nombre, RUT, universidad, paralelo, dato y motivo). Acepta fechas AAAA-MM-DD, DD/MM/AAAA, DD-MM-AAAA, DD.MM.AAAA y números de serie de Excel.
 
