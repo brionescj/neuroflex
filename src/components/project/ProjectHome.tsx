@@ -36,12 +36,13 @@ export function ProjectHome({ action }: ProjectHomeProps) {
         </p>
       </header>
 
-      <section aria-labelledby="project-objective" className="flex w-full flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 text-left sm:p-6">
-        <h2 id="project-objective" className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-          Objetivo general
-        </h2>
-
-        <p className="text-sm leading-relaxed text-zinc-200 sm:text-base">{PROJECT_OBJECTIVE}</p>
+      <section
+        aria-label="Objetivo general"
+        className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 sm:p-6"
+      >
+        <p lang="es" className="hyphens-auto text-justify text-sm leading-relaxed text-zinc-200 sm:text-base">
+          <span className="font-semibold uppercase tracking-wide text-white">Objetivo general:</span> {PROJECT_OBJECTIVE}
+        </p>
       </section>
 
       <section aria-label="Equipo del proyecto" className="grid w-full grid-cols-1 gap-8 min-[480px]:grid-cols-2">
