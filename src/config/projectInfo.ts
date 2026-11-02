@@ -20,6 +20,8 @@ export const PROJECT_FUND = "FONDO INTERNO DE INVESTIGACIÓN (FII) 2026";
 export type TeamMember = {
   name: string;
   role: string;
+  /** Grado académico, se muestra bajo el cargo. */
+  degree: string;
   /** Nombre del archivo en public/equipo/, sin extensión. */
   photoName: string;
   /**
@@ -34,12 +36,14 @@ export const TEAM: readonly TeamMember[] = [
   {
     name: "Madelaine Mora Rojas",
     role: "Investigadora responsable del proyecto",
+    degree: "Magíster en Neurociencia Aplicada a la Educación",
     photoName: "madelaine-mora-rojas",
     photoPosition: "95% 50%",
   },
   {
     name: "Arturo Pinto Guevara",
     role: "Coinvestigador",
+    degree: "Doctor en Educación",
     photoName: "arturo-pinto-guevara",
     photoPosition: "50% 5%",
   },

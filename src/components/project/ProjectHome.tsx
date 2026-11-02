@@ -53,6 +53,7 @@ export function ProjectHome({ action }: ProjectHomeProps) {
             <figcaption className="flex flex-col gap-0.5">
               <span className="text-base font-semibold">{member.name}</span>
               <span className="text-sm text-zinc-400">{member.role}</span>
+              <span className="text-[13px] text-zinc-400">{member.degree}</span>
             </figcaption>
           </figure>
         ))}
