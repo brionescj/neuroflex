@@ -284,6 +284,22 @@ describe("una sola funcion de Vercel", () => {
     expect(config.rewrites).toContainEqual({ source: "/api/(.*)", destination: "/api" });
   });
 
+  it("vercel.json devuelve index.html en las rutas de la pagina (abrir /estudiante directo o recargar), despues de /api", () => {
+    const config = JSON.parse(readFileSync("vercel.json", "utf8")) as {
+      rewrites?: { source: string; destination: string }[];
+      cleanUrls?: boolean;
+    };
+    const rewrites = config.rewrites ?? [];
+    const api = rewrites.findIndex((r) => r.source === "/api/(.*)");
+    const page = rewrites.findIndex((r) => r.source === "/(.*)" && r.destination === "/index.html");
+
+    // Vercel aplica la primera que coincide: si la de la pagina fuera antes, /api/* devolveria HTML.
+    expect(api).toBeGreaterThanOrEqual(0);
+    expect(page).toBeGreaterThan(api);
+    // Con cleanUrls Vercel quita ".html" y el destino "/index.html" deja de resolverse (404).
+    expect(config.cleanUrls).toBeUndefined();
+  });
+
   it("cada handler de lib/handlers esta en la tabla de rutas, y al reves", () => {
     const routerSource = readFileSync("lib/router.ts", "utf8");
     const handlers = files("lib/handlers").filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"));

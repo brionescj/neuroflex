@@ -401,6 +401,13 @@ Hoy el backend está **simulado** con datasources en memoria detrás de reposito
     sin un correo válido se avisa. `AdminNameForm` usa botones de texto solo si recibe `submitLabel`/`cancelLabel`
     (la lista de administradores sigue con el icono de guardar).
 
+22. **Rutas de la página en Vercel** (`vercel.json`). Es una SPA: solo existe el archivo `index.html`, así que abrir
+    `/estudiante` directo (enlace, favorito, recargar) daba **404 de Vercel** aunque dentro de la app esa ruta
+    funcionara. `vercel.json` tiene dos reescrituras y **el orden importa** (gana la primera que coincide):
+    `/api/(.*)` → la función de la API, y después `/(.*)` → `/index.html`. Los archivos reales (`/assets/...`,
+    favicon, fotos de `public/equipo/`) los sirve Vercel antes de las reescrituras. No agregar `cleanUrls`: quita el
+    `.html` y el destino `/index.html` deja de resolverse. Un test en `lib/router.test.ts` lo comprueba.
+
 ---
 
 ## 4. Arquitectura por responsabilidades
