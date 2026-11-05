@@ -25,7 +25,12 @@ const RutInput = forwardRef<HTMLInputElement, RutInputProps>(
         value={formatRut(value)}
         onChange={handleChange}
         autoComplete="off"
-        inputMode="numeric"
+        // El dígito verificador puede ser «K»: con inputMode="numeric" los celulares abren un
+        // teclado solo de números y no dejan escribirla. Teclado normal + mayúsculas.
+        inputMode="text"
+        autoCapitalize="characters"
+        autoCorrect="off"
+        spellCheck={false}
         placeholder="12.345.678-5"
         {...props}
       />
